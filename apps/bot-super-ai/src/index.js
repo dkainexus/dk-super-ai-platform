@@ -53,10 +53,24 @@ bot.on("text", async (ctx) => {
   await ctx.reply(reply);
 });
 
-bot.launch({ allowedUpdates: ["message"] }).then(async () => {
-  await heartbeat("super_ai", { capabilities: definitions.map((tool) => tool.name) });
-  log.info("bot-super-ai launched");
-});
+// bot.launch()'s promise only resolves once the bot stops (it awaits the
+// polling loop internally), so heartbeats can't live in a .then() after it —
+// send one now and keep sending on an interval instead.
+const sendHeartbeat = () =>
+  heartbeat("super_ai", { capabilities: definitions.map((tool) => tool.name) }).catch((err) =>
+    log.error("heartbeat failed:", err.message)
+  );
+sendHeartbeat();
+const heartbeatTimer = setInterval(sendHeartbeat, 30000);
 
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+log.info("bot-super-ai launching...");
+bot.launch({ allowedUpdates: ["message"] });
+
+process.once("SIGINT", () => {
+  clearInterval(heartbeatTimer);
+  bot.stop("SIGINT");
+});
+process.once("SIGTERM", () => {
+  clearInterval(heartbeatTimer);
+  bot.stop("SIGTERM");
+});

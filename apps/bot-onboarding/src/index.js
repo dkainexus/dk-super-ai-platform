@@ -34,9 +34,10 @@ const stopWorker = startWorker(
   { intervalMs: 5000 }
 );
 
-bot.launch({ allowedUpdates: ["message", "callback_query"] }).then(() =>
-  log.info("bot-onboarding launched")
-);
+// bot.launch()'s promise only resolves once the bot stops (it awaits the
+// polling loop internally) — log before launching, not in a .then() after it.
+log.info("bot-onboarding launching...");
+bot.launch({ allowedUpdates: ["message", "callback_query"] });
 
 process.once("SIGINT", () => {
   stopWorker();

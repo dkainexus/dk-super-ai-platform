@@ -36,9 +36,10 @@ const stopWorker = startWorker(
   { intervalMs: 7000 }
 );
 
-bot
-  .launch({ allowedUpdates: ["message", "chat_member", "my_chat_member"] })
-  .then(() => log.info("bot-group-ops launched"));
+// bot.launch()'s promise only resolves once the bot stops (it awaits the
+// polling loop internally) — log before launching, not in a .then() after it.
+log.info("bot-group-ops launching...");
+bot.launch({ allowedUpdates: ["message", "chat_member", "my_chat_member"] });
 
 process.once("SIGINT", () => {
   stopWorker();
