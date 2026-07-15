@@ -1,0 +1,15 @@
+{
+  "name": "@dk/bot-super-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@dk/shared": "*",
+    "dotenv": "^16.4.5",
+    "telegraf": "^4.16.3"
+  }
+}

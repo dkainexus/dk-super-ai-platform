@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0d10;
+  --card: #14171b;
+  --border: #262a30;
+  --fg: #e7e9ec;
+  --fg-muted: #8b929c;
+  --accent: #4b8bd9;
+  --danger: #d9534f;
+  --success: #4b9e6b;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.btn {
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.input {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  color: var(--fg);
+}

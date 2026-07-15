@@ -1,0 +1,15 @@
+{
+  "name": "dk-super-ai-platform",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:group-ops": "npm run dev -w apps/bot-group-ops",
+    "dev:onboarding": "npm run dev -w apps/bot-onboarding",
+    "dev:super-ai": "npm run dev -w apps/bot-super-ai",
+    "dev:web": "npm run dev -w apps/web"
+  }
+}
