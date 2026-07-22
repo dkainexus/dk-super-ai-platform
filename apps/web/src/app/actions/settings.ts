@@ -8,7 +8,8 @@ import { setSetting, globalModuleToggles } from "@/lib/settings";
 import { TOGGLABLE_MODULES } from "@/modules/registry";
 
 function fail(path: string, message: string): never {
-  redirect(`${path}?error=${encodeURIComponent(message)}`);
+  const sep = path.includes("?") ? "&" : "?";
+  redirect(`${path}${sep}error=${encodeURIComponent(message)}`);
 }
 
 export async function savePlatformSettings(formData: FormData): Promise<void> {
@@ -31,42 +32,6 @@ export async function saveModuleToggles(formData: FormData): Promise<void> {
   await setSetting("modules", toggles);
   revalidatePath("/", "layout");
   redirect("/admin/modules");
-}
-
-/** AI Assistant provider config. Blank key fields keep the stored key. */
-export async function saveAiSettings(formData: FormData): Promise<void> {
-  const { cu } = await requirePerm("settings", "edit");
-  if (cu.merchant) redirect("/m");
-  const { aiSettings } = await import("@/lib/ai");
-  const current = await aiSettings();
-
-  const provider = String(formData.get("provider") ?? "claude");
-  if (provider !== "claude" && provider !== "chatgpt") fail("/admin/settings/ai", "Unknown provider");
-
-  const claudeKey = String(formData.get("claude_api_key") ?? "").trim();
-  const chatgptKey = String(formData.get("chatgpt_api_key") ?? "").trim();
-
-  await setSetting("ai", {
-    provider,
-    claude_api_key: claudeKey || current.claude_api_key,
-    claude_model: String(formData.get("claude_model") ?? current.claude_model),
-    chatgpt_api_key: chatgptKey || current.chatgpt_api_key,
-    chatgpt_model: String(formData.get("chatgpt_model") ?? current.chatgpt_model),
-  });
-  redirect("/admin/settings/ai?saved=1");
-}
-
-/** Remove a stored API key ("claude" | "chatgpt"). */
-export async function clearAiKey(formData: FormData): Promise<void> {
-  const { cu } = await requirePerm("settings", "edit");
-  if (cu.merchant) redirect("/m");
-  const { aiSettings } = await import("@/lib/ai");
-  const current = await aiSettings();
-  const which = String(formData.get("which") ?? "");
-  if (which === "claude") current.claude_api_key = "";
-  if (which === "chatgpt") current.chatgpt_api_key = "";
-  await setSetting("ai", current);
-  redirect("/admin/settings/ai");
 }
 
 /** Per-merchant module opt-outs, edited on the merchant detail page. */

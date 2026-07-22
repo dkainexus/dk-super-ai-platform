@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requirePerm } from "@/lib/auth";
-import { aiSettings, maskKey, CLAUDE_MODELS, CHATGPT_MODELS } from "@/lib/ai";
-import { saveAiSettings, clearAiKey } from "@/app/actions/settings";
+import { aiSettings, maskKey, CLAUDE_MODELS, CHATGPT_MODELS } from "@/modules/ai/lib";
+import { saveAiSettings, clearAiKey } from "@/modules/ai/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton, ActionButton } from "@/components/action-buttons";
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, can } from "@/lib/auth";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
-import { answerWithAi, type ChatMessage } from "@/lib/ai";
+import { answerWithAi, type ChatMessage } from "@/modules/ai/lib";
 
 export const maxDuration = 120;
 

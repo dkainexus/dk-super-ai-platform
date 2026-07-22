@@ -8,7 +8,7 @@ import {
   createCountryField,
   updateCountryField,
   deleteCountryField,
-} from "@/app/actions/cms";
+} from "@/modules/owners/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton, SubmitButton } from "@/components/action-buttons";

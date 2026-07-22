@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { banksForCountry, occupationsList } from "@/lib/banks";
+import { banksForCountry } from "@/modules/banks/lib";
+import { occupationsList } from "@/modules/owners/lib";
 import { ErrorBanner } from "@/components/error-banner";
-import { OwnerForm } from "@/components/owner-form";
+import { OwnerForm } from "@/modules/owners/components/owner-form";
 import type { CountryField } from "@/lib/types";
 
 export default async function NewOwnerPage({

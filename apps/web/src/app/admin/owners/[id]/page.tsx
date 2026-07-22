@@ -2,11 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { reviewOwner } from "@/app/actions/cms";
+import { reviewOwner } from "@/modules/owners/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
-import { OwnerData } from "@/components/owner-data";
+import { OwnerData } from "@/modules/owners/components/owner-data";
 import type { Country, Merchant, Owner } from "@/lib/types";
 
 export default async function AdminOwnerDetailPage({

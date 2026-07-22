@@ -5,7 +5,7 @@
 
 import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 import { PhotoInput } from "@/components/photo-input";
-import { saveOwner } from "@/app/actions/merchant";
+import { saveOwner } from "@/modules/owners/actions-merchant";
 import { SaveButton } from "@/components/action-buttons";
 import type { Bank, CountryField, Occupation, Owner, OwnerFieldValue } from "@/lib/types";
 

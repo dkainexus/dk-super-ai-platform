@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
-import { aiSettings, activeKey } from "@/lib/ai";
-import { AiChat } from "@/components/ai-chat";
+import { aiSettings, activeKey } from "@/modules/ai/lib";
+import { AiChat } from "@/modules/ai/components/ai-chat";
 
 export default async function AdminAiPage() {
   const { cu } = await requirePerm("ai", "view");

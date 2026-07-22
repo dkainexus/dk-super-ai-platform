@@ -1,10 +1,10 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { db } from "./supabase";
-import { getSetting } from "./settings";
-import { globalModuleToggles, moduleEnabledFor, platformSettings } from "./settings";
-import { can, type CurrentUser } from "./auth";
-import { OWNER_STATUS_LABEL, type OwnerStatus } from "./types";
+import { db } from "@/lib/supabase";
+import { getSetting } from "@/lib/settings";
+import { globalModuleToggles, moduleEnabledFor, platformSettings } from "@/lib/settings";
+import { can, type CurrentUser } from "@/lib/auth";
+import { OWNER_STATUS_LABEL, type OwnerStatus } from "@/lib/types";
 
 // AI Assistant module. Provider config lives in app_config under key 'ai';
 // answers are generated from a data snapshot that is filtered by the current

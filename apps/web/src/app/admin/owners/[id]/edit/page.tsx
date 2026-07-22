@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { adminSaveOwner } from "@/app/actions/cms";
-import { banksForCountry, occupationsList } from "@/lib/banks";
+import { adminSaveOwner } from "@/modules/owners/actions";
+import { banksForCountry } from "@/modules/banks/lib";
+import { occupationsList } from "@/modules/owners/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
-import { OwnerForm } from "@/components/owner-form";
+import { OwnerForm } from "@/modules/owners/components/owner-form";
 import type { CountryField, Merchant, Owner, OwnerFieldValue } from "@/lib/types";
 
 export default async function AdminOwnerEditPage({

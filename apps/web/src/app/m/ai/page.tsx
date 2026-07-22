@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
-import { aiSettings, activeKey } from "@/lib/ai";
-import { AiChat } from "@/components/ai-chat";
+import { aiSettings, activeKey } from "@/modules/ai/lib";
+import { AiChat } from "@/modules/ai/components/ai-chat";
 
 export default async function MerchantAiPage() {
   const { cu } = await requirePerm("ai", "view");

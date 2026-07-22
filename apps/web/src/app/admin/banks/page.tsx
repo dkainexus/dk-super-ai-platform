@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { createBank, updateBank, deleteBank } from "@/app/actions/cms";
+import { createBank, updateBank, deleteBank } from "@/modules/banks/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";

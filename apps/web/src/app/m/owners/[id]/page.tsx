@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { env } from "@/lib/env";
-import { submitOwnerForReview, deleteOwner, generateOwnerInvite } from "@/app/actions/merchant";
+import { submitOwnerForReview, deleteOwner, generateOwnerInvite } from "@/modules/owners/actions-merchant";
 import { CopyField } from "@/components/copy-field";
-import { banksForCountry, occupationsList } from "@/lib/banks";
+import { banksForCountry } from "@/modules/banks/lib";
+import { occupationsList } from "@/modules/owners/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
-import { OwnerForm } from "@/components/owner-form";
+import { OwnerForm } from "@/modules/owners/components/owner-form";
 import type { CountryField, Owner, OwnerFieldValue } from "@/lib/types";
 
 export default async function MerchantOwnerDetailPage({

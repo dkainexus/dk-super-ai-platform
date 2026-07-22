@@ -13,7 +13,8 @@ import { MODULES } from "@/modules/registry";
 import type { Role } from "@/lib/types";
 
 function fail(path: string, message: string): never {
-  redirect(`${path}?error=${encodeURIComponent(message)}`);
+  const sep = path.includes("?") ? "&" : "?";
+  redirect(`${path}${sep}error=${encodeURIComponent(message)}`);
 }
 
 function basePath(isMerchant: boolean, kind: "roles" | "users"): string {

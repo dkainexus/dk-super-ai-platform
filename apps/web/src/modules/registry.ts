@@ -1,13 +1,25 @@
 // Module registry — the "plugin" system of this platform template.
 //
-// A module = one entry here + a route folder under /admin and/or /m.
-// Registering it wires up, automatically:
-//   - sidebar navigation (permission- and toggle-filtered)
+// A module = one self-contained folder under src/modules/<key>/ holding:
+//   index.ts     module definition (this registry imports it)
+//   actions.ts   server actions (+ actions-merchant.ts for the /m side)
+//   lib.ts       server-side helpers
+//   components/  module UI components
+//   install.sql  tables + role permissions + toggle (for new deployments)
+// plus thin route files under /admin and/or /m that import from the folder.
+//
+// Registering a module wires up, automatically:
+//   - sidebar navigation (permission- and toggle-filtered, settings sub-item)
 //   - the Roles permission editor (view/add/edit/delete x scope)
-//   - the Settings > Modules on/off switch (global + per-merchant)
+//   - the Modules page on/off switch (global + per-merchant)
 //   - a Dashboard stats card
 //
 // CORE modules keep the platform itself running and cannot be switched off.
+
+import { banksModule } from "@/modules/banks";
+import { telegramModule } from "@/modules/telegram";
+import { aiModule } from "@/modules/ai";
+import { ownersModule } from "@/modules/owners";
 
 export type ModuleDef = {
   key: string;
@@ -16,43 +28,16 @@ export type ModuleDef = {
   core?: boolean; // not togglable
   adminNav?: { href: string; label: string };
   merchantNav?: { href: string; label: string };
-  /** Platform-side module settings page — shown as a sidebar sub-item. */
+  /** Platform-side module settings page — shown as a sidebar sub-item and a
+   *  "Settings" button on the Modules page. */
   settingsHref?: string;
 };
 
-export const MODULES: ModuleDef[] = [
-  {
-    key: "banks",
-    name: "Banks",
-    description: "Per-country bank directory used across the platform",
-    adminNav: { href: "/admin/banks", label: "Banks" },
-  },
-  {
-    key: "telegram",
-    name: "Telegram Bot",
-    description: "Shared Telegram bot registry — token validation and health checks",
-    adminNav: { href: "/admin/telegram", label: "Telegram Bot" },
-  },
-  {
-    key: "ai",
-    name: "AI Assistant",
-    description: "Ask questions about your data — answers are scoped to your role and permissions",
-    adminNav: { href: "/admin/ai", label: "AI Assistant" },
-    merchantNav: { href: "/m/ai", label: "AI Assistant" },
-    settingsHref: "/admin/settings/ai",
-  },
-  {
-    key: "owners",
-    name: "Owners",
-    description: "Owner records with per-country custom fields and review flow",
-    adminNav: { href: "/admin/owners", label: "Owners" },
-    merchantNav: { href: "/m/owners", label: "Owners" },
-    settingsHref: "/admin/settings/owners",
-  },
+const CORE_MODULES: ModuleDef[] = [
   {
     key: "countries",
     name: "Countries",
-    description: "Countries, merchants under them and per-country field config",
+    description: "Countries and the merchants under them",
     core: true,
     adminNav: { href: "/admin/countries", label: "Countries" },
   },
@@ -81,11 +66,19 @@ export const MODULES: ModuleDef[] = [
   {
     key: "settings",
     name: "Settings",
-    description: "Platform settings, module toggles and branding",
+    description: "Platform settings and branding",
     core: true,
     adminNav: { href: "/admin/settings", label: "Settings" },
     merchantNav: { href: "/m/settings", label: "Branding" },
   },
+];
+
+export const MODULES: ModuleDef[] = [
+  banksModule,
+  telegramModule,
+  aiModule,
+  ownersModule,
+  ...CORE_MODULES,
 ];
 
 export const TOGGLABLE_MODULES = MODULES.filter((m) => !m.core);

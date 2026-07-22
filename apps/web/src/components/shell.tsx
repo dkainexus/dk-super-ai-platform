@@ -4,13 +4,13 @@ import "server-only";
 // registry. Both /admin and /m layouts use this.
 
 import { AppShell } from "@/components/app-shell";
-import { AiWidget } from "@/components/ai-chat";
+import { AiWidget } from "@/modules/ai/components/ai-chat";
 import { logoutAction } from "@/app/actions/auth";
 import { navSectionsFor } from "@/lib/nav";
 import { platformSettings, globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { can, type CurrentUser } from "@/lib/auth";
-import { aiSettings, activeKey } from "@/lib/ai";
+import { aiSettings, activeKey } from "@/modules/ai/lib";
 
 export async function Shell({ cu, children }: { cu: CurrentUser; children: React.ReactNode }) {
   const [sections, platform, avatarUrl, toggles] = await Promise.all([

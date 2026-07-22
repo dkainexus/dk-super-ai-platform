@@ -1,12 +1,12 @@
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { maskToken } from "@/lib/telegram";
+import { maskToken } from "@/modules/telegram/lib";
 import {
   createTelegramBot,
   updateTelegramBot,
   verifyTelegramBot,
   deleteTelegramBot,
-} from "@/app/actions/cms";
+} from "@/modules/telegram/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
