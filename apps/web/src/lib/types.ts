@@ -120,6 +120,7 @@ export type Owner = {
   photo_full_body_path: string | null;
   bank_id: string | null;
   bank_account_no: string | null;
+  occupation_id: string | null;
   status: OwnerStatus;
   reject_reason: string | null;
   reviewed_by: string | null;
@@ -154,6 +155,16 @@ export type Bank = {
   country_id: string;
   name: string;
   code: string | null;
+  active: boolean;
+  sort: number;
+  created_at: string;
+};
+
+export type Occupation = {
+  id: string;
+  country_id: string;
+  name: string;
+  company_type: string | null;
   active: boolean;
   sort: number;
   created_at: string;

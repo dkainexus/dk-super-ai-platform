@@ -314,6 +314,7 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const bankId = String(formData.get("bank_id") ?? "") || null;
   const bankAccountNo = String(formData.get("bank_account_no") ?? "").trim() || null;
+  const occupationId = String(formData.get("occupation_id") ?? "") || null;
   const gender = String(formData.get("gender") ?? "") || null;
   const maritalStatus = String(formData.get("marital_status") ?? "") || null;
   const phone = String(formData.get("phone") ?? "").trim() || null;
@@ -329,6 +330,7 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
         notes,
         bank_id: bankId,
         bank_account_no: bankAccountNo,
+        occupation_id: occupationId,
         gender,
         marital_status: maritalStatus,
         phone,
@@ -347,6 +349,7 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
         notes,
         bank_id: bankId,
         bank_account_no: bankAccountNo,
+        occupation_id: occupationId,
         gender,
         marital_status: maritalStatus,
         phone,
@@ -462,4 +465,53 @@ export async function deleteBank(formData: FormData): Promise<void> {
   await db().from("banks").delete().eq("id", id);
   revalidatePath("/admin/banks");
   redirect(countryId ? `/admin/banks?country=${countryId}` : "/admin/banks");
+}
+
+// ---------- Occupations module ----------
+
+export async function createOccupation(formData: FormData): Promise<void> {
+  await requirePerm("occupations", "add");
+  const countryId = String(formData.get("country_id") ?? "");
+  const back = `/admin/occupations?country=${countryId}`;
+  const name = String(formData.get("name") ?? "").trim();
+  const companyType = String(formData.get("company_type") ?? "").trim() || null;
+  if (!countryId) fail("/admin/occupations", "Please choose a country");
+  if (!name) fail(back, "Please enter the occupation name");
+
+  const { count } = await db().from("occupations").select("id", { count: "exact", head: true }).eq("country_id", countryId);
+  const { error } = await db().from("occupations").insert({
+    country_id: countryId,
+    name,
+    company_type: companyType,
+    sort: ((count ?? 0) + 1) * 10,
+  });
+  if (error) fail(back, error.message.includes("duplicate") ? "This occupation already exists in this country" : `Failed to create: ${error.message}`);
+  revalidatePath("/admin/occupations");
+  redirect(back);
+}
+
+export async function updateOccupation(formData: FormData): Promise<void> {
+  await requirePerm("occupations", "edit");
+  const id = String(formData.get("id") ?? "");
+  const countryId = String(formData.get("country_id") ?? "");
+  const back = `/admin/occupations?country=${countryId}`;
+  const name = String(formData.get("name") ?? "").trim();
+  const companyType = String(formData.get("company_type") ?? "").trim() || null;
+  const sort = parseInt(String(formData.get("sort") ?? "100"), 10) || 100;
+  const active = formData.get("active") === "on";
+  if (!name) fail(back, "Occupation name cannot be empty");
+
+  const { error } = await db().from("occupations").update({ name, company_type: companyType, sort, active }).eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath("/admin/occupations");
+  redirect(back);
+}
+
+export async function deleteOccupation(formData: FormData): Promise<void> {
+  await requirePerm("occupations", "delete");
+  const id = String(formData.get("id") ?? "");
+  const countryId = String(formData.get("country_id") ?? "");
+  await db().from("occupations").delete().eq("id", id);
+  revalidatePath("/admin/occupations");
+  redirect(countryId ? `/admin/occupations?country=${countryId}` : "/admin/occupations");
 }

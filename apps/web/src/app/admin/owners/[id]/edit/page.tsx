@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { adminSaveOwner } from "@/app/actions/cms";
-import { banksForCountry } from "@/lib/banks";
+import { banksForCountry, occupationsForCountry } from "@/lib/banks";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { OwnerForm } from "@/components/owner-form";
@@ -24,10 +24,11 @@ export default async function AdminOwnerEditPage({
   if (!data) notFound();
   const owner = data as Owner & { merchant: Merchant };
 
-  const [{ data: fields }, { data: values }, banks] = await Promise.all([
+  const [{ data: fields }, { data: values }, banks, occupations] = await Promise.all([
     db().from("country_fields").select("*").eq("country_id", owner.country_id).eq("active", true).order("sort"),
     db().from("owner_field_values").select("*").eq("owner_id", owner.id),
     banksForCountry(owner.country_id, null),
+    occupationsForCountry(owner.country_id, null),
   ]);
 
   return (
@@ -48,6 +49,7 @@ export default async function AdminOwnerEditPage({
         <OwnerForm
           fields={(fields ?? []) as CountryField[]}
           banks={banks}
+          occupations={occupations}
           owner={owner}
           values={(values ?? []) as OwnerFieldValue[]}
           action={adminSaveOwner}

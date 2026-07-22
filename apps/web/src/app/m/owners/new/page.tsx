@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { banksForCountry } from "@/lib/banks";
+import { banksForCountry, occupationsForCountry } from "@/lib/banks";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerForm } from "@/components/owner-form";
 import type { CountryField } from "@/lib/types";
@@ -16,7 +16,7 @@ export default async function NewOwnerPage({
   const merchant = cu.merchant;
   const { error } = await searchParams;
 
-  const [{ data: fields }, banks] = await Promise.all([
+  const [{ data: fields }, banks, occupations] = await Promise.all([
     db()
       .from("country_fields")
       .select("*")
@@ -24,6 +24,7 @@ export default async function NewOwnerPage({
       .eq("active", true)
       .order("sort"),
     banksForCountry(merchant.country_id, merchant),
+    occupationsForCountry(merchant.country_id, merchant),
   ]);
 
   return (
@@ -36,7 +37,7 @@ export default async function NewOwnerPage({
       </div>
       <ErrorBanner message={error} />
       <div className="card p-5">
-        <OwnerForm fields={(fields ?? []) as CountryField[]} banks={banks} />
+        <OwnerForm fields={(fields ?? []) as CountryField[]} banks={banks} occupations={occupations} />
       </div>
     </div>
   );

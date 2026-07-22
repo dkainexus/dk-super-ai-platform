@@ -6,7 +6,7 @@
 import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 import { saveOwner } from "@/app/actions/merchant";
 import { SaveButton } from "@/components/action-buttons";
-import type { Bank, CountryField, Owner, OwnerFieldValue } from "@/lib/types";
+import type { Bank, CountryField, Occupation, Owner, OwnerFieldValue } from "@/lib/types";
 
 async function FilePreview({ path }: { path: string | null | undefined }) {
   const url = await signedUrl(DOCS_BUCKET, path ?? null);
@@ -26,6 +26,7 @@ async function FilePreview({ path }: { path: string | null | undefined }) {
 export async function OwnerForm({
   fields,
   banks = [],
+  occupations = [],
   owner,
   values,
   action = saveOwner,
@@ -34,6 +35,7 @@ export async function OwnerForm({
 }: {
   fields: CountryField[];
   banks?: Bank[];
+  occupations?: Occupation[];
   owner?: Owner;
   values?: OwnerFieldValue[];
   action?: (formData: FormData) => Promise<void>;
@@ -78,6 +80,19 @@ export async function OwnerForm({
             <option value="widowed">Widowed</option>
           </select>
         </div>
+        {occupations.length > 0 && (
+          <div>
+            <label className="mb-1 block text-xs text-muted">Occupation</label>
+            <select name="occupation_id" defaultValue={owner?.occupation_id ?? ""} className="input" disabled={locked}>
+              <option value="">— Select —</option>
+              {occupations.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className="mb-1 block text-xs text-muted">Phone Number</label>
           <input name="phone" defaultValue={owner?.phone ?? ""} className="input mono-num" disabled={locked} />

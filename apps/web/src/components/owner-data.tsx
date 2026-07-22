@@ -35,11 +35,14 @@ async function FileThumb({ path, label }: { path: string | null; label: string }
 }
 
 export async function OwnerData({ owner }: { owner: Owner }) {
-  const [{ data: fields }, { data: values }, { data: bank }] = await Promise.all([
+  const [{ data: fields }, { data: values }, { data: bank }, { data: occupation }] = await Promise.all([
     db().from("country_fields").select("*").eq("country_id", owner.country_id).order("sort"),
     db().from("owner_field_values").select("*").eq("owner_id", owner.id),
     owner.bank_id
       ? db().from("banks").select("name, code").eq("id", owner.bank_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    owner.occupation_id
+      ? db().from("occupations").select("name, company_type").eq("id", owner.occupation_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const byField = new Map(
@@ -59,6 +62,20 @@ export async function OwnerData({ owner }: { owner: Owner }) {
         </Item>
         <Item label="Gender">
           <span className="capitalize">{owner.gender || <span className="text-muted">Not provided</span>}</span>
+        </Item>
+        <Item label="Occupation">
+          {occupation ? (
+            <span>
+              {occupation.name}
+              {occupation.company_type && (
+                <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent-strong">
+                  → {occupation.company_type}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="text-muted">Not selected</span>
+          )}
         </Item>
         <Item label="Marital Status">
           <span className="capitalize">{owner.marital_status || <span className="text-muted">Not provided</span>}</span>
