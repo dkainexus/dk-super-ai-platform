@@ -32,6 +32,9 @@ export default async function AdminDashboard() {
     stats.push({ label: "Owners", value: await countRows("owners"), href: "/admin/owners" });
     stats.push({ label: "Pending Review", value: pending, href: "/admin/owners?status=pending", warn: pending > 0 });
   }
+  if (moduleEnabledFor("banks", toggles, null) && can(cu, "banks", "view")) {
+    stats.push({ label: "Banks", value: await countRows("banks", (q: any) => q.eq("active", true)), href: "/admin/banks" });
+  }
   if (can(cu, "users", "view")) {
     stats.push({ label: "Users", value: await countRows("users", (q: any) => q.eq("active", true)), href: "/admin/users" });
   }

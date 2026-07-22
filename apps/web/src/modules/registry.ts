@@ -20,6 +20,12 @@ export type ModuleDef = {
 
 export const MODULES: ModuleDef[] = [
   {
+    key: "banks",
+    name: "Banks",
+    description: "Per-country bank directory used across the platform",
+    adminNav: { href: "/admin/banks", label: "Banks" },
+  },
+  {
     key: "owners",
     name: "Owners",
     description: "Owner records with per-country custom fields and review flow",
