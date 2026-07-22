@@ -2,6 +2,8 @@ import { requirePerm, requireMerchantUser } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { ErrorBanner } from "@/components/error-banner";
 import { UsersManager, type UserRow } from "@/components/users-ui";
+import { merchantCountries } from "@/modules/merchants/lib";
+import { UserCountriesCard } from "@/modules/merchants/components/user-countries";
 import type { Role } from "@/lib/types";
 
 export default async function MerchantTeamPage({
@@ -13,6 +15,7 @@ export default async function MerchantTeamPage({
   await requirePerm("users", "view");
   const { error } = await searchParams;
 
+  const countries = await merchantCountries(cu.merchant.id);
   const [{ data: users }, { data: roles }] = await Promise.all([
     db()
       .from("users")
@@ -40,6 +43,11 @@ export default async function MerchantTeamPage({
         merchants={[]}
         isMerchant
         selfId={cu.user.id}
+      />
+      <UserCountriesCard
+        users={((users ?? []) as UserRow[]).map((u) => ({ id: u.id, username: u.username, name: u.name }))}
+        countries={countries}
+        back="/m/team"
       />
     </div>
   );

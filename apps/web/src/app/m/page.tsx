@@ -4,6 +4,7 @@ import { db } from "@/lib/supabase";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { HeroCard, StatCard, PALETTES, dailyCounts, cumulative } from "@/components/dash";
+import { activeCountry } from "@/modules/merchants/lib";
 import { OWNER_STATUS_LABEL, type Owner, type OwnerStatus } from "@/lib/types";
 
 // White label dashboard — crypto-styled cards, scoped to the merchant (and
@@ -15,6 +16,7 @@ export default async function MerchantDashboard() {
   const ownersOn = moduleEnabledFor("owners", toggles, cu.merchant) && ownersScope;
   const companiesScope = can(cu, "companies", "view");
   const companiesOn = moduleEnabledFor("companies", toggles, cu.merchant) && companiesScope;
+  const { active } = await activeCountry(cu);
 
   let list: Pick<Owner, "id" | "full_name" | "status" | "created_at">[] = [];
   if (ownersOn) {
@@ -23,6 +25,7 @@ export default async function MerchantDashboard() {
       .select("id, full_name, status, created_at, created_by")
       .eq("merchant_id", cu.merchant.id)
       .order("created_at", { ascending: false });
+    if (active) q = q.eq("country_id", active.id);
     if (ownersScope === "own") q = q.eq("created_by", cu.user.id);
     const { data } = await q;
     list = (data ?? []) as typeof list;
@@ -37,6 +40,7 @@ export default async function MerchantDashboard() {
   let companiesRegistered = 0;
   if (companiesOn) {
     let q = db().from("companies").select("id, status, created_by").eq("merchant_id", cu.merchant.id);
+    if (active) q = q.eq("country_id", active.id);
     if (companiesScope === "own") q = q.eq("created_by", cu.user.id);
     const { data } = await q;
     companyCount = (data ?? []).length;
@@ -52,7 +56,7 @@ export default async function MerchantDashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Dashboard</h1>
+      <h1 className="text-xl font-semibold">Dashboard{active ? ` — ${active.flag || ""} ${active.name}` : ""}</h1>
 
       {ownersOn ? (
         <>

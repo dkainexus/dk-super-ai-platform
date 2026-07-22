@@ -4,7 +4,7 @@ import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { bindableOwners, shareholdersEnabledFor } from "@/modules/companies/lib";
-import { merchantCountries } from "@/modules/merchants/lib";
+import { activeCountry } from "@/modules/merchants/lib";
 import { CompanyForm } from "@/modules/companies/components/company-form";
 import { ErrorBanner } from "@/components/error-banner";
 import type { Occupation } from "@/lib/types";
@@ -12,16 +12,15 @@ import type { Occupation } from "@/lib/types";
 export default async function MerchantNewCompanyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string; error?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { cu } = await requirePerm("companies", "add");
   if (!cu.merchant) redirect("/admin/companies/new");
   const toggles = await globalModuleToggles();
   if (!moduleEnabledFor("companies", toggles, cu.merchant)) redirect("/m");
-  const { country: countryParam = "", error } = await searchParams;
+  const { error } = await searchParams;
 
-  const countries = await merchantCountries(cu.merchant.id);
-  const country = countries.find((c) => c.id === countryParam) ?? (countries.length === 1 ? countries[0] : null);
+  const { active: country, allowed } = await activeCountry(cu);
 
   const [owners, shareholdersEnabled, { data: occupations }] = country
     ? await Promise.all([
@@ -43,35 +42,19 @@ export default async function MerchantNewCompanyPage({
       </div>
       <ErrorBanner message={error} />
 
-      {countries.length > 1 && (
-        <section className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold">1. Choose Country</h2>
-          <div className="flex flex-wrap gap-2">
-            {countries.map((c) => (
-              <Link
-                key={c.id}
-                href={`/m/companies/new?country=${c.id}`}
-                className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                  country?.id === c.id
-                    ? "border-accent bg-accent-soft text-accent-strong"
-                    : "border-border text-muted hover:border-accent hover:text-foreground"
-                }`}
-              >
-                {c.flag || "🌐"} {c.name}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {countries.length === 0 && (
+      {allowed.length === 0 && (
         <p className="card px-5 py-6 text-sm text-muted">
-          No countries enabled for your white label yet — contact the platform administrator.
+          No countries enabled for your account yet — contact your administrator.
         </p>
       )}
 
       {country && (
       <div className="card p-5">
+        {allowed.length > 1 && (
+          <p className="mb-3 text-xs text-muted">
+            Creating in {country.flag || "🌐"} {country.name} — switch country from the top bar.
+          </p>
+        )}
         {owners.length === 0 ? (
           <p className="text-sm text-muted">
             You need at least one owner first — a company must be bound to an owner.{" "}

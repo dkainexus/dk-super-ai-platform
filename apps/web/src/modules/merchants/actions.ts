@@ -189,3 +189,30 @@ export async function saveMerchantCountries(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(back);
 }
+
+/**
+ * Assign countries to a white label team member (checkboxes uc_<countryId>).
+ * All boxes checked = full access — stored as "no rows" so future new
+ * countries are included automatically.
+ */
+export async function setUserCountries(formData: FormData): Promise<void> {
+  const { cu, scope } = await requirePerm("users", "edit");
+  const userId = String(formData.get("user_id") ?? "");
+  const back = String(formData.get("back") ?? (cu.merchant ? "/m/team" : "/admin/users"));
+
+  const { data: target } = await db().from("users").select("id, merchant_id").eq("id", userId).maybeSingle();
+  if (!target || !target.merchant_id) fail(back, "Country assignment only applies to white label accounts");
+  if (scope !== "all" && target.merchant_id !== cu.user.merchant_id) redirect(back);
+
+  const { data: mc } = await db().from("merchant_countries").select("country_id").eq("merchant_id", target.merchant_id);
+  const merchantCountryIds = ((mc ?? []) as { country_id: string }[]).map((r) => r.country_id);
+  const wanted = merchantCountryIds.filter((id) => formData.get(`uc_${id}`) === "on");
+  if (wanted.length === 0) fail(back, "A team member needs at least one country");
+
+  await db().from("user_countries").delete().eq("user_id", userId);
+  if (wanted.length < merchantCountryIds.length) {
+    await db().from("user_countries").insert(wanted.map((country_id) => ({ user_id: userId, country_id })));
+  }
+  revalidatePath(back);
+  redirect(back);
+}

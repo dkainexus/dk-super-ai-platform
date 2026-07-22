@@ -93,12 +93,14 @@ export function AppShell({
   sections,
   user,
   logoutAction,
+  headerExtra,
   children,
 }: {
   brand: ShellBrand;
   sections: NavSection[];
   user: ShellUser;
   logoutAction: () => Promise<void>;
+  headerExtra?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -118,6 +120,7 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Desktop top bar */}
         <header className="sticky top-0 z-20 hidden items-center justify-end gap-3 border-b border-border bg-surface/70 px-6 py-2.5 backdrop-blur md:flex">
+          {headerExtra}
           <UserMenu user={user} logoutAction={logoutAction} />
         </header>
 
@@ -125,6 +128,7 @@ export function AppShell({
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-surface/90 px-4 py-3 backdrop-blur md:hidden">
           <Brand brand={brand} />
           <div className="flex items-center gap-2">
+            {headerExtra}
             <UserMenu user={user} logoutAction={logoutAction} />
             <button aria-label="Menu" onClick={() => setOpen(true)} className="rounded-md border border-border p-2 text-foreground">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

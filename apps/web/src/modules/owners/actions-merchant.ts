@@ -8,7 +8,7 @@ import { db } from "@/lib/supabase";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { randomToken } from "@/lib/slug";
 import { uploadFile, fileExt, DOCS_BUCKET } from "@/lib/storage";
-import { merchantHasCountry } from "@/modules/merchants/lib";
+import { allowedCountries } from "@/modules/merchants/lib";
 import type { CountryField, Owner } from "@/lib/types";
 
 function fail(path: string, message: string): never {
@@ -84,8 +84,9 @@ export async function saveOwner(formData: FormData): Promise<void> {
     owner = data as Owner;
   } else {
     const countryId = String(formData.get("country_id") ?? "");
-    if (!countryId || !(await merchantHasCountry(merchant.id, countryId))) {
-      fail(back, "Please choose one of your white label's countries");
+    const allowed = await allowedCountries(cu);
+    if (!countryId || !allowed.some((c) => c.id === countryId)) {
+      fail(back, "You do not have access to that country");
     }
     const { data, error } = await db()
       .from("owners")

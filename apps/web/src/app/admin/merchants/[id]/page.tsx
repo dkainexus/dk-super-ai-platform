@@ -14,6 +14,7 @@ import {
 import { saveMerchantModules } from "@/app/actions/settings";
 import { saveMerchantCountries } from "@/modules/merchants/actions";
 import { merchantCountries } from "@/modules/merchants/lib";
+import { UserCountriesCard } from "@/modules/merchants/components/user-countries";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag, OwnerStatusTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
@@ -97,6 +98,12 @@ export default async function MerchantDetailPage({
       </section>
 
       {/* Per-merchant modules */}
+      <UserCountriesCard
+        users={((users ?? []) as (User & { role: Role | null })[]).map((u) => ({ id: u.id, username: u.username, name: u.name }))}
+        countries={enabledCountries}
+        back={`/admin/merchants/${m.id}`}
+      />
+
       <section className="card p-5">
         <h2 className="mb-1 text-sm font-semibold">Countries</h2>
         <p className="mb-4 text-xs text-muted">

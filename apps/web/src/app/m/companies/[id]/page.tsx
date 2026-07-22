@@ -4,6 +4,7 @@ import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { bindableOwners, shareholdersEnabledFor } from "@/modules/companies/lib";
+import { allowedCountries } from "@/modules/merchants/lib";
 import { CompanyForm } from "@/modules/companies/components/company-form";
 import { deleteCompany } from "@/modules/companies/actions";
 import { ErrorBanner } from "@/components/error-banner";
@@ -29,6 +30,8 @@ export default async function MerchantCompanyPage({
   if (!data) notFound();
   const company = data as Company;
   if (company.merchant_id !== cu.merchant.id) notFound();
+  const allowedList = await allowedCountries(cu);
+  if (!allowedList.some((c) => c.id === company.country_id)) notFound();
   if (scope === "own" && company.created_by !== cu.user.id) notFound();
 
   const [members, owners, shareholdersEnabled, { data: occupations }] = await Promise.all([

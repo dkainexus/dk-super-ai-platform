@@ -4,6 +4,7 @@ import { db } from "@/lib/supabase";
 import { getSetting } from "@/lib/settings";
 import { globalModuleToggles, moduleEnabledFor, platformSettings } from "@/lib/settings";
 import { can, type CurrentUser } from "@/lib/auth";
+import { allowedCountries } from "@/modules/merchants/lib";
 import { OWNER_STATUS_LABEL, type OwnerStatus } from "@/lib/types";
 
 // AI Assistant module. Provider config lives in app_config under key 'ai';
@@ -62,6 +63,7 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
   const toggles = await globalModuleToggles();
   const on = (key: string) => moduleEnabledFor(key, toggles, cu.merchant);
   const ctx: Record<string, unknown> = {};
+  const allowedIds = cu.merchant ? (await allowedCountries(cu)).map((c) => c.id) : null;
 
   // Lookup maps used to translate ids into names in several datasets.
   const [{ data: countryRows }, { data: merchantRows }, { data: mcRows }] = await Promise.all([
@@ -105,6 +107,7 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
       .limit(LIMIT);
     if (ownerScope === "merchant" && cu.user.merchant_id) q = q.eq("merchant_id", cu.user.merchant_id);
     if (ownerScope === "own") q = q.eq("created_by", cu.user.id);
+    if (allowedIds) q = q.in("country_id", allowedIds);
     const { data: owners } = await q;
     ctx.owners = ((owners ?? []) as Row[]).map((o) => ({
       full_name: o.full_name,
@@ -137,6 +140,7 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
       .limit(LIMIT);
     if (companyScope === "merchant" && cu.user.merchant_id) q = q.eq("merchant_id", cu.user.merchant_id);
     if (companyScope === "own") q = q.eq("created_by", cu.user.id);
+    if (allowedIds) q = q.in("country_id", allowedIds);
     const { data: companies } = await q;
     ctx.companies = ((companies ?? []) as Row[]).map((c) => ({
       name: c.name,

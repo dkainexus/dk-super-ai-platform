@@ -11,6 +11,8 @@ import { platformSettings, globalModuleToggles, moduleEnabledFor } from "@/lib/s
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { can, type CurrentUser } from "@/lib/auth";
 import { aiSettings, activeKey } from "@/modules/ai/lib";
+import { activeCountry } from "@/modules/merchants/lib";
+import { CountrySwitcher } from "@/modules/merchants/components/country-switcher";
 
 export async function Shell({ cu, children }: { cu: CurrentUser; children: React.ReactNode }) {
   const [sections, platform, avatarUrl, toggles] = await Promise.all([
@@ -23,6 +25,9 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
   // Floating AI Assistant — for users whose role can view the AI module.
   const aiOn = Boolean(can(cu, "ai", "view")) && moduleEnabledFor("ai", toggles, cu.merchant);
   const ai = aiOn ? await aiSettings() : null;
+
+  // Active-country switcher (merchant portal, multi-country white labels).
+  const countryCtx = cu.merchant ? await activeCountry(cu) : null;
 
   const merchantLogo = cu.merchant
     ? await signedUrl(ASSETS_BUCKET, cu.merchant.logo_path, 60 * 60 * 12)
@@ -42,6 +47,14 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
         avatarUrl,
       }}
       logoutAction={logoutAction}
+      headerExtra={
+        countryCtx && countryCtx.allowed.length > 1 && countryCtx.active ? (
+          <CountrySwitcher
+            countries={countryCtx.allowed.map((c) => ({ id: c.id, name: c.name, flag: c.flag }))}
+            activeId={countryCtx.active.id}
+          />
+        ) : undefined
+      }
     >
       {children}
       {ai && (

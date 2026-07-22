@@ -3,7 +3,7 @@ import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { banksForCountry } from "@/modules/banks/lib";
 import { occupationsList } from "@/modules/owners/lib";
-import { merchantCountries } from "@/modules/merchants/lib";
+import { activeCountry } from "@/modules/merchants/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerForm } from "@/modules/owners/components/owner-form";
 import type { CountryField } from "@/lib/types";
@@ -13,15 +13,15 @@ import type { CountryField } from "@/lib/types";
 export default async function NewOwnerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string; error?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const cu = await requireMerchantUser();
   await requirePerm("owners", "add");
   const merchant = cu.merchant;
-  const { country: countryParam = "", error } = await searchParams;
+  const { error } = await searchParams;
 
-  const countries = await merchantCountries(merchant.id);
-  const country = countries.find((c) => c.id === countryParam) ?? (countries.length === 1 ? countries[0] : null);
+  // The portal's active country (top-bar switcher) decides the country.
+  const { active: country, allowed } = await activeCountry(cu);
 
   const [{ data: fields }, banks, occupations] = country
     ? await Promise.all([
@@ -41,39 +41,18 @@ export default async function NewOwnerPage({
       </div>
       <ErrorBanner message={error} />
 
-      {countries.length > 1 && (
-        <section className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold">1. Choose Country</h2>
-          <div className="flex flex-wrap gap-2">
-            {countries.map((c) => (
-              <Link
-                key={c.id}
-                href={`/m/owners/new?country=${c.id}`}
-                className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                  country?.id === c.id
-                    ? "border-accent bg-accent-soft text-accent-strong"
-                    : "border-border text-muted hover:border-accent hover:text-foreground"
-                }`}
-              >
-                {c.flag || "🌐"} {c.name}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {countries.length === 0 && (
+      {allowed.length === 0 && (
         <p className="card px-5 py-6 text-sm text-muted">
-          No countries enabled for your white label yet — contact the platform administrator.
+          No countries enabled for your account yet — contact your administrator.
         </p>
       )}
 
       {country && (
         <div className="card p-5">
-          {countries.length > 1 && (
-            <h2 className="mb-3 text-sm font-semibold">
-              2. Owner Details — {country.flag || "🌐"} {country.name}
-            </h2>
+          {allowed.length > 1 && (
+            <p className="mb-3 text-xs text-muted">
+              Creating in {country.flag || "🌐"} {country.name} — switch country from the top bar.
+            </p>
           )}
           <OwnerForm
             fields={(fields ?? []) as CountryField[]}

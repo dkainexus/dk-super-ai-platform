@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { submitOwnerForReview, deleteOwner, generateOwnerInvite } from "@/modules/owners/actions-merchant";
 import { CopyField } from "@/components/copy-field";
 import { banksForCountry } from "@/modules/banks/lib";
+import { allowedCountries } from "@/modules/merchants/lib";
 import { occupationsList } from "@/modules/owners/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
@@ -34,6 +35,8 @@ export default async function MerchantOwnerDetailPage({
     .maybeSingle();
   if (!data) notFound();
   const owner = data as Owner;
+  const allowedList = await allowedCountries(cu);
+  if (!allowedList.some((c) => c.id === owner.country_id)) notFound();
   if (scope === "own" && owner.created_by && owner.created_by !== cu.user.id) notFound();
 
   const [{ data: fields }, { data: values }, banks, occupations] = await Promise.all([

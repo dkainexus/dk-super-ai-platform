@@ -9,6 +9,8 @@ import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { slugify } from "@/lib/slug";
 import { uploadFile, fileExt, ASSETS_BUCKET } from "@/lib/storage";
 import { attachDomain, detachDomain, vercelEnabled } from "@/lib/vercel";
+import { cookies } from "next/headers";
+import { ACTIVE_COUNTRY_COOKIE } from "./lib";
 
 function fail(path: string, message: string): never {
   const sep = path.includes("?") ? "&" : "?";
@@ -61,3 +63,12 @@ export async function uploadMerchantLogo(formData: FormData): Promise<void> {
   revalidatePath("/m", "layout");
 }
 
+
+/** Switch the merchant portal's active country (cookie). */
+export async function switchActiveCountry(formData: FormData): Promise<void> {
+  await requireMerchantUser();
+  const countryId = String(formData.get("country_id") ?? "");
+  const jar = await cookies();
+  jar.set(ACTIVE_COUNTRY_COOKIE, countryId, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  revalidatePath("/", "layout");
+}

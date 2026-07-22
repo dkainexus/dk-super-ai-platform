@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
+import { activeCountry } from "@/modules/merchants/lib";
 import { CompanyStatusTag } from "@/components/status-tag";
 import { COMPANY_STATUS_LABEL, type Company, type CompanyStatus } from "@/lib/types";
 
@@ -16,12 +17,14 @@ export default async function MerchantCompaniesPage({
   const toggles = await globalModuleToggles();
   if (!moduleEnabledFor("companies", toggles, cu.merchant)) redirect("/m");
   const { status = "" } = await searchParams;
+  const { active } = await activeCountry(cu);
 
   let q = db()
     .from("companies")
     .select("*, members:company_members(role, owner:owners(full_name))")
     .eq("merchant_id", cu.merchant.id)
     .order("created_at", { ascending: false });
+  if (active) q = q.eq("country_id", active.id);
   if (scope === "own") q = q.eq("created_by", cu.user.id);
   if (status) q = q.eq("status", status);
   const { data: companies } = await q;
@@ -31,7 +34,7 @@ export default async function MerchantCompaniesPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Companies</h1>
+        <h1 className="text-xl font-semibold">Companies{active ? ` — ${active.flag || ""} ${active.name}` : ""}</h1>
         {can(cu, "companies", "add") && (
           <Link href="/m/companies/new" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background hover:bg-accent-strong">
             + New Company

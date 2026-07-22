@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
+import { activeCountry } from "@/modules/merchants/lib";
 import { OwnerStatusTag } from "@/components/status-tag";
 import type { Owner, OwnerStatus } from "@/lib/types";
 
@@ -8,19 +9,21 @@ export default async function MerchantOwnersPage() {
   const cu = await requireMerchantUser();
   const scope = (await requirePerm("owners", "view")).scope;
   const merchant = cu.merchant;
+  const { active } = await activeCountry(cu);
 
   let q = db()
     .from("owners")
     .select("*")
     .eq("merchant_id", merchant.id)
     .order("created_at", { ascending: false });
+  if (active) q = q.eq("country_id", active.id);
   if (scope === "own") q = q.eq("created_by", cu.user.id);
   const { data: owners } = await q;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Owners</h1>
+        <h1 className="text-xl font-semibold">Owners{active ? ` — ${active.flag || ""} ${active.name}` : ""}</h1>
         <Link
           href="/m/owners/new"
           className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background hover:bg-accent-strong"
