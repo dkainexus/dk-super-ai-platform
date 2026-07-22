@@ -16,12 +16,7 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     if (!nav) continue;
     if (!m.core && !moduleEnabledFor(m.key, toggles, cu.merchant)) continue;
     if (!can(cu, m.key, "view")) continue;
-    const item: NavItem = { ...nav };
-    // Module settings as a sub-menu item (platform side, settings permission).
-    if (!isMerchant && m.settingsHref && canSettings) {
-      item.children = [{ href: m.settingsHref, label: "Module Settings" }];
-    }
-    items.push(item);
+    items.push({ ...nav });
   }
 
   const home = isMerchant ? "/m" : "/admin";
