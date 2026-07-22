@@ -8,6 +8,7 @@ import { db } from "@/lib/supabase";
 import { requireMerchant } from "@/lib/auth";
 import { slugify, randomToken } from "@/lib/slug";
 import { uploadFile, fileExt, ASSETS_BUCKET, DOCS_BUCKET } from "@/lib/storage";
+import { attachDomain, detachDomain, vercelEnabled } from "@/lib/vercel";
 import type { CountryField, Owner } from "@/lib/types";
 
 function fail(path: string, message: string): never {
@@ -32,6 +33,16 @@ export async function updateMerchantSettings(formData: FormData): Promise<void> 
   if (error) {
     const msg = error.message.includes("duplicate") ? "该子域名/域名已被占用" : error.message;
     fail(back, `保存失败：${msg}`);
+  }
+
+  // Best-effort Vercel routing sync: attach the new custom domain, detach the
+  // old one. Status + DNS instructions are rendered live on the settings page.
+  if (vercelEnabled() && customDomain !== merchant.custom_domain) {
+    if (merchant.custom_domain) await detachDomain(merchant.custom_domain);
+    if (customDomain) {
+      const r = await attachDomain(customDomain);
+      if (!r.ok) fail(back, `域名已保存，但接入失败：${r.error}（可能已被其他网站使用）`);
+    }
   }
   revalidatePath("/m", "layout");
 }
