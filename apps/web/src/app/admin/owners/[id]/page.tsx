@@ -44,7 +44,7 @@ export default async function AdminOwnerDetailPage({
           )}
         </div>
         <p className="mt-1 text-sm text-muted">
-          {o.country?.flag} {o.country?.name} · Merchant: 
+          {o.country?.flag} {o.country?.name} · White Label: 
           <Link href={`/admin/merchants/${o.merchant_id}`} className="text-accent-strong hover:underline">
             {o.merchant?.name}
           </Link>

@@ -1,7 +1,7 @@
 "use server";
 
-// Core platform actions: countries & merchants.
-// Guarded by requirePerm(module, action); the service-role client bypasses RLS.
+// Merchants module actions (core) — displayed as "White Label" in the UI.
+// The database keeps the merchants naming; only labels changed.
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -16,29 +16,6 @@ function fail(path: string, message: string): never {
   redirect(`${path}${sep}error=${encodeURIComponent(message)}`);
 }
 
-// ---------- Countries ----------
-
-export async function createCountry(formData: FormData): Promise<void> {
-  await requirePerm("countries", "add");
-  const code = String(formData.get("code") ?? "").trim().toUpperCase();
-  const name = String(formData.get("name") ?? "").trim();
-  const flag = String(formData.get("flag") ?? "").trim() || null;
-  if (!/^[A-Z]{2}$/.test(code)) fail("/admin/countries", "Country code must be 2 letters, e.g. TH");
-  if (!name) fail("/admin/countries", "Please enter a country name");
-
-  const { error } = await db().from("countries").insert({ code, name, flag });
-  if (error) fail("/admin/countries", `Failed to create: ${error.message}`);
-  revalidatePath("/admin/countries");
-}
-
-export async function toggleCountry(formData: FormData): Promise<void> {
-  await requirePerm("countries", "edit");
-  const id = String(formData.get("id") ?? "");
-  const active = String(formData.get("active") ?? "") === "true";
-  await db().from("countries").update({ active }).eq("id", id);
-  revalidatePath("/admin/countries");
-}
-
 // ---------- Merchants ----------
 
 export async function createMerchant(formData: FormData): Promise<void> {
@@ -50,7 +27,7 @@ export async function createMerchant(formData: FormData): Promise<void> {
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (!name) fail(back, "Please enter a merchant name");
+  if (!name) fail(back, "Please enter a white label name");
   if (!/^[a-z0-9_.-]{3,30}$/.test(username)) fail(back, "Login username must be 3-30 characters");
   if (password.length < 6) fail(back, "Initial password must be at least 6 characters");
 
@@ -67,7 +44,7 @@ export async function createMerchant(formData: FormData): Promise<void> {
   const { data: ownerRole } = await db()
     .from("roles")
     .select("id")
-    .eq("name", "Merchant Owner")
+    .eq("name", "White Label Owner")
     .eq("is_system", true)
     .single();
   const { error: uerr } = await db().from("users").insert({
@@ -119,7 +96,7 @@ export async function createMerchantUser(formData: FormData): Promise<void> {
   const { data: ownerRole } = await db()
     .from("roles")
     .select("id")
-    .eq("name", "Merchant Owner")
+    .eq("name", "White Label Owner")
     .eq("is_system", true)
     .single();
   const { error } = await db().from("users").insert({

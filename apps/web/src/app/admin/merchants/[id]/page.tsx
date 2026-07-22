@@ -10,7 +10,7 @@ import {
   resetMerchantUserPassword,
   toggleMerchantUser,
   uploadMerchantLogoByAdmin,
-} from "@/app/actions/cms";
+} from "@/modules/merchants/actions";
 import { saveMerchantModules } from "@/app/actions/settings";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag, OwnerStatusTag } from "@/components/status-tag";
@@ -56,7 +56,7 @@ export default async function MerchantDetailPage({
 
       {/* Merchant info */}
       <section className="card p-5">
-        <h2 className="mb-4 text-sm font-semibold">Merchant Info</h2>
+        <h2 className="mb-4 text-sm font-semibold">White Label Info</h2>
         <form action={updateMerchantByAdmin} className="grid gap-4 sm:grid-cols-3 sm:items-end">
           <input type="hidden" name="id" value={m.id} />
           <div>
@@ -158,7 +158,7 @@ export default async function MerchantDetailPage({
                 <label className="mb-1 block text-xs text-muted">Initial Password</label>
                 <input name="password" type="text" autoComplete="off" className="input mono-num" required />
               </div>
-              <ActionButton icon="plus" tip="Create account with the Merchant Owner role" label="Create" variant="primary" />
+              <ActionButton icon="plus" tip="Create account with the White Label Owner role" label="Create" variant="primary" />
             </form>
           </div>
         </section>

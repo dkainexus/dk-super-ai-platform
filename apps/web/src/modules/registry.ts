@@ -17,6 +17,8 @@
 // CORE modules keep the platform itself running and cannot be switched off.
 
 import { banksModule } from "@/modules/banks";
+import { countriesModule } from "@/modules/countries";
+import { merchantsModule } from "@/modules/merchants";
 import { telegramModule } from "@/modules/telegram";
 import { aiModule } from "@/modules/ai";
 import { ownersModule } from "@/modules/owners";
@@ -34,19 +36,8 @@ export type ModuleDef = {
 };
 
 const CORE_MODULES: ModuleDef[] = [
-  {
-    key: "countries",
-    name: "Countries",
-    description: "Countries and the merchants under them",
-    core: true,
-    adminNav: { href: "/admin/countries", label: "Countries" },
-  },
-  {
-    key: "merchants",
-    name: "Merchants",
-    description: "Merchant accounts, branding and per-merchant module overrides",
-    core: true,
-  },
+  countriesModule,
+  merchantsModule,
   {
     key: "users",
     name: "Users",

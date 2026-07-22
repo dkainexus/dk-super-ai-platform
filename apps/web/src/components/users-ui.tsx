@@ -109,7 +109,7 @@ export function UsersManager({
             <select name="role_id" className="input" required>
               {roles.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.name} {!isMerchant ? `(${r.level})` : ""}
+                  {r.name} {!isMerchant ? `(${r.level === "merchant" ? "white label" : r.level})` : ""}
                 </option>
               ))}
             </select>
@@ -120,7 +120,7 @@ export function UsersManager({
         </form>
         {!isMerchant && (
           <p className="mt-3 text-xs text-muted">
-            Platform users need a platform-level role; merchant users need a merchant-level role.
+            Platform users need a platform-level role; white label users need a white-label-level role.
           </p>
         )}
       </section>

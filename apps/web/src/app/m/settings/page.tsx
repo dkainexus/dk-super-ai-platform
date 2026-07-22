@@ -2,7 +2,7 @@
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { domainStatus, vercelEnabled } from "@/lib/vercel";
-import { updateMerchantSettings, uploadMerchantLogo } from "@/app/actions/merchant";
+import { updateMerchantSettings, uploadMerchantLogo } from "@/modules/merchants/actions-merchant";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton, SubmitButton } from "@/components/action-buttons";
 

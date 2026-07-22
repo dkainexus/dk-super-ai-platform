@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { createMerchant } from "@/app/actions/cms";
+import { createMerchant } from "@/modules/merchants/actions";
+import { updateCountry } from "@/modules/countries/actions";
+import { timezoneList, currencyList } from "@/modules/countries/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
-import { SubmitButton } from "@/components/action-buttons";
+import { SaveButton, SubmitButton } from "@/components/action-buttons";
 import type { Country, Merchant } from "@/lib/types";
 
 export default async function CountryDetailPage({
@@ -38,15 +40,58 @@ export default async function CountryDetailPage({
         <h1 className="mt-1 text-xl font-semibold">
           {c.flag || "🌐"} {c.name} <span className="mono-num text-sm text-muted">{c.code}</span>
         </h1>
+        <p className="mt-1 text-xs text-muted">
+          <span className="rounded-full bg-surface-raised px-2 py-0.5">{c.timezone}</span>{" "}
+          <span className="mono-num rounded-full bg-surface-raised px-2 py-0.5">{c.currency}</span>
+        </p>
       </div>
       <ErrorBanner message={error} />
 
-      {/* ---------- Merchants ---------- */}
+      {/* ---------- Country settings ---------- */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Merchants</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Country Settings</h2>
+        <div className="card p-5">
+          <form action={updateCountry} className="grid gap-4 sm:grid-cols-[1fr_5rem_1fr_7rem_6rem_auto] sm:items-end">
+            <input type="hidden" name="id" value={c.id} />
+            <div>
+              <label className="mb-1 block text-xs text-muted">Name</label>
+              <input name="name" defaultValue={c.name} className="input" required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Flag</label>
+              <input name="flag" defaultValue={c.flag ?? ""} className="input" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Timezone</label>
+              <select name="timezone" defaultValue={c.timezone} className="input">
+                {timezoneList().map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Currency</label>
+              <select name="currency" defaultValue={c.currency} className="input mono-num">
+                {currencyList().map((cur) => (
+                  <option key={cur} value={cur}>{cur}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Sort</label>
+              <input name="sort" type="number" defaultValue={c.sort} className="input mono-num" />
+            </div>
+            <SaveButton tip="Save country settings" />
+          </form>
+        </div>
+      </section>
+
+      {/* ---------- White Labels ---------- */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">White Labels</h2>
         <div className="card divide-y divide-border">
           {(merchants ?? []).length === 0 && (
-            <p className="px-5 py-6 text-sm text-muted">No merchants in this country yet.</p>
+            <p className="px-5 py-6 text-sm text-muted">No white labels in this country yet.</p>
           )}
           {(merchants ?? []).map(
             (m: Merchant & { users: { count: number }[]; owners: { count: number }[] }) => (
@@ -69,16 +114,16 @@ export default async function CountryDetailPage({
         </div>
 
         <div className="card mt-4 p-5">
-          <h3 className="mb-4 text-sm font-semibold">Create Merchant + Login Account</h3>
+          <h3 className="mb-4 text-sm font-semibold">Create White Label + Login Account</h3>
           <form action={createMerchant} className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="country_id" value={c.id} />
             <div>
-              <label className="mb-1 block text-xs text-muted">Merchant Name</label>
+              <label className="mb-1 block text-xs text-muted">White Label Name</label>
               <input name="name" className="input" required />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Subdomain (optional, lowercase a-z 0-9 -)</label>
-              <input name="subdomain" placeholder="merchant-a" className="input mono-num" />
+              <input name="subdomain" placeholder="brand-a" className="input mono-num" />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Login Username</label>
@@ -89,7 +134,7 @@ export default async function CountryDetailPage({
               <input name="password" type="text" autoComplete="off" className="input mono-num" required />
             </div>
             <div className="sm:col-span-2">
-              <SubmitButton label="Create Merchant" />
+              <SubmitButton label="Create White Label" />
             </div>
           </form>
         </div>

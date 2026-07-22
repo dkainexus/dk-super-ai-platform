@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { createCountry, toggleCountry } from "@/app/actions/cms";
+import { createCountry, toggleCountry } from "@/modules/countries/actions";
+import { timezoneList, currencyList } from "@/modules/countries/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
@@ -25,7 +26,7 @@ export default async function CountriesPage({
     <div className="space-y-8">
       <h1 className="text-xl font-semibold">Countries</h1>
       <p className="text-sm text-muted">
-        Open a country to create merchant accounts and configure its custom owner fields.
+        A country is a workspace: it carries the timezone and currency for its region and holds its white labels.
       </p>
       <ErrorBanner message={error} />
 
@@ -42,7 +43,7 @@ export default async function CountriesPage({
                   {c.name} <span className="mono-num text-xs text-muted">{c.code}</span>
                 </p>
                 <p className="text-xs text-muted">
-                  {c.merchants?.[0]?.count ?? 0} merchant(s) · {c.country_fields?.[0]?.count ?? 0} custom field(s)
+                  {c.merchants?.[0]?.count ?? 0} white label(s) · {c.timezone} · {c.currency}
                 </p>
               </div>
             </Link>
@@ -68,7 +69,7 @@ export default async function CountriesPage({
 
       <section className="card p-5">
         <h2 className="mb-4 text-sm font-semibold">Add Country</h2>
-        <form action={createCountry} className="grid gap-4 sm:grid-cols-[8rem_1fr_6rem_auto] sm:items-end">
+        <form action={createCountry} className="grid gap-4 sm:grid-cols-[7rem_1fr_5rem_1fr_7rem_auto] sm:items-end">
           <div>
             <label className="mb-1 block text-xs text-muted">Code (ISO)</label>
             <input name="code" placeholder="TH" maxLength={2} className="input mono-num uppercase" required />
@@ -78,8 +79,24 @@ export default async function CountriesPage({
             <input name="name" placeholder="Thailand" className="input" required />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">Flag emoji</label>
+            <label className="mb-1 block text-xs text-muted">Flag</label>
             <input name="flag" placeholder="🇹🇭" className="input" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Timezone</label>
+            <select name="timezone" defaultValue="Asia/Bangkok" className="input">
+              {timezoneList().map((tz) => (
+                <option key={tz} value={tz}>{tz}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Currency</label>
+            <select name="currency" defaultValue="THB" className="input mono-num">
+              {currencyList().map((cur) => (
+                <option key={cur} value={cur}>{cur}</option>
+              ))}
+            </select>
           </div>
           <SubmitButton label="Add Country" />
         </form>

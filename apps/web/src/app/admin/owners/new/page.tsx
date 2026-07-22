@@ -48,7 +48,7 @@ export default async function AdminNewOwnerPage({
       <ErrorBanner message={error} />
 
       <section className="card p-5">
-        <h2 className="mb-3 text-sm font-semibold">1. Choose Merchant</h2>
+        <h2 className="mb-3 text-sm font-semibold">1. Choose White Label</h2>
         <form method="get" className="flex max-w-md items-end gap-3">
           <div className="flex-1">
             <label className="mb-1 block text-xs text-muted">

@@ -42,7 +42,7 @@ export default async function AdminOwnerEditPage({
           <h1 className="text-xl font-semibold">Edit: {owner.full_name || "(no name yet)"}</h1>
           <OwnerStatusTag status={owner.status} />
         </div>
-        <p className="mt-1 text-sm text-muted">Merchant: {owner.merchant?.name}</p>
+        <p className="mt-1 text-sm text-muted">White Label: {owner.merchant?.name}</p>
       </div>
       <ErrorBanner message={error} />
 

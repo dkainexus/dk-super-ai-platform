@@ -1,15 +1,14 @@
 "use server";
 
-// Merchant portal actions: branding settings + Owner module.
+// White Label portal actions: branding settings (name / logo / domains).
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
-import { slugify, randomToken } from "@/lib/slug";
-import { uploadFile, fileExt, ASSETS_BUCKET, DOCS_BUCKET } from "@/lib/storage";
+import { slugify } from "@/lib/slug";
+import { uploadFile, fileExt, ASSETS_BUCKET } from "@/lib/storage";
 import { attachDomain, detachDomain, vercelEnabled } from "@/lib/vercel";
-import type { CountryField, Owner } from "@/lib/types";
 
 function fail(path: string, message: string): never {
   const sep = path.includes("?") ? "&" : "?";

@@ -33,7 +33,7 @@ export function RoleList({
                 )}
                 {!isMerchant && (
                   <span className="ml-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent-strong">
-                    {r.level}
+                    {r.level === "merchant" ? "white label" : r.level}
                   </span>
                 )}
               </p>
@@ -69,7 +69,7 @@ export function RoleList({
               <label className="mb-1 block text-xs text-muted">Level</label>
               <select name="level" className="input">
                 <option value="platform">Platform</option>
-                <option value="merchant">Merchant</option>
+                <option value="merchant">White Label</option>
               </select>
             </div>
           )}
@@ -83,7 +83,7 @@ export function RoleList({
 const SCOPE_LABEL: Record<string, string> = {
   off: "Off",
   own: "Own",
-  merchant: "Merchant",
+  merchant: "White Label",
   all: "All",
 };
 
@@ -123,7 +123,7 @@ export function PermissionMatrix({
       <section className="card overflow-x-auto p-5">
         <h2 className="mb-1 text-sm font-semibold">Permissions</h2>
         <p className="mb-4 text-xs text-muted">
-          Scope: <b>Own</b> = records they created · <b>Merchant</b> = everything in their merchant · <b>All</b> =
+          Scope: <b>Own</b> = records they created · <b>White Label</b> = everything in their white label · <b>All</b> =
           platform-wide.
         </p>
         <table className="w-full min-w-[520px] text-sm">

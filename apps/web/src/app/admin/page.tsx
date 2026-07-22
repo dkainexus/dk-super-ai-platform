@@ -25,7 +25,7 @@ export default async function AdminDashboard() {
     stats.push({ label: "Countries", value: await countRows("countries", (q: any) => q.eq("active", true)), href: "/admin/countries" });
   }
   if (can(cu, "merchants", "view")) {
-    stats.push({ label: "Merchants", value: await countRows("merchants", (q: any) => q.eq("status", "active")), href: "/admin/countries" });
+    stats.push({ label: "White Labels", value: await countRows("merchants", (q: any) => q.eq("status", "active")), href: "/admin/countries" });
   }
   if (ownersOn) {
     const pending = await countRows("owners", (q: any) => q.eq("status", "pending"));

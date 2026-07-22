@@ -58,6 +58,8 @@ export type Country = {
   code: string;
   name: string;
   flag: string | null;
+  timezone: string; // IANA, e.g. Asia/Bangkok
+  currency: string; // ISO 4217, e.g. THB
   active: boolean;
   sort: number;
   created_at: string;
