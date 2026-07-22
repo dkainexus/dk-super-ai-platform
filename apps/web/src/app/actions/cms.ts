@@ -470,31 +470,27 @@ export async function deleteBank(formData: FormData): Promise<void> {
 // ---------- Occupations module ----------
 
 export async function createOccupation(formData: FormData): Promise<void> {
-  await requirePerm("occupations", "add");
-  const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/occupations?country=${countryId}`;
+  await requirePerm("settings", "edit");
+  const back = "/admin/settings/occupations";
   const name = String(formData.get("name") ?? "").trim();
   const companyType = String(formData.get("company_type") ?? "").trim() || null;
-  if (!countryId) fail("/admin/occupations", "Please choose a country");
   if (!name) fail(back, "Please enter the occupation name");
 
-  const { count } = await db().from("occupations").select("id", { count: "exact", head: true }).eq("country_id", countryId);
+  const { count } = await db().from("occupations").select("id", { count: "exact", head: true });
   const { error } = await db().from("occupations").insert({
-    country_id: countryId,
     name,
     company_type: companyType,
     sort: ((count ?? 0) + 1) * 10,
   });
-  if (error) fail(back, error.message.includes("duplicate") ? "This occupation already exists in this country" : `Failed to create: ${error.message}`);
-  revalidatePath("/admin/occupations");
+  if (error) fail(back, error.message.includes("duplicate") ? "This occupation already exists" : `Failed to create: ${error.message}`);
+  revalidatePath(back);
   redirect(back);
 }
 
 export async function updateOccupation(formData: FormData): Promise<void> {
-  await requirePerm("occupations", "edit");
+  await requirePerm("settings", "edit");
   const id = String(formData.get("id") ?? "");
-  const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/occupations?country=${countryId}`;
+  const back = "/admin/settings/occupations";
   const name = String(formData.get("name") ?? "").trim();
   const companyType = String(formData.get("company_type") ?? "").trim() || null;
   const sort = parseInt(String(formData.get("sort") ?? "100"), 10) || 100;
@@ -503,15 +499,14 @@ export async function updateOccupation(formData: FormData): Promise<void> {
 
   const { error } = await db().from("occupations").update({ name, company_type: companyType, sort, active }).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);
-  revalidatePath("/admin/occupations");
+  revalidatePath(back);
   redirect(back);
 }
 
 export async function deleteOccupation(formData: FormData): Promise<void> {
-  await requirePerm("occupations", "delete");
+  await requirePerm("settings", "edit");
   const id = String(formData.get("id") ?? "");
-  const countryId = String(formData.get("country_id") ?? "");
   await db().from("occupations").delete().eq("id", id);
-  revalidatePath("/admin/occupations");
-  redirect(countryId ? `/admin/occupations?country=${countryId}` : "/admin/occupations");
+  revalidatePath("/admin/settings/occupations");
+  redirect("/admin/settings/occupations");
 }

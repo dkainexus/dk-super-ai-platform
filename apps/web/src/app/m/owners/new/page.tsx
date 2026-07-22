@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { banksForCountry, occupationsForCountry } from "@/lib/banks";
+import { banksForCountry, occupationsList } from "@/lib/banks";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerForm } from "@/components/owner-form";
 import type { CountryField } from "@/lib/types";
@@ -24,7 +24,7 @@ export default async function NewOwnerPage({
       .eq("active", true)
       .order("sort"),
     banksForCountry(merchant.country_id, merchant),
-    occupationsForCountry(merchant.country_id, merchant),
+    occupationsList(),
   ]);
 
   return (

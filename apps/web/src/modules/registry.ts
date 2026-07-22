@@ -26,12 +26,6 @@ export const MODULES: ModuleDef[] = [
     adminNav: { href: "/admin/banks", label: "Banks" },
   },
   {
-    key: "occupations",
-    name: "Occupations",
-    description: "Per-country occupation list; each occupation maps to a company type",
-    adminNav: { href: "/admin/occupations", label: "Occupations" },
-  },
-  {
     key: "owners",
     name: "Owners",
     description: "Owner records with per-country custom fields and review flow",

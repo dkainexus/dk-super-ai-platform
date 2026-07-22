@@ -5,7 +5,7 @@ import { db } from "@/lib/supabase";
 import { env } from "@/lib/env";
 import { submitOwnerForReview, deleteOwner, generateOwnerInvite } from "@/app/actions/merchant";
 import { CopyField } from "@/components/copy-field";
-import { banksForCountry, occupationsForCountry } from "@/lib/banks";
+import { banksForCountry, occupationsList } from "@/lib/banks";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
@@ -44,7 +44,7 @@ export default async function MerchantOwnerDetailPage({
       .order("sort"),
     db().from("owner_field_values").select("*").eq("owner_id", owner.id),
     banksForCountry(merchant.country_id, merchant),
-    occupationsForCountry(merchant.country_id, merchant),
+    occupationsList(),
   ]);
 
   return (

@@ -17,14 +17,11 @@ export async function banksForCountry(countryId: string, merchant: Merchant | nu
   return (data ?? []) as Bank[];
 }
 
-/** Active occupations for a country — empty when the Occupations module is off. */
-export async function occupationsForCountry(countryId: string, merchant: Merchant | null): Promise<Occupation[]> {
-  const toggles = await globalModuleToggles();
-  if (!moduleEnabledFor("occupations", toggles, merchant)) return [];
+/** Global active occupations list (shared by all countries). */
+export async function occupationsList(): Promise<Occupation[]> {
   const { data } = await db()
     .from("occupations")
     .select("*")
-    .eq("country_id", countryId)
     .eq("active", true)
     .order("sort")
     .order("name");

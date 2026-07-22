@@ -162,7 +162,6 @@ export type Bank = {
 
 export type Occupation = {
   id: string;
-  country_id: string;
   name: string;
   company_type: string | null;
   active: boolean;

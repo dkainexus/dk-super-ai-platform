@@ -36,6 +36,17 @@ export default async function AdminSettingsPage({
         </form>
       </section>
 
+      {/* Occupations */}
+      <section className="card p-5">
+        <h2 className="mb-1 text-sm font-semibold">Occupations</h2>
+        <p className="mb-3 text-xs text-muted">
+          Global occupation list with company-type mapping, used by the owner form in every country.
+        </p>
+        <Link href="/admin/settings/occupations" className="inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent">
+          Manage Occupations →
+        </Link>
+      </section>
+
       {/* Modules */}
       <section className="card p-5">
         <h2 className="mb-1 text-sm font-semibold">Modules</h2>

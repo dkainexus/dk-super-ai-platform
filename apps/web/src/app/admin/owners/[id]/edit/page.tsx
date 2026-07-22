@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { adminSaveOwner } from "@/app/actions/cms";
-import { banksForCountry, occupationsForCountry } from "@/lib/banks";
+import { banksForCountry, occupationsList } from "@/lib/banks";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { OwnerForm } from "@/components/owner-form";
@@ -28,7 +28,7 @@ export default async function AdminOwnerEditPage({
     db().from("country_fields").select("*").eq("country_id", owner.country_id).eq("active", true).order("sort"),
     db().from("owner_field_values").select("*").eq("owner_id", owner.id),
     banksForCountry(owner.country_id, null),
-    occupationsForCountry(owner.country_id, null),
+    occupationsList(),
   ]);
 
   return (

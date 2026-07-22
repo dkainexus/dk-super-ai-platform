@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { adminSaveOwner } from "@/app/actions/cms";
-import { banksForCountry, occupationsForCountry } from "@/lib/banks";
+import { banksForCountry, occupationsList } from "@/lib/banks";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerForm } from "@/components/owner-form";
 import type { Country, CountryField, Merchant } from "@/lib/types";
@@ -34,7 +34,7 @@ export default async function AdminNewOwnerPage({
         .order("sort")
     : { data: [] };
   const banks = selected ? await banksForCountry(selected.country_id, null) : [];
-  const occupations = selected ? await occupationsForCountry(selected.country_id, null) : [];
+  const occupations = selected ? await occupationsList() : [];
 
   return (
     <div className="space-y-6">
