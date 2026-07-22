@@ -71,3 +71,34 @@ Or run everything under pm2 with `ecosystem.config.js` once tokens are set.
    "把 <group> 的头像换成这个" — it should dispatch a job, `bot-group-ops`
    should pick it up and change the photo, and Super AI should reply with
    the result.
+
+## CMS (countries → merchants → owners)
+
+`apps/web` now hosts the DK CMS (crypto-style dark UI, same design language as
+DK Bid):
+
+- **Login** `/login` — one entry for both roles. Staff (`staff` table, roles
+  ceo/coo/admin) land in the superadmin CMS at `/admin`; merchant accounts
+  (`merchant_users`) land in their portal at `/m`.
+- **Superadmin** `/admin` — manage countries, create merchants + their login
+  accounts, define per-country custom owner fields (text / number / date /
+  file / select, e.g. Thailand's `tabien_baan`), and review owners
+  (approve / reject with reason).
+- **Merchant portal** `/m` — branding settings (name, logo, subdomain, custom
+  domain), and the modular menu (see `apps/web/src/modules/registry.ts`; the
+  Owner module is the first one). Owners can be typed in directly or collected
+  via Telegram: generate a one-time invite link (`t.me/<onboarding-bot>?start=<token>`)
+  on the owner page; `bot-onboarding` walks the owner through the built-in
+  fields plus the country's custom fields in DM, re-uploads files to the
+  private `owner-docs` Storage bucket, and flips the owner to `pending` for
+  review. Review results are pushed back to the owner via the
+  `onboarding.notify_cms_owner_review` bot job.
+- **Tenant branding** — a request whose Host matches `merchants.custom_domain`
+  or whose first DNS label matches `merchants.subdomain` gets that merchant's
+  logo/name on the login page (`apps/web/src/lib/tenant.ts`). Subdomain routing
+  requires a wildcard DNS record (`*.your-cms-domain`) pointing at the web app.
+
+Schema: `supabase/migrations/0002_cms.sql` (countries, merchants,
+merchant_users, country_fields, owners, owner_field_values + private buckets
+`cms-assets` / `owner-docs`). Optional env for the web app:
+`ONBOARDING_BOT_USERNAME` (defaults to `Dkonboarding_bot`).

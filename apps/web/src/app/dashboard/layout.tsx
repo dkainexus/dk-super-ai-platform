@@ -9,6 +9,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="min-h-dvh">
       <header className="border-b border-[var(--border)] px-6 py-4 flex items-center justify-between">
         <nav className="flex gap-5 text-sm">
+          <Link href="/admin" className="text-[var(--fg-muted)]">← CMS</Link>
           <Link href="/dashboard/documents">证件审核</Link>
           <Link href="/dashboard/jobs">任务监控</Link>
         </nav>

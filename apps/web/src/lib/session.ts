@@ -6,12 +6,15 @@ import { env } from "./env";
 const COOKIE = "dk_super_ai_session";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
+export type SessionKind = "staff" | "merchant";
+export type Session = { uid: string; kind: SessionKind };
+
 function key(): Uint8Array {
   return new TextEncoder().encode(env.sessionSecret());
 }
 
-export async function createSession(staffId: string): Promise<void> {
-  const token = await new SignJWT({ uid: staffId })
+export async function createSession(uid: string, kind: SessionKind = "staff"): Promise<void> {
+  const token = await new SignJWT({ uid, kind })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE}s`)
@@ -27,13 +30,16 @@ export async function createSession(staffId: string): Promise<void> {
   });
 }
 
-export async function readSession(): Promise<string | null> {
+export async function readSession(): Promise<Session | null> {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, key());
-    return (payload.uid as string) ?? null;
+    const uid = (payload.uid as string) ?? null;
+    if (!uid) return null;
+    const kind: SessionKind = payload.kind === "merchant" ? "merchant" : "staff";
+    return { uid, kind };
   } catch {
     return null;
   }

@@ -4,7 +4,9 @@ const { startWorker, createLogger } = require("@dk/shared");
 const { registerAgentCommand } = require("./commands/agent");
 const { registerOwnerCommand } = require("./commands/owner");
 const { registerDocumentFlow } = require("./flows/documentSubmission");
+const { registerCmsOwnerIntake } = require("./flows/cmsOwnerIntake");
 const { notifyReviewResultHandler } = require("./jobqueue/notifyReviewResult");
+const { notifyCmsOwnerReviewHandler } = require("./jobqueue/notifyCmsOwnerReview");
 
 const log = createLogger("bot-onboarding");
 
@@ -25,11 +27,13 @@ bot.command("whoami", (ctx) =>
 registerAgentCommand(bot);
 registerOwnerCommand(bot);
 registerDocumentFlow(bot);
+registerCmsOwnerIntake(bot);
 
 const stopWorker = startWorker(
   "onboarding",
   {
     "onboarding.notify_review_result": notifyReviewResultHandler(bot.telegram),
+    "onboarding.notify_cms_owner_review": notifyCmsOwnerReviewHandler(bot.telegram),
   },
   { intervalMs: 5000 }
 );
