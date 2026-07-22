@@ -30,6 +30,7 @@ export async function saveModuleToggles(formData: FormData): Promise<void> {
   }
   await setSetting("modules", toggles);
   revalidatePath("/", "layout");
+  redirect("/admin/modules");
 }
 
 /** AI Assistant provider config. Blank key fields keep the stored key. */

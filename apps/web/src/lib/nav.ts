@@ -33,7 +33,11 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   ];
   const manage = items.filter((i) => isAdminManage(i.href));
   if (manage.length) sections.push({ heading: "Access", items: manage });
-  if (settingsItems.length) sections.push({ heading: "System", items: settingsItems });
+  if (settingsItems.length) {
+    const system: NavItem[] = [...settingsItems];
+    if (!isMerchant && canSettings) system.unshift({ href: "/admin/modules", label: "Modules" });
+    sections.push({ heading: "System", items: system });
+  }
   return sections;
 }
 

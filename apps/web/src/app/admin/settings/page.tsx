@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { requirePerm } from "@/lib/auth";
-import { platformSettings, globalModuleToggles } from "@/lib/settings";
-import { savePlatformSettings, saveModuleToggles } from "@/app/actions/settings";
+import { platformSettings } from "@/lib/settings";
+import { savePlatformSettings } from "@/app/actions/settings";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton } from "@/components/action-buttons";
-import { TOGGLABLE_MODULES, MODULES } from "@/modules/registry";
 
 export default async function AdminSettingsPage({
   searchParams,
@@ -13,7 +12,7 @@ export default async function AdminSettingsPage({
 }) {
   await requirePerm("settings", "view");
   const { error } = await searchParams;
-  const [platform, toggles] = await Promise.all([platformSettings(), globalModuleToggles()]);
+  const platform = await platformSettings();
 
   return (
     <div className="space-y-6">
@@ -33,48 +32,6 @@ export default async function AdminSettingsPage({
             <input name="name" defaultValue={platform.name} className="input" required />
           </div>
           <SaveButton tip="Save general settings" />
-        </form>
-      </section>
-
-      {/* Module settings */}
-      <section className="card p-5">
-        <h2 className="mb-1 text-sm font-semibold">Module Settings</h2>
-        <p className="mb-3 text-xs text-muted">Per-module configuration pages.</p>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/admin/settings/owners" className="inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent">
-            Owners — occupations & module options →
-          </Link>
-          <Link href="/admin/settings/ai" className="inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent">
-            AI Assistant — provider & API keys →
-          </Link>
-        </div>
-      </section>
-
-      {/* Modules */}
-      <section className="card p-5">
-        <h2 className="mb-1 text-sm font-semibold">Modules</h2>
-        <p className="mb-4 text-xs text-muted">
-          Switch business modules on or off globally. A switched-off module disappears from every menu, dashboard and
-          permission check. Individual merchants can additionally be opted out on their merchant page.
-        </p>
-        <form action={saveModuleToggles} className="space-y-3">
-          {TOGGLABLE_MODULES.map((m) => (
-            <label key={m.key} className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:border-accent">
-              <span>
-                <span className="block text-sm font-medium">{m.name}</span>
-                <span className="block text-xs text-muted">{m.description}</span>
-              </span>
-              <input type="checkbox" name={`mod_${m.key}`} defaultChecked={toggles[m.key] !== false} className="h-4 w-4" />
-            </label>
-          ))}
-          <div className="space-y-2 pt-1">
-            {MODULES.filter((m) => m.core).map((m) => (
-              <p key={m.key} className="text-xs text-muted">
-                <span className="rounded-full bg-surface-raised px-2 py-0.5">Core</span> {m.name} — always on
-              </p>
-            ))}
-          </div>
-          <SaveButton tip="Save module toggles" />
         </form>
       </section>
 
