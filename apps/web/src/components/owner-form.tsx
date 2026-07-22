@@ -27,17 +27,26 @@ export async function OwnerForm({
   fields,
   owner,
   values,
+  action = saveOwner,
+  hidden = {},
+  locked: lockedProp,
 }: {
   fields: CountryField[];
   owner?: Owner;
   values?: OwnerFieldValue[];
+  action?: (formData: FormData) => Promise<void>;
+  hidden?: Record<string, string>;
+  locked?: boolean;
 }) {
   const byField = new Map((values ?? []).map((v) => [v.field_id, v]));
-  const locked = owner?.status === "approved";
+  const locked = lockedProp ?? owner?.status === "approved";
 
   return (
-    <form action={saveOwner} className="space-y-6">
+    <form action={action} className="space-y-6">
       {owner && <input type="hidden" name="id" value={owner.id} />}
+      {Object.entries(hidden).map(([k, v]) => (
+        <input key={k} type="hidden" name={k} value={v} />
+      ))}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>

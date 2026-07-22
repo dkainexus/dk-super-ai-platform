@@ -282,3 +282,111 @@ export async function reviewOwner(formData: FormData): Promise<void> {
   revalidatePath("/admin/owners");
   revalidatePath(back);
 }
+
+// ---------- Platform-side owner create/edit ----------
+// Platform staff (scope All) manage owners for any merchant without logging
+// into the merchant portal. Mirrors the merchant-side saveOwner.
+
+export async function adminSaveOwner(formData: FormData): Promise<void> {
+  const existingId = String(formData.get("id") ?? "") || null;
+  const { cu } = await requirePerm("owners", existingId ? "edit" : "add");
+
+  let merchantId: string;
+  let countryId: string;
+  let owner: import("@/lib/types").Owner | null = null;
+
+  if (existingId) {
+    const { data } = await db().from("owners").select("*").eq("id", existingId).maybeSingle();
+    if (!data) fail("/admin/owners", "Owner not found");
+    owner = data as import("@/lib/types").Owner;
+    merchantId = owner.merchant_id;
+    countryId = owner.country_id;
+  } else {
+    merchantId = String(formData.get("merchant_id") ?? "");
+    const { data: m } = await db().from("merchants").select("id, country_id").eq("id", merchantId).maybeSingle();
+    if (!m) fail("/admin/owners/new", "Please choose a valid merchant");
+    countryId = m.country_id;
+  }
+  const back = existingId ? `/admin/owners/${existingId}/edit` : `/admin/owners/new?merchant=${merchantId}`;
+
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const idNumber = String(formData.get("id_number") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+  if (!fullName) fail(back, "Please enter the full name");
+
+  if (owner) {
+    await db()
+      .from("owners")
+      .update({ full_name: fullName, id_number: idNumber || null, notes, updated_at: new Date().toISOString() })
+      .eq("id", owner.id);
+  } else {
+    const { data, error } = await db()
+      .from("owners")
+      .insert({
+        merchant_id: merchantId,
+        country_id: countryId,
+        full_name: fullName,
+        id_number: idNumber || null,
+        notes,
+        created_by: cu.user.id,
+      })
+      .select("*")
+      .single();
+    if (error || !data) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
+    owner = data as import("@/lib/types").Owner;
+  }
+
+  // Built-in ID photos
+  const patch: Record<string, string> = {};
+  for (const [field, col] of [
+    ["id_front", "id_front_path"],
+    ["id_back", "id_back_path"],
+  ] as const) {
+    const file = formData.get(field);
+    if (file instanceof File && file.size > 0) {
+      if (file.size > 8 * 1024 * 1024) fail(back, "ID photos must be under 8MB");
+      patch[col] = await uploadFile("owner-docs", `owners/${owner.id}/${field}.${fileExt(file)}`, file);
+    }
+  }
+  if (Object.keys(patch).length > 0) await db().from("owners").update(patch).eq("id", owner.id);
+
+  // Country custom fields
+  const { data: fields } = await db()
+    .from("country_fields")
+    .select("*")
+    .eq("country_id", countryId)
+    .eq("active", true)
+    .order("sort");
+  for (const f of (fields ?? []) as import("@/lib/types").CountryField[]) {
+    if (f.field_type === "file") {
+      const file = formData.get(`cff_${f.id}`);
+      if (file instanceof File && file.size > 0) {
+        if (file.size > 8 * 1024 * 1024) fail(back, `${f.label} file must be under 8MB`);
+        const path = await uploadFile("owner-docs", `owners/${owner.id}/f_${f.field_key}.${fileExt(file)}`, file);
+        await db()
+          .from("owner_field_values")
+          .upsert(
+            { owner_id: owner.id, field_id: f.id, file_path: path, updated_at: new Date().toISOString() },
+            { onConflict: "owner_id,field_id" }
+          );
+      }
+    } else {
+      const raw = formData.get(`cf_${f.id}`);
+      if (raw === null) continue;
+      await db()
+        .from("owner_field_values")
+        .upsert(
+          {
+            owner_id: owner.id,
+            field_id: f.id,
+            value_text: String(raw).trim() || null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "owner_id,field_id" }
+        );
+    }
+  }
+
+  revalidatePath("/admin/owners");
+  redirect(`/admin/owners/${owner.id}`);
+}

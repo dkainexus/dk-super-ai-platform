@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requirePerm } from "@/lib/auth";
+import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { reviewOwner } from "@/app/actions/cms";
 import { ErrorBanner } from "@/components/error-banner";
@@ -16,7 +16,7 @@ export default async function AdminOwnerDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  await requirePerm("owners", "view");
+  const { cu } = await requirePerm("owners", "view");
   const { id } = await params;
   const { error } = await searchParams;
 
@@ -37,6 +37,11 @@ export default async function AdminOwnerDetailPage({
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold">{o.full_name || "(no name yet)"}</h1>
           <OwnerStatusTag status={o.status} />
+          {can(cu, "owners", "edit") && (
+            <Link href={`/admin/owners/${o.id}/edit`} className="rounded-md border border-border px-3 py-1 text-xs text-foreground transition-colors hover:border-accent">
+              Edit ✎
+            </Link>
+          )}
         </div>
         <p className="mt-1 text-sm text-muted">
           {o.country?.flag} {o.country?.name} · Merchant: 

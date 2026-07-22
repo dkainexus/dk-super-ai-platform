@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requirePerm } from "@/lib/auth";
+import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { OwnerStatusTag } from "@/components/status-tag";
 import type { OwnerStatus } from "@/lib/types";
@@ -17,7 +17,7 @@ export default async function AdminOwnersPage({
 }: {
   searchParams: Promise<{ status?: string; country?: string }>;
 }) {
-  await requirePerm("owners", "view");
+  const { cu } = await requirePerm("owners", "view");
   const { status = "", country = "" } = await searchParams;
 
   const { data: countries } = await db().from("countries").select("id, name, flag").order("sort");
@@ -41,7 +41,14 @@ export default async function AdminOwnersPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Owners</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Owners</h1>
+        {can(cu, "owners", "add") && (
+          <Link href="/admin/owners/new" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background hover:bg-accent-strong">
+            + New Owner
+          </Link>
+        )}
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         {STATUSES.map((s) => (
