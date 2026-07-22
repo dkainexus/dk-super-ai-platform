@@ -1,5 +1,5 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { env } from "./env";
 
@@ -20,10 +20,17 @@ export async function createSession(uid: string, kind: SessionKind = "staff"): P
     .setExpirationTime(`${MAX_AGE}s`)
     .sign(key());
 
+  // `secure` only when actually served over HTTPS: the site currently runs on
+  // plain http://<ip>:3000, where browsers silently DROP Secure cookies
+  // (localhost is exempt, which is why local tests pass). Once TLS terminates
+  // at a proxy that sets x-forwarded-proto, this flips to secure automatically.
+  const h = await headers();
+  const isHttps = h.get("x-forwarded-proto") === "https";
+
   const store = await cookies();
   store.set(COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttps,
     sameSite: "lax",
     path: "/",
     maxAge: MAX_AGE,

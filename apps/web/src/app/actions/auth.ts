@@ -13,6 +13,7 @@ export async function loginAction(_prev: AuthState, formData: FormData): Promise
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!username || !password) return { error: "请输入用户名和密码" };
+  console.log(`[auth] login attempt: ${username}`);
 
   // Staff (superadmin CMS + bot review) first, then merchant accounts.
   const { data: staffRow } = await db()
@@ -53,8 +54,15 @@ export async function changePasswordAction(_prev: AuthState, formData: FormData)
   const next = String(formData.get("next") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
 
-  if (next.length < 6) return { error: "新密码至少 6 位" };
-  if (next !== confirm) return { error: "两次输入的新密码不一致" };
+  const who = su.kind === "staff" ? su.staff.username : su.user.username;
+  if (next.length < 6) {
+    console.log(`[auth] change-password ${who}: too short (${next.length})`);
+    return { error: "新密码至少 6 位" };
+  }
+  if (next !== confirm) {
+    console.log(`[auth] change-password ${who}: mismatch`);
+    return { error: "两次输入的新密码不一致" };
+  }
 
   const mustChange = su.kind === "staff" ? su.staff.must_change_password : su.user.must_change_password;
   // Forced first-login change: the user just proved the current password at
@@ -63,7 +71,10 @@ export async function changePasswordAction(_prev: AuthState, formData: FormData)
     const current = String(formData.get("current") ?? "");
     const hash = su.kind === "staff" ? su.staff.password_hash : su.user.password_hash;
     const ok = hash && (await verifyPassword(current, hash));
-    if (!ok) return { error: "当前密码不正确" };
+    if (!ok) {
+      console.log(`[auth] change-password ${who}: wrong current password`);
+      return { error: "当前密码不正确" };
+    }
   }
 
   const table = su.kind === "staff" ? "staff" : "merchant_users";
@@ -72,8 +83,12 @@ export async function changePasswordAction(_prev: AuthState, formData: FormData)
     .from(table)
     .update({ password_hash: await hashPassword(next), must_change_password: false })
     .eq("id", id);
-  if (error) return { error: `保存失败：${error.message}` };
+  if (error) {
+    console.log(`[auth] change-password ${who}: db error ${error.message}`);
+    return { error: `保存失败：${error.message}` };
+  }
 
+  console.log(`[auth] change-password ${who}: OK`);
   redirect(homePath(su));
 }
 
