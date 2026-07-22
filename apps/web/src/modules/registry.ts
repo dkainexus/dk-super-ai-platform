@@ -26,6 +26,12 @@ export const MODULES: ModuleDef[] = [
     adminNav: { href: "/admin/banks", label: "Banks" },
   },
   {
+    key: "telegram",
+    name: "Telegram",
+    description: "Shared Telegram bot registry — token validation and health checks",
+    adminNav: { href: "/admin/telegram", label: "Telegram" },
+  },
+  {
     key: "owners",
     name: "Owners",
     description: "Owner records with per-country custom fields and review flow",

@@ -168,3 +168,15 @@ export type Occupation = {
   sort: number;
   created_at: string;
 };
+
+export type TelegramBot = {
+  id: string;
+  name: string;
+  token: string;
+  bot_username: string | null;
+  note: string | null;
+  active: boolean;
+  last_check_ok: boolean | null;
+  last_check_at: string | null;
+  created_at: string;
+};
