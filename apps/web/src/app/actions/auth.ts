@@ -50,23 +50,29 @@ export async function changePasswordAction(_prev: AuthState, formData: FormData)
   const su = await getSessionUser();
   if (!su) redirect("/login");
 
-  const current = String(formData.get("current") ?? "");
   const next = String(formData.get("next") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
 
   if (next.length < 6) return { error: "新密码至少 6 位" };
   if (next !== confirm) return { error: "两次输入的新密码不一致" };
 
-  const hash = su.kind === "staff" ? su.staff.password_hash : su.user.password_hash;
-  const ok = hash && (await verifyPassword(current, hash));
-  if (!ok) return { error: "当前密码不正确" };
+  const mustChange = su.kind === "staff" ? su.staff.must_change_password : su.user.must_change_password;
+  // Forced first-login change: the user just proved the current password at
+  // login, so don't ask for it again. Voluntary changes still require it.
+  if (!mustChange) {
+    const current = String(formData.get("current") ?? "");
+    const hash = su.kind === "staff" ? su.staff.password_hash : su.user.password_hash;
+    const ok = hash && (await verifyPassword(current, hash));
+    if (!ok) return { error: "当前密码不正确" };
+  }
 
   const table = su.kind === "staff" ? "staff" : "merchant_users";
   const id = su.kind === "staff" ? su.staff.id : su.user.id;
-  await db()
+  const { error } = await db()
     .from(table)
     .update({ password_hash: await hashPassword(next), must_change_password: false })
     .eq("id", id);
+  if (error) return { error: `保存失败：${error.message}` };
 
   redirect(homePath(su));
 }
