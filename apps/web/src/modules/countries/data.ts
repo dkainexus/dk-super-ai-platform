@@ -1,0 +1,113 @@
+// Country dataset for the Add Country picker: ISO code, display name,
+// primary timezone and default currency. Flag emoji is derived from the code.
+// Shared by server and client (no server-only import here).
+
+export type CountryInfo = { code: string; name: string; tz: string; currency: string };
+
+export function flagOf(code: string): string {
+  return code
+    .toUpperCase()
+    .replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
+}
+
+export const COUNTRY_DATA: CountryInfo[] = [
+  // Southeast Asia
+  { code: "TH", name: "Thailand", tz: "Asia/Bangkok", currency: "THB" },
+  { code: "VN", name: "Vietnam", tz: "Asia/Saigon", currency: "VND" },
+  { code: "KH", name: "Cambodia", tz: "Asia/Phnom_Penh", currency: "KHR" },
+  { code: "LA", name: "Laos", tz: "Asia/Vientiane", currency: "LAK" },
+  { code: "MM", name: "Myanmar", tz: "Asia/Rangoon", currency: "MMK" },
+  { code: "MY", name: "Malaysia", tz: "Asia/Kuala_Lumpur", currency: "MYR" },
+  { code: "SG", name: "Singapore", tz: "Asia/Singapore", currency: "SGD" },
+  { code: "ID", name: "Indonesia", tz: "Asia/Jakarta", currency: "IDR" },
+  { code: "PH", name: "Philippines", tz: "Asia/Manila", currency: "PHP" },
+  { code: "BN", name: "Brunei", tz: "Asia/Brunei", currency: "BND" },
+  { code: "TL", name: "Timor-Leste", tz: "Asia/Dili", currency: "USD" },
+  // East Asia
+  { code: "CN", name: "China", tz: "Asia/Shanghai", currency: "CNY" },
+  { code: "HK", name: "Hong Kong", tz: "Asia/Hong_Kong", currency: "HKD" },
+  { code: "MO", name: "Macau", tz: "Asia/Macau", currency: "MOP" },
+  { code: "TW", name: "Taiwan", tz: "Asia/Taipei", currency: "TWD" },
+  { code: "JP", name: "Japan", tz: "Asia/Tokyo", currency: "JPY" },
+  { code: "KR", name: "South Korea", tz: "Asia/Seoul", currency: "KRW" },
+  { code: "MN", name: "Mongolia", tz: "Asia/Ulaanbaatar", currency: "MNT" },
+  // South Asia
+  { code: "IN", name: "India", tz: "Asia/Calcutta", currency: "INR" },
+  { code: "PK", name: "Pakistan", tz: "Asia/Karachi", currency: "PKR" },
+  { code: "BD", name: "Bangladesh", tz: "Asia/Dhaka", currency: "BDT" },
+  { code: "LK", name: "Sri Lanka", tz: "Asia/Colombo", currency: "LKR" },
+  { code: "NP", name: "Nepal", tz: "Asia/Katmandu", currency: "NPR" },
+  { code: "MV", name: "Maldives", tz: "Indian/Maldives", currency: "MVR" },
+  // Middle East & Central Asia
+  { code: "AE", name: "United Arab Emirates", tz: "Asia/Dubai", currency: "AED" },
+  { code: "SA", name: "Saudi Arabia", tz: "Asia/Riyadh", currency: "SAR" },
+  { code: "QA", name: "Qatar", tz: "Asia/Qatar", currency: "QAR" },
+  { code: "KW", name: "Kuwait", tz: "Asia/Kuwait", currency: "KWD" },
+  { code: "BH", name: "Bahrain", tz: "Asia/Bahrain", currency: "BHD" },
+  { code: "OM", name: "Oman", tz: "Asia/Muscat", currency: "OMR" },
+  { code: "JO", name: "Jordan", tz: "Asia/Amman", currency: "JOD" },
+  { code: "IL", name: "Israel", tz: "Asia/Jerusalem", currency: "ILS" },
+  { code: "TR", name: "Turkey", tz: "Europe/Istanbul", currency: "TRY" },
+  { code: "KZ", name: "Kazakhstan", tz: "Asia/Almaty", currency: "KZT" },
+  { code: "UZ", name: "Uzbekistan", tz: "Asia/Tashkent", currency: "UZS" },
+  // Europe
+  { code: "GB", name: "United Kingdom", tz: "Europe/London", currency: "GBP" },
+  { code: "IE", name: "Ireland", tz: "Europe/Dublin", currency: "EUR" },
+  { code: "FR", name: "France", tz: "Europe/Paris", currency: "EUR" },
+  { code: "DE", name: "Germany", tz: "Europe/Berlin", currency: "EUR" },
+  { code: "NL", name: "Netherlands", tz: "Europe/Amsterdam", currency: "EUR" },
+  { code: "BE", name: "Belgium", tz: "Europe/Brussels", currency: "EUR" },
+  { code: "CH", name: "Switzerland", tz: "Europe/Zurich", currency: "CHF" },
+  { code: "AT", name: "Austria", tz: "Europe/Vienna", currency: "EUR" },
+  { code: "ES", name: "Spain", tz: "Europe/Madrid", currency: "EUR" },
+  { code: "PT", name: "Portugal", tz: "Europe/Lisbon", currency: "EUR" },
+  { code: "IT", name: "Italy", tz: "Europe/Rome", currency: "EUR" },
+  { code: "GR", name: "Greece", tz: "Europe/Athens", currency: "EUR" },
+  { code: "SE", name: "Sweden", tz: "Europe/Stockholm", currency: "SEK" },
+  { code: "NO", name: "Norway", tz: "Europe/Oslo", currency: "NOK" },
+  { code: "DK", name: "Denmark", tz: "Europe/Copenhagen", currency: "DKK" },
+  { code: "FI", name: "Finland", tz: "Europe/Helsinki", currency: "EUR" },
+  { code: "PL", name: "Poland", tz: "Europe/Warsaw", currency: "PLN" },
+  { code: "CZ", name: "Czechia", tz: "Europe/Prague", currency: "CZK" },
+  { code: "HU", name: "Hungary", tz: "Europe/Budapest", currency: "HUF" },
+  { code: "RO", name: "Romania", tz: "Europe/Bucharest", currency: "RON" },
+  { code: "BG", name: "Bulgaria", tz: "Europe/Sofia", currency: "BGN" },
+  { code: "UA", name: "Ukraine", tz: "Europe/Kiev", currency: "UAH" },
+  { code: "RU", name: "Russia", tz: "Europe/Moscow", currency: "RUB" },
+  { code: "EE", name: "Estonia", tz: "Europe/Tallinn", currency: "EUR" },
+  { code: "LV", name: "Latvia", tz: "Europe/Riga", currency: "EUR" },
+  { code: "LT", name: "Lithuania", tz: "Europe/Vilnius", currency: "EUR" },
+  { code: "RS", name: "Serbia", tz: "Europe/Belgrade", currency: "RSD" },
+  { code: "HR", name: "Croatia", tz: "Europe/Zagreb", currency: "EUR" },
+  { code: "SK", name: "Slovakia", tz: "Europe/Bratislava", currency: "EUR" },
+  { code: "SI", name: "Slovenia", tz: "Europe/Ljubljana", currency: "EUR" },
+  { code: "CY", name: "Cyprus", tz: "Asia/Nicosia", currency: "EUR" },
+  { code: "MT", name: "Malta", tz: "Europe/Malta", currency: "EUR" },
+  { code: "LU", name: "Luxembourg", tz: "Europe/Luxembourg", currency: "EUR" },
+  { code: "IS", name: "Iceland", tz: "Atlantic/Reykjavik", currency: "ISK" },
+  // Americas
+  { code: "US", name: "United States", tz: "America/New_York", currency: "USD" },
+  { code: "CA", name: "Canada", tz: "America/Toronto", currency: "CAD" },
+  { code: "MX", name: "Mexico", tz: "America/Mexico_City", currency: "MXN" },
+  { code: "BR", name: "Brazil", tz: "America/Sao_Paulo", currency: "BRL" },
+  { code: "AR", name: "Argentina", tz: "America/Buenos_Aires", currency: "ARS" },
+  { code: "CL", name: "Chile", tz: "America/Santiago", currency: "CLP" },
+  { code: "CO", name: "Colombia", tz: "America/Bogota", currency: "COP" },
+  { code: "PE", name: "Peru", tz: "America/Lima", currency: "PEN" },
+  { code: "PA", name: "Panama", tz: "America/Panama", currency: "USD" },
+  { code: "CR", name: "Costa Rica", tz: "America/Costa_Rica", currency: "CRC" },
+  { code: "DO", name: "Dominican Republic", tz: "America/Santo_Domingo", currency: "DOP" },
+  // Oceania
+  { code: "AU", name: "Australia", tz: "Australia/Sydney", currency: "AUD" },
+  { code: "NZ", name: "New Zealand", tz: "Pacific/Auckland", currency: "NZD" },
+  { code: "FJ", name: "Fiji", tz: "Pacific/Fiji", currency: "FJD" },
+  // Africa
+  { code: "EG", name: "Egypt", tz: "Africa/Cairo", currency: "EGP" },
+  { code: "MA", name: "Morocco", tz: "Africa/Casablanca", currency: "MAD" },
+  { code: "NG", name: "Nigeria", tz: "Africa/Lagos", currency: "NGN" },
+  { code: "GH", name: "Ghana", tz: "Africa/Accra", currency: "GHS" },
+  { code: "KE", name: "Kenya", tz: "Africa/Nairobi", currency: "KES" },
+  { code: "TZ", name: "Tanzania", tz: "Africa/Dar_es_Salaam", currency: "TZS" },
+  { code: "ZA", name: "South Africa", tz: "Africa/Johannesburg", currency: "ZAR" },
+  { code: "MU", name: "Mauritius", tz: "Indian/Mauritius", currency: "MUR" },
+];

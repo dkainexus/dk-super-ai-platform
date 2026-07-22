@@ -22,7 +22,7 @@ export async function createCountry(formData: FormData): Promise<void> {
   const flag = String(formData.get("flag") ?? "").trim() || null;
   const timezone = String(formData.get("timezone") ?? "UTC");
   const currency = String(formData.get("currency") ?? "USD").toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) fail("/admin/countries", "Country code must be 2 letters, e.g. TH");
+  if (!/^[A-Z]{2}$/.test(code)) fail("/admin/countries", "Please select a country");
   if (!name) fail("/admin/countries", "Please enter a country name");
 
   const { error } = await db().from("countries").insert({ code, name, flag, timezone, currency });

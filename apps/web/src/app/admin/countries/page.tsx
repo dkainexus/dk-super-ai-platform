@@ -3,6 +3,7 @@ import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { createCountry, toggleCountry } from "@/modules/countries/actions";
 import { timezoneList, currencyList } from "@/modules/countries/lib";
+import { CountryPicker } from "@/modules/countries/components/country-picker";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
@@ -69,35 +70,8 @@ export default async function CountriesPage({
 
       <section className="card p-5">
         <h2 className="mb-4 text-sm font-semibold">Add Country</h2>
-        <form action={createCountry} className="grid gap-4 sm:grid-cols-[7rem_1fr_5rem_1fr_7rem_auto] sm:items-end">
-          <div>
-            <label className="mb-1 block text-xs text-muted">Code (ISO)</label>
-            <input name="code" placeholder="TH" maxLength={2} className="input mono-num uppercase" required />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Name</label>
-            <input name="name" placeholder="Thailand" className="input" required />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Flag</label>
-            <input name="flag" placeholder="🇹🇭" className="input" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Timezone</label>
-            <select name="timezone" defaultValue="Asia/Bangkok" className="input">
-              {timezoneList().map((tz) => (
-                <option key={tz} value={tz}>{tz}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Currency</label>
-            <select name="currency" defaultValue="THB" className="input mono-num">
-              {currencyList().map((cur) => (
-                <option key={cur} value={cur}>{cur}</option>
-              ))}
-            </select>
-          </div>
+        <form action={createCountry} className="space-y-4">
+          <CountryPicker timezones={timezoneList()} currencies={currencyList()} />
           <SubmitButton label="Add Country" />
         </form>
       </section>
