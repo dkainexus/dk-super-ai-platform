@@ -64,11 +64,14 @@ export async function uploadMerchantLogo(formData: FormData): Promise<void> {
 }
 
 
-/** Switch the merchant portal's active country (cookie). */
+/** Switch the merchant portal's active country (cookie + full redirect). */
 export async function switchActiveCountry(formData: FormData): Promise<void> {
   await requireMerchantUser();
   const countryId = String(formData.get("country_id") ?? "");
+  const rawPath = String(formData.get("path") ?? "/m");
+  const path = rawPath.startsWith("/m") ? rawPath : "/m";
   const jar = await cookies();
-  jar.set(ACTIVE_COUNTRY_COOKIE, countryId, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  jar.set(ACTIVE_COUNTRY_COOKIE, countryId, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
   revalidatePath("/", "layout");
+  redirect(path);
 }

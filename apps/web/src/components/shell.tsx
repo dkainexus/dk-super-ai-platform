@@ -48,8 +48,8 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
         avatarUrl,
       }}
       logoutAction={logoutAction}
-      headerExtra={
-        countryCtx && countryCtx.allowed.length > 1 && countryCtx.active ? (
+      sidebarExtra={
+        countryCtx && countryCtx.active ? (
           <CountrySwitcher
             countries={countryCtx.allowed.map((c) => ({ id: c.id, name: c.name, flag: c.flag }))}
             activeId={countryCtx.active.id}

@@ -94,6 +94,7 @@ export function AppShell({
   user,
   logoutAction,
   headerExtra,
+  sidebarExtra,
   children,
 }: {
   brand: ShellBrand;
@@ -101,6 +102,7 @@ export function AppShell({
   user: ShellUser;
   logoutAction: () => Promise<void>;
   headerExtra?: React.ReactNode;
+  sidebarExtra?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -109,9 +111,10 @@ export function AppShell({
     <div className="flex min-h-dvh">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface/60 px-3 py-5 backdrop-blur md:flex">
-        <div className="mb-6">
+        <div className="mb-4">
           <Brand brand={brand} />
         </div>
+        {sidebarExtra && <div className="mb-4">{sidebarExtra}</div>}
         <div className="flex-1 overflow-y-auto">
           <SidebarNav sections={sections} />
         </div>
@@ -145,7 +148,7 @@ export function AppShell({
           <div className="fixed inset-0 z-40 md:hidden">
             <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
             <div className="absolute left-0 top-0 flex h-dvh w-72 max-w-[85%] flex-col border-r border-border bg-surface px-3 py-5">
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between">
                 <Brand brand={brand} onClick={() => setOpen(false)} />
                 <button aria-label="Close" onClick={() => setOpen(false)} className="rounded-md border border-border p-1.5 text-muted">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -154,6 +157,7 @@ export function AppShell({
                   </svg>
                 </button>
               </div>
+              {sidebarExtra && <div className="mb-4">{sidebarExtra}</div>}
               <div className="flex-1 overflow-y-auto" onClick={() => setOpen(false)}>
                 <SidebarNav sections={sections} />
               </div>
