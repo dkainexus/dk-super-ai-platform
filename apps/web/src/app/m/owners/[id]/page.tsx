@@ -40,11 +40,11 @@ export default async function MerchantOwnerDetailPage({
     db()
       .from("country_fields")
       .select("*")
-      .eq("country_id", merchant.country_id)
+      .eq("country_id", owner.country_id)
       .eq("active", true)
       .order("sort"),
     db().from("owner_field_values").select("*").eq("owner_id", owner.id),
-    banksForCountry(merchant.country_id, merchant),
+    banksForCountry(owner.country_id, merchant),
     occupationsList(),
   ]);
 

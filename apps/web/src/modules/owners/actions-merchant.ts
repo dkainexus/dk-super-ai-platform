@@ -8,6 +8,7 @@ import { db } from "@/lib/supabase";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { randomToken } from "@/lib/slug";
 import { uploadFile, fileExt, DOCS_BUCKET } from "@/lib/storage";
+import { merchantHasCountry } from "@/modules/merchants/lib";
 import type { CountryField, Owner } from "@/lib/types";
 
 function fail(path: string, message: string): never {
@@ -82,11 +83,15 @@ export async function saveOwner(formData: FormData): Promise<void> {
       .single();
     owner = data as Owner;
   } else {
+    const countryId = String(formData.get("country_id") ?? "");
+    if (!countryId || !(await merchantHasCountry(merchant.id, countryId))) {
+      fail(back, "Please choose one of your white label's countries");
+    }
     const { data, error } = await db()
       .from("owners")
       .insert({
         merchant_id: merchant.id,
-        country_id: merchant.country_id,
+        country_id: countryId,
         full_name: fullName,
         id_number: idNumber || null,
         notes,
@@ -123,7 +128,7 @@ export async function saveOwner(formData: FormData): Promise<void> {
   }
 
   // Country custom fields
-  const fields = await activeFields(merchant.country_id);
+  const fields = await activeFields(owner.country_id);
   for (const f of fields) {
     if (f.field_type === "file") {
       const file = formData.get(`cff_${f.id}`);
@@ -180,7 +185,7 @@ export async function submitOwnerForReview(formData: FormData): Promise<void> {
   if (!owner.id_back_path) missing.push("ID back photo");
   if (!owner.photo_full_body_path) missing.push("Full-body photo");
 
-  const fields = await activeFields(merchant.country_id);
+  const fields = await activeFields(owner.country_id);
   const { data: values } = await db()
     .from("owner_field_values")
     .select("field_id, value_text, file_path")

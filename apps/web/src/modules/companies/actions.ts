@@ -10,6 +10,7 @@ import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
 import { setSetting } from "@/lib/settings";
 import { companiesSettings, shareholdersEnabledFor } from "./lib";
+import { merchantHasCountry } from "@/modules/merchants/lib";
 import type { Company, CompanyStatus } from "@/lib/types";
 
 function fail(path: string, message: string): never {
@@ -37,9 +38,12 @@ export async function saveCompany(formData: FormData): Promise<void> {
     countryId = company.country_id;
   } else {
     merchantId = isMerchantSide ? cu.merchant!.id : String(formData.get("merchant_id") ?? "");
-    const { data: m } = await db().from("merchants").select("id, country_id").eq("id", merchantId).maybeSingle();
+    const { data: m } = await db().from("merchants").select("id").eq("id", merchantId).maybeSingle();
     if (!m) fail(`${base}/new`, "Please choose a valid white label");
-    countryId = m.country_id as string;
+    countryId = String(formData.get("country_id") ?? "");
+    if (!countryId || !(await merchantHasCountry(merchantId, countryId))) {
+      fail(`${base}/new`, "Please choose one of the white label's countries");
+    }
   }
 
   // Scope guard: merchant-scoped users can only touch their own white label.

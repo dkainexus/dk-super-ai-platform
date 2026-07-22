@@ -8,6 +8,7 @@ import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
 import { slugify } from "@/lib/slug";
 import { uploadFile, fileExt } from "@/lib/storage";
+import { merchantHasCountry } from "@/modules/merchants/lib";
 import type { FieldType } from "@/lib/types";
 
 function fail(path: string, message: string): never {
@@ -149,9 +150,12 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
     countryId = owner.country_id;
   } else {
     merchantId = String(formData.get("merchant_id") ?? "");
-    const { data: m } = await db().from("merchants").select("id, country_id").eq("id", merchantId).maybeSingle();
-    if (!m) fail("/admin/owners/new", "Please choose a valid merchant");
-    countryId = m.country_id;
+    const { data: m } = await db().from("merchants").select("id").eq("id", merchantId).maybeSingle();
+    if (!m) fail("/admin/owners/new", "Please choose a valid white label");
+    countryId = String(formData.get("country_id") ?? "");
+    if (!countryId || !(await merchantHasCountry(merchantId, countryId))) {
+      fail(`/admin/owners/new?merchant=${merchantId}`, "Please choose one of this white label's countries");
+    }
   }
   const back = existingId ? `/admin/owners/${existingId}/edit` : `/admin/owners/new?merchant=${merchantId}`;
 

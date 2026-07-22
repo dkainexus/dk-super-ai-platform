@@ -19,7 +19,7 @@ export default async function CountriesPage({
 
   const { data: countries } = await db()
     .from("countries")
-    .select("*, merchants(count), country_fields(count)")
+    .select("*, merchant_countries(count), country_fields(count)")
     .order("sort")
     .order("created_at");
 
@@ -35,7 +35,7 @@ export default async function CountriesPage({
         {(countries ?? []).length === 0 && (
           <p className="px-5 py-6 text-sm text-muted">No countries yet — create the first one below.</p>
         )}
-        {(countries ?? []).map((c: Country & { merchants: { count: number }[]; country_fields: { count: number }[] }) => (
+        {(countries ?? []).map((c: Country & { merchant_countries: { count: number }[]; country_fields: { count: number }[] }) => (
           <div key={c.id} className="flex items-center justify-between gap-4 px-5 py-4">
             <Link href={`/admin/countries/${c.id}`} className="flex min-w-0 flex-1 items-center gap-3 transition-colors hover:text-accent-strong">
               <span className="text-2xl">{c.flag || "🌐"}</span>
@@ -44,7 +44,7 @@ export default async function CountriesPage({
                   {c.name} <span className="mono-num text-xs text-muted">{c.code}</span>
                 </p>
                 <p className="text-xs text-muted">
-                  {c.merchants?.[0]?.count ?? 0} white label(s) · {c.timezone} · {c.currency}
+                  {c.merchant_countries?.[0]?.count ?? 0} white label(s) · {c.timezone} · {c.currency}
                 </p>
               </div>
             </Link>

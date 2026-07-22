@@ -69,7 +69,6 @@ export type MerchantStatus = "active" | "suspended";
 
 export type Merchant = {
   id: string;
-  country_id: string;
   name: string;
   logo_path: string | null;
   subdomain: string | null;

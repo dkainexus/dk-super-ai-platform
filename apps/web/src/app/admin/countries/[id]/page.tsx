@@ -25,11 +25,14 @@ export default async function CountryDetailPage({
   if (!country) notFound();
   const c = country as Country;
 
-  const { data: merchants } = await db()
-    .from("merchants")
-    .select("*, users(count), owners(count)")
-    .eq("country_id", id)
-    .order("created_at");
+  const { data: mcRows } = await db()
+    .from("merchant_countries")
+    .select("merchant:merchants(*, users(count), owners(count))")
+    .eq("country_id", id);
+  const merchants = ((mcRows ?? []) as unknown as { merchant: Merchant & { users: { count: number }[]; owners: { count: number }[] } }[])
+    .map((r) => r.merchant)
+    .filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-8">
@@ -90,11 +93,11 @@ export default async function CountryDetailPage({
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">White Labels</h2>
         <div className="card divide-y divide-border">
-          {(merchants ?? []).length === 0 && (
+          {merchants.length === 0 && (
             <p className="px-5 py-6 text-sm text-muted">No white labels in this country yet.</p>
           )}
-          {(merchants ?? []).map(
-            (m: Merchant & { users: { count: number }[]; owners: { count: number }[] }) => (
+          {merchants.map(
+            (m) => (
               <Link
                 key={m.id}
                 href={`/admin/merchants/${m.id}`}

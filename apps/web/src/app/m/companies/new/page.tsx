@@ -4,6 +4,7 @@ import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { bindableOwners, shareholdersEnabledFor } from "@/modules/companies/lib";
+import { merchantCountries } from "@/modules/merchants/lib";
 import { CompanyForm } from "@/modules/companies/components/company-form";
 import { ErrorBanner } from "@/components/error-banner";
 import type { Occupation } from "@/lib/types";
@@ -11,19 +12,24 @@ import type { Occupation } from "@/lib/types";
 export default async function MerchantNewCompanyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ country?: string; error?: string }>;
 }) {
   const { cu } = await requirePerm("companies", "add");
   if (!cu.merchant) redirect("/admin/companies/new");
   const toggles = await globalModuleToggles();
   if (!moduleEnabledFor("companies", toggles, cu.merchant)) redirect("/m");
-  const { error } = await searchParams;
+  const { country: countryParam = "", error } = await searchParams;
 
-  const [owners, shareholdersEnabled, { data: occupations }] = await Promise.all([
-    bindableOwners(cu.merchant.id),
-    shareholdersEnabledFor(cu.merchant.country_id),
-    db().from("occupations").select("*"),
-  ]);
+  const countries = await merchantCountries(cu.merchant.id);
+  const country = countries.find((c) => c.id === countryParam) ?? (countries.length === 1 ? countries[0] : null);
+
+  const [owners, shareholdersEnabled, { data: occupations }] = country
+    ? await Promise.all([
+        bindableOwners(cu.merchant.id),
+        shareholdersEnabledFor(country.id),
+        db().from("occupations").select("*"),
+      ])
+    : [[], false, { data: [] }];
   const occupationType = new Map(((occupations ?? []) as Occupation[]).map((o) => [o.id, o.company_type]));
   const typeByOwner = new Map(owners.map((o) => [o.id, o.occupation_id ? occupationType.get(o.occupation_id) ?? null : null]));
 
@@ -37,6 +43,34 @@ export default async function MerchantNewCompanyPage({
       </div>
       <ErrorBanner message={error} />
 
+      {countries.length > 1 && (
+        <section className="card p-5">
+          <h2 className="mb-3 text-sm font-semibold">1. Choose Country</h2>
+          <div className="flex flex-wrap gap-2">
+            {countries.map((c) => (
+              <Link
+                key={c.id}
+                href={`/m/companies/new?country=${c.id}`}
+                className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                  country?.id === c.id
+                    ? "border-accent bg-accent-soft text-accent-strong"
+                    : "border-border text-muted hover:border-accent hover:text-foreground"
+                }`}
+              >
+                {c.flag || "🌐"} {c.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {countries.length === 0 && (
+        <p className="card px-5 py-6 text-sm text-muted">
+          No countries enabled for your white label yet — contact the platform administrator.
+        </p>
+      )}
+
+      {country && (
       <div className="card p-5">
         {owners.length === 0 ? (
           <p className="text-sm text-muted">
@@ -46,9 +80,15 @@ export default async function MerchantNewCompanyPage({
             </Link>
           </p>
         ) : (
-          <CompanyForm owners={owners} occupationTypeByOwner={typeByOwner} shareholdersEnabled={shareholdersEnabled} />
+          <CompanyForm
+            owners={owners}
+            occupationTypeByOwner={typeByOwner}
+            shareholdersEnabled={shareholdersEnabled}
+            hidden={{ country_id: country.id }}
+          />
         )}
       </div>
+      )}
     </div>
   );
 }

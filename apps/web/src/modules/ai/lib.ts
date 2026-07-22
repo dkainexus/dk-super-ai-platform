@@ -64,12 +64,20 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
   const ctx: Record<string, unknown> = {};
 
   // Lookup maps used to translate ids into names in several datasets.
-  const [{ data: countryRows }, { data: merchantRows }] = await Promise.all([
+  const [{ data: countryRows }, { data: merchantRows }, { data: mcRows }] = await Promise.all([
     db().from("countries").select("id, code, name, active, sort"),
-    db().from("merchants").select("id, country_id, name, subdomain, custom_domain, status, disabled_modules"),
+    db().from("merchants").select("id, name, subdomain, custom_domain, status, disabled_modules"),
+    db().from("merchant_countries").select("merchant_id, country_id"),
   ]);
   const countryName = new Map((countryRows ?? []).map((c) => [c.id as string, c.name as string]));
   const merchantName = new Map((merchantRows ?? []).map((m) => [m.id as string, m.name as string]));
+  const merchantCountryNames = new Map<string, string[]>();
+  for (const r of (mcRows ?? []) as { merchant_id: string; country_id: string }[]) {
+    const list = merchantCountryNames.get(r.merchant_id) ?? [];
+    const n = countryName.get(r.country_id);
+    if (n) list.push(n);
+    merchantCountryNames.set(r.merchant_id, list);
+  }
 
   if (!cu.merchant && can(cu, "countries", "view")) {
     ctx.countries = (countryRows ?? []).map((c) => ({ code: c.code, name: c.name, active: c.active }));
@@ -77,7 +85,7 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
   if (!cu.merchant && can(cu, "merchants", "view")) {
     ctx.merchants = (merchantRows ?? []).map((m) => ({
       name: m.name,
-      country: countryName.get(m.country_id as string) ?? null,
+      countries: merchantCountryNames.get(m.id as string) ?? [],
       subdomain: m.subdomain,
       custom_domain: m.custom_domain,
       status: m.status,

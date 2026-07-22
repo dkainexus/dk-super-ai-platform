@@ -36,10 +36,12 @@ export async function createMerchant(formData: FormData): Promise<void> {
 
   const { data: merchant, error } = await db()
     .from("merchants")
-    .insert({ country_id: countryId, name, subdomain })
+    .insert({ name, subdomain })
     .select("id")
     .single();
   if (error || !merchant) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
+
+  await db().from("merchant_countries").insert({ merchant_id: merchant.id, country_id: countryId });
 
   const { data: ownerRole } = await db()
     .from("roles")
@@ -147,3 +149,43 @@ export async function uploadMerchantLogoByAdmin(formData: FormData): Promise<voi
   revalidatePath(back);
 }
 
+
+/** Which countries a white label operates in (checkboxes mc_<countryId>). */
+export async function saveMerchantCountries(formData: FormData): Promise<void> {
+  await requirePerm("merchants", "edit");
+  const merchantId = String(formData.get("merchant_id") ?? "");
+  const back = `/admin/merchants/${merchantId}`;
+
+  const { data: countries } = await db().from("countries").select("id");
+  const wanted = ((countries ?? []) as { id: string }[])
+    .map((c) => c.id)
+    .filter((id) => formData.get(`mc_${id}`) === "on");
+  if (wanted.length === 0) fail(back, "A white label needs at least one country");
+
+  const { data: current } = await db().from("merchant_countries").select("country_id").eq("merchant_id", merchantId);
+  const currentIds = ((current ?? []) as { country_id: string }[]).map((r) => r.country_id);
+
+  // Refuse to remove a country that still has owners or companies.
+  for (const removed of currentIds.filter((id) => !wanted.includes(id))) {
+    const { count: ownerCount } = await db()
+      .from("owners")
+      .select("id", { count: "exact", head: true })
+      .eq("merchant_id", merchantId)
+      .eq("country_id", removed);
+    const { count: companyCount } = await db()
+      .from("companies")
+      .select("id", { count: "exact", head: true })
+      .eq("merchant_id", merchantId)
+      .eq("country_id", removed);
+    if ((ownerCount ?? 0) > 0 || (companyCount ?? 0) > 0) {
+      fail(back, "Cannot remove a country that still has owners or companies");
+    }
+  }
+
+  await db().from("merchant_countries").delete().eq("merchant_id", merchantId).not("country_id", "in", `(${wanted.join(",")})`);
+  for (const id of wanted.filter((id) => !currentIds.includes(id))) {
+    await db().from("merchant_countries").insert({ merchant_id: merchantId, country_id: id });
+  }
+  revalidatePath(back);
+  redirect(back);
+}
