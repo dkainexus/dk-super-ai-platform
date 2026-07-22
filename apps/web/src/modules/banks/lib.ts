@@ -6,7 +6,8 @@ import type { Bank, Merchant } from "@/lib/types";
 /** Active banks for a country — empty when the Banks module is switched off. */
 export async function banksForCountry(countryId: string, merchant: Merchant | null): Promise<Bank[]> {
   const toggles = await globalModuleToggles();
-  if (!moduleEnabledFor("banks", toggles, merchant)) return [];
+  const { data: countryRow } = await db().from("countries").select("*").eq("id", countryId).maybeSingle();
+  if (!moduleEnabledFor("banks", toggles, merchant, (countryRow ?? null) as never)) return [];
   const { data } = await db()
     .from("banks")
     .select("*")

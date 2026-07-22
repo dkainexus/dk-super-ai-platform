@@ -14,10 +14,10 @@ export default async function MerchantCompaniesPage({
 }) {
   const { cu, scope } = await requirePerm("companies", "view");
   if (!cu.merchant) redirect("/admin/companies");
-  const toggles = await globalModuleToggles();
-  if (!moduleEnabledFor("companies", toggles, cu.merchant)) redirect("/m");
-  const { status = "" } = await searchParams;
   const { active } = await activeCountry(cu);
+  const toggles = await globalModuleToggles();
+  if (!moduleEnabledFor("companies", toggles, cu.merchant, active)) redirect("/m");
+  const { status = "" } = await searchParams;
 
   let q = db()
     .from("companies")

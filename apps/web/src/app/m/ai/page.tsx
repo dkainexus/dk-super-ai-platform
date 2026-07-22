@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
+import { activeCountry } from "@/modules/merchants/lib";
 import { aiSettings, activeKey } from "@/modules/ai/lib";
 import { AiChat } from "@/modules/ai/components/ai-chat";
 
@@ -8,7 +9,8 @@ export default async function MerchantAiPage() {
   const { cu } = await requirePerm("ai", "view");
   if (!cu.merchant) redirect("/admin/ai");
   const toggles = await globalModuleToggles();
-  if (!moduleEnabledFor("ai", toggles, cu.merchant)) redirect("/m");
+  const { active } = await activeCountry(cu);
+  if (!moduleEnabledFor("ai", toggles, cu.merchant, active)) redirect("/m");
 
   const s = await aiSettings();
   const configured = Boolean(activeKey(s));

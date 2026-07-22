@@ -31,7 +31,9 @@ export default async function MerchantCompanyPage({
   const company = data as Company;
   if (company.merchant_id !== cu.merchant.id) notFound();
   const allowedList = await allowedCountries(cu);
-  if (!allowedList.some((c) => c.id === company.country_id)) notFound();
+  const recordCountry = allowedList.find((c) => c.id === company.country_id);
+  if (!recordCountry) notFound();
+  if (!moduleEnabledFor("companies", toggles, cu.merchant, recordCountry)) redirect("/m");
   if (scope === "own" && company.created_by !== cu.user.id) notFound();
 
   const [members, owners, shareholdersEnabled, { data: occupations }] = await Promise.all([

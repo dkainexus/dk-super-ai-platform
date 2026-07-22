@@ -1,6 +1,7 @@
 import "server-only";
 import { can, type CurrentUser } from "./auth";
 import { globalModuleToggles, moduleEnabledFor } from "./settings";
+import { activeCountry } from "@/modules/merchants/lib";
 import { MODULES } from "@/modules/registry";
 import type { NavItem, NavSection } from "@/components/sidebar-nav";
 
@@ -8,13 +9,14 @@ import type { NavItem, NavSection } from "@/components/sidebar-nav";
 export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   const toggles = await globalModuleToggles();
   const isMerchant = Boolean(cu.merchant);
+  const country = isMerchant ? (await activeCountry(cu)).active : null;
 
   const canSettings = Boolean(can(cu, "settings", "view"));
   const items: NavItem[] = [];
   for (const m of MODULES) {
     const nav = isMerchant ? m.merchantNav : m.adminNav;
     if (!nav) continue;
-    if (!m.core && !moduleEnabledFor(m.key, toggles, cu.merchant)) continue;
+    if (!m.core && !moduleEnabledFor(m.key, toggles, cu.merchant, country)) continue;
     if (!can(cu, m.key, "view")) continue;
     items.push({ ...nav });
   }

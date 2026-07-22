@@ -12,11 +12,11 @@ import { OWNER_STATUS_LABEL, type Owner, type OwnerStatus } from "@/lib/types";
 export default async function MerchantDashboard() {
   const cu = await requireMerchantUser();
   const toggles = await globalModuleToggles();
-  const ownersScope = can(cu, "owners", "view");
-  const ownersOn = moduleEnabledFor("owners", toggles, cu.merchant) && ownersScope;
-  const companiesScope = can(cu, "companies", "view");
-  const companiesOn = moduleEnabledFor("companies", toggles, cu.merchant) && companiesScope;
   const { active } = await activeCountry(cu);
+  const ownersScope = can(cu, "owners", "view");
+  const ownersOn = moduleEnabledFor("owners", toggles, cu.merchant, active) && ownersScope;
+  const companiesScope = can(cu, "companies", "view");
+  const companiesOn = moduleEnabledFor("companies", toggles, cu.merchant, active) && companiesScope;
 
   let list: Pick<Owner, "id" | "full_name" | "status" | "created_at">[] = [];
   if (ownersOn) {

@@ -20,14 +20,19 @@ function fail(path: string, message: string): never {
 
 export async function createMerchant(formData: FormData): Promise<void> {
   await requirePerm("merchants", "add");
-  const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/countries/${countryId}`;
+  const back = "/admin/merchants";
   const name = String(formData.get("name") ?? "").trim();
   const subdomain = slugify(String(formData.get("subdomain") ?? "").trim()).replace(/_/g, "-") || null;
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
+  const { data: allCountries } = await db().from("countries").select("id");
+  const countryIds = ((allCountries ?? []) as { id: string }[])
+    .map((c) => c.id)
+    .filter((id) => formData.get(`mcc_${id}`) === "on");
+
   if (!name) fail(back, "Please enter a white label name");
+  if (countryIds.length === 0) fail(back, "Please choose at least one country");
   if (!/^[a-z0-9_.-]{3,30}$/.test(username)) fail(back, "Login username must be 3-30 characters");
   if (password.length < 6) fail(back, "Initial password must be at least 6 characters");
 
@@ -37,29 +42,33 @@ export async function createMerchant(formData: FormData): Promise<void> {
   const { data: merchant, error } = await db()
     .from("merchants")
     .insert({ name, subdomain })
-    .select("id")
+    .select("*")
     .single();
-  if (error || !merchant) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
+  if (error || !merchant) {
+    fail(back, error?.message.includes("duplicate") ? "This subdomain is already taken" : `Failed to create: ${error?.message}`);
+  }
 
-  await db().from("merchant_countries").insert({ merchant_id: merchant.id, country_id: countryId });
+  await db()
+    .from("merchant_countries")
+    .insert(countryIds.map((country_id) => ({ merchant_id: merchant.id, country_id })));
 
   const { data: ownerRole } = await db()
     .from("roles")
     .select("id")
+    .eq("level", "merchant")
     .eq("name", "White Label Owner")
     .eq("is_system", true)
-    .single();
-  const { error: uerr } = await db().from("users").insert({
-    merchant_id: merchant.id,
+    .maybeSingle();
+
+  const { error: userError } = await db().from("users").insert({
     username,
     password_hash: await hashPassword(password),
-    name,
+    merchant_id: merchant.id,
     role_id: ownerRole?.id ?? null,
+    must_change_password: true,
   });
-  if (uerr) {
-    await db().from("merchants").delete().eq("id", merchant.id);
-    fail(back, `Failed to create login account: ${uerr.message}`);
-  }
+  if (userError) fail(back, `White label created but the login account failed: ${userError.message}`);
+
   revalidatePath(back);
   redirect(`/admin/merchants/${merchant.id}`);
 }

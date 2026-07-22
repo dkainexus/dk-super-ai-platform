@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { createMerchant } from "@/modules/merchants/actions";
-import { updateCountry } from "@/modules/countries/actions";
+import { updateCountry, saveCountryModules } from "@/modules/countries/actions";
 import { timezoneList, currencyList } from "@/modules/countries/lib";
+import { TOGGLABLE_MODULES } from "@/modules/registry";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { SaveButton, SubmitButton } from "@/components/action-buttons";
@@ -89,6 +89,34 @@ export default async function CountryDetailPage({
         </div>
       </section>
 
+      {/* ---------- Modules in this country ---------- */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Modules in {c.name}</h2>
+        <div className="card p-5">
+          <p className="mb-4 text-xs text-muted">
+            Which business modules run in this country. A switched-off module disappears from the white label portal
+            when this country is active (globally-off modules stay off regardless).
+          </p>
+          <form action={saveCountryModules} className="space-y-3">
+            <input type="hidden" name="country_id" value={c.id} />
+            <div className="grid gap-2 sm:grid-cols-2">
+              {TOGGLABLE_MODULES.map((mod) => (
+                <label key={mod.key} className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-2.5 transition-colors hover:border-accent">
+                  <span className="text-sm">{mod.name}</span>
+                  <input
+                    type="checkbox"
+                    name={`cm_${mod.key}`}
+                    defaultChecked={!(c.disabled_modules ?? []).includes(mod.key)}
+                    className="h-4 w-4"
+                  />
+                </label>
+              ))}
+            </div>
+            <SaveButton tip="Save which modules run in this country" />
+          </form>
+        </div>
+      </section>
+
       {/* ---------- White Labels ---------- */}
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">White Labels</h2>
@@ -116,31 +144,9 @@ export default async function CountryDetailPage({
           )}
         </div>
 
-        <div className="card mt-4 p-5">
-          <h3 className="mb-4 text-sm font-semibold">Create White Label + Login Account</h3>
-          <form action={createMerchant} className="grid gap-4 sm:grid-cols-2">
-            <input type="hidden" name="country_id" value={c.id} />
-            <div>
-              <label className="mb-1 block text-xs text-muted">White Label Name</label>
-              <input name="name" className="input" required />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Subdomain (optional, lowercase a-z 0-9 -)</label>
-              <input name="subdomain" placeholder="brand-a" className="input mono-num" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Login Username</label>
-              <input name="username" autoComplete="off" className="input mono-num" required />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Initial Password (must be changed at first login)</label>
-              <input name="password" type="text" autoComplete="off" className="input mono-num" required />
-            </div>
-            <div className="sm:col-span-2">
-              <SubmitButton label="Create White Label" />
-            </div>
-          </form>
-        </div>
+        <p className="mt-3 text-xs text-muted">
+          Create new white labels from the <Link href="/admin/merchants" className="text-accent-strong underline">White Labels</Link> page.
+        </p>
       </section>
 
       {/* Custom fields now live under Owners module settings */}

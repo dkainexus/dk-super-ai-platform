@@ -22,12 +22,13 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
     globalModuleToggles(),
   ]);
 
-  // Floating AI Assistant — for users whose role can view the AI module.
-  const aiOn = Boolean(can(cu, "ai", "view")) && moduleEnabledFor("ai", toggles, cu.merchant);
-  const ai = aiOn ? await aiSettings() : null;
-
   // Active-country switcher (merchant portal, multi-country white labels).
   const countryCtx = cu.merchant ? await activeCountry(cu) : null;
+
+  // Floating AI Assistant — for users whose role can view the AI module.
+  const aiOn =
+    Boolean(can(cu, "ai", "view")) && moduleEnabledFor("ai", toggles, cu.merchant, countryCtx?.active ?? null);
+  const ai = aiOn ? await aiSettings() : null;
 
   const merchantLogo = cu.merchant
     ? await signedUrl(ASSETS_BUCKET, cu.merchant.logo_path, 60 * 60 * 12)

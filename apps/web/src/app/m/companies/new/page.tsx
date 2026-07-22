@@ -16,11 +16,10 @@ export default async function MerchantNewCompanyPage({
 }) {
   const { cu } = await requirePerm("companies", "add");
   if (!cu.merchant) redirect("/admin/companies/new");
-  const toggles = await globalModuleToggles();
-  if (!moduleEnabledFor("companies", toggles, cu.merchant)) redirect("/m");
-  const { error } = await searchParams;
-
   const { active: country, allowed } = await activeCountry(cu);
+  const toggles = await globalModuleToggles();
+  if (!moduleEnabledFor("companies", toggles, cu.merchant, country)) redirect("/m");
+  const { error } = await searchParams;
 
   const [owners, shareholdersEnabled, { data: occupations }] = country
     ? await Promise.all([

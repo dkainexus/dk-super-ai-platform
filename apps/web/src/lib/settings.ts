@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "./supabase";
-import type { Merchant } from "./types";
+import type { Country, Merchant } from "./types";
 
 // Settings store on top of the app_config key/value table.
 
@@ -24,13 +24,19 @@ export async function globalModuleToggles(): Promise<Record<string, boolean>> {
   return getSetting<Record<string, boolean>>("modules", {});
 }
 
-/** A module is on when globally enabled and not disabled for this merchant. */
+/**
+ * A module is on when globally enabled, not disabled for this merchant and
+ * not disabled in the given country (pass the active country on the portal).
+ */
 export function moduleEnabledFor(
   moduleKey: string,
   toggles: Record<string, boolean>,
-  merchant: Merchant | null
+  merchant: Merchant | null,
+  country?: Country | null
 ): boolean {
   if (toggles[moduleKey] === false) return false;
   const disabled = (merchant?.disabled_modules ?? []) as string[];
-  return !disabled.includes(moduleKey);
+  if (disabled.includes(moduleKey)) return false;
+  const countryDisabled = (country?.disabled_modules ?? []) as string[];
+  return !countryDisabled.includes(moduleKey);
 }

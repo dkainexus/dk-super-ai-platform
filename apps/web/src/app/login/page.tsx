@@ -5,6 +5,12 @@ import { tenantFromHost } from "@/lib/tenant";
 import { platformSettings } from "@/lib/settings";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { LoginForm } from "@/components/LoginForm";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [tenant, platform] = await Promise.all([tenantFromHost(), platformSettings()]);
+  return { title: `Sign in — ${tenant?.name ?? platform.name}` };
+}
 
 export default async function LoginPage() {
   const cu = await getCurrentUser();

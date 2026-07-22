@@ -51,8 +51,8 @@ export default async function MerchantDetailPage({
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/admin/countries" className="text-xs text-muted hover:text-foreground">
-          ← Countries
+        <Link href="/admin/merchants" className="text-xs text-muted hover:text-foreground">
+          ← White Labels
         </Link>
         <div className="mt-1 flex items-center gap-3">
           {logoUrl && <img src={logoUrl} alt="" className="h-9 w-9 rounded-lg object-cover" />}

@@ -6,4 +6,5 @@ export const merchantsModule: ModuleDef = {
   name: "White Label",
   description: "White label accounts, branding and per-white-label module overrides",
   core: true,
+  adminNav: { href: "/admin/merchants", label: "White Labels" },
 };

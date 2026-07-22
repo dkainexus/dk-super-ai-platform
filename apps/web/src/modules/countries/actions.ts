@@ -56,3 +56,17 @@ export async function updateCountry(formData: FormData): Promise<void> {
   revalidatePath("/admin/countries");
   redirect(back);
 }
+
+/** Per-country module opt-outs (checkboxes cm_<moduleKey>). */
+export async function saveCountryModules(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const id = String(formData.get("country_id") ?? "");
+  const back = `/admin/countries/${id}`;
+  const { TOGGLABLE_MODULES } = await import("@/modules/registry");
+  const disabled = TOGGLABLE_MODULES.filter((m) => formData.get(`cm_${m.key}`) !== "on").map((m) => m.key);
+  const { error } = await db().from("countries").update({ disabled_modules: disabled }).eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  revalidatePath("/", "layout");
+  redirect(back);
+}
