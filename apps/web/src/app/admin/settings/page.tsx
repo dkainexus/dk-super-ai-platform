@@ -40,9 +40,14 @@ export default async function AdminSettingsPage({
       <section className="card p-5">
         <h2 className="mb-1 text-sm font-semibold">Module Settings</h2>
         <p className="mb-3 text-xs text-muted">Per-module configuration pages.</p>
-        <Link href="/admin/settings/owners" className="inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent">
-          Owners — occupations & module options →
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/admin/settings/owners" className="inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent">
+            Owners — occupations & module options →
+          </Link>
+          <Link href="/admin/settings/ai" className="inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent">
+            AI Assistant — provider & API keys →
+          </Link>
+        </div>
       </section>
 
       {/* Modules */}
