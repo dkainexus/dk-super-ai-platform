@@ -3,15 +3,18 @@ import { requireMerchantUser, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { OwnerStatusTag } from "@/components/status-tag";
+import { HeroCard, StatCard, PALETTES, dailyCounts, cumulative } from "@/components/dash";
 import { OWNER_STATUS_LABEL, type Owner, type OwnerStatus } from "@/lib/types";
 
-// Merchant dashboard — module cards appear for every enabled module the user
-// can view, scoped to their merchant (and to their own records when scope=own).
+// White label dashboard — crypto-styled cards, scoped to the merchant (and
+// to the user's own records when scope=own).
 export default async function MerchantDashboard() {
   const cu = await requireMerchantUser();
   const toggles = await globalModuleToggles();
   const ownersScope = can(cu, "owners", "view");
   const ownersOn = moduleEnabledFor("owners", toggles, cu.merchant) && ownersScope;
+  const companiesScope = can(cu, "companies", "view");
+  const companiesOn = moduleEnabledFor("companies", toggles, cu.merchant) && companiesScope;
 
   let list: Pick<Owner, "id" | "full_name" | "status" | "created_at">[] = [];
   if (ownersOn) {
@@ -27,19 +30,73 @@ export default async function MerchantDashboard() {
 
   const counts: Record<OwnerStatus, number> = { draft: 0, pending: 0, approved: 0, rejected: 0, banned: 0 };
   for (const o of list) counts[o.status as OwnerStatus]++;
+  const newDaily = dailyCounts(list.map((o) => o.created_at));
+  const spark = cumulative(newDaily, Math.max(list.length - newDaily.reduce((a, b) => a + b, 0), 0));
+
+  let companyCount = 0;
+  let companiesRegistered = 0;
+  if (companiesOn) {
+    let q = db().from("companies").select("id, status, created_by").eq("merchant_id", cu.merchant.id);
+    if (companiesScope === "own") q = q.eq("created_by", cu.user.id);
+    const { data } = await q;
+    companyCount = (data ?? []).length;
+    companiesRegistered = (data ?? []).filter((c) => c.status === "registered").length;
+  }
+
+  const STATUS_CARDS: { status: OwnerStatus; icon: string; palette: keyof typeof PALETTES }[] = [
+    { status: "draft", icon: "📥", palette: "cyan" },
+    { status: "pending", icon: "⏳", palette: "amber" },
+    { status: "approved", icon: "✅", palette: "green" },
+    { status: "rejected", icon: "⛔", palette: "red" },
+  ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <h1 className="text-xl font-semibold">Dashboard</h1>
 
       {ownersOn ? (
         <>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <HeroCard
+                label="Total Owners"
+                value={list.length}
+                sub="Cumulative — last 14 days"
+                palette={PALETTES.cyan}
+                spark={spark.length ? spark : [0, 0]}
+                href="/m/owners"
+              />
+            </div>
+            {companiesOn ? (
+              <StatCard
+                label="Companies"
+                value={companyCount}
+                sub={`${companiesRegistered} registered`}
+                icon="🏢"
+                palette={PALETTES.violet}
+                href="/m/companies"
+              />
+            ) : (
+              <StatCard
+                label="Approved Owners"
+                value={counts.approved}
+                icon="✅"
+                palette={PALETTES.green}
+                href="/m/owners"
+              />
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {(Object.keys(counts) as OwnerStatus[]).map((s) => (
-              <Link key={s} href="/m/owners" className="card p-5 transition-colors hover:border-accent">
-                <p className="text-sm text-muted">{OWNER_STATUS_LABEL[s]}</p>
-                <p className="mono-num mt-1 text-3xl font-semibold">{counts[s]}</p>
-              </Link>
+            {STATUS_CARDS.map(({ status, icon, palette }) => (
+              <StatCard
+                key={status}
+                label={OWNER_STATUS_LABEL[status]}
+                value={counts[status]}
+                icon={icon}
+                palette={PALETTES[palette]}
+                href="/m/owners"
+              />
             ))}
           </div>
 
