@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 /* eslint-disable @next/next/no-img-element */
-import { requireAdmin } from "@/lib/auth";
+import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import {
@@ -11,10 +11,12 @@ import {
   toggleMerchantUser,
   uploadMerchantLogoByAdmin,
 } from "@/app/actions/cms";
+import { saveMerchantModules } from "@/app/actions/settings";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag, OwnerStatusTag } from "@/components/status-tag";
-import { SaveButton, SubmitButton } from "@/components/action-buttons";
-import type { Country, Merchant, MerchantUser, Owner, OwnerStatus } from "@/lib/types";
+import { ActionButton, SaveButton } from "@/components/action-buttons";
+import { TOGGLABLE_MODULES } from "@/modules/registry";
+import type { Country, Merchant, Owner, OwnerStatus, Role, User } from "@/lib/types";
 
 export default async function MerchantDetailPage({
   params,
@@ -23,23 +25,20 @@ export default async function MerchantDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  await requireAdmin();
+  const { cu } = await requirePerm("merchants", "view");
   const { id } = await params;
   const { error } = await searchParams;
 
-  const { data } = await db()
-    .from("merchants")
-    .select("*, country:countries(*)")
-    .eq("id", id)
-    .maybeSingle();
+  const { data } = await db().from("merchants").select("*, country:countries(*)").eq("id", id).maybeSingle();
   if (!data) notFound();
   const m = data as Merchant & { country: Country };
 
   const [{ data: users }, { data: owners }, logoUrl] = await Promise.all([
-    db().from("merchant_users").select("*").eq("merchant_id", id).order("created_at"),
+    db().from("users").select("*, role:roles(*)").eq("merchant_id", id).order("created_at"),
     db().from("owners").select("*").eq("merchant_id", id).order("created_at", { ascending: false }),
     signedUrl(ASSETS_BUCKET, m.logo_path),
   ]);
+  const disabled = (m.disabled_modules ?? []) as string[];
 
   return (
     <div className="space-y-8">
@@ -50,128 +49,141 @@ export default async function MerchantDetailPage({
         <div className="mt-1 flex items-center gap-3">
           {logoUrl && <img src={logoUrl} alt="" className="h-9 w-9 rounded-lg object-cover" />}
           <h1 className="text-xl font-semibold">{m.name}</h1>
-          <ActiveTag active={m.status === "active"} on="正常" off="已停用" />
+          <ActiveTag active={m.status === "active"} on="Active" off="Suspended" />
         </div>
       </div>
       <ErrorBanner message={error} />
 
       {/* Merchant info */}
       <section className="card p-5">
-        <h2 className="mb-4 text-sm font-semibold">商家信息</h2>
+        <h2 className="mb-4 text-sm font-semibold">Merchant Info</h2>
         <form action={updateMerchantByAdmin} className="grid gap-4 sm:grid-cols-3 sm:items-end">
           <input type="hidden" name="id" value={m.id} />
           <div>
-            <label className="mb-1 block text-xs text-muted">名称</label>
+            <label className="mb-1 block text-xs text-muted">Name</label>
             <input name="name" defaultValue={m.name} className="input" required />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">子域名</label>
+            <label className="mb-1 block text-xs text-muted">Subdomain</label>
             <input name="subdomain" defaultValue={m.subdomain ?? ""} className="input mono-num" />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">状态</label>
+            <label className="mb-1 block text-xs text-muted">Status</label>
             <select name="status" defaultValue={m.status} className="input">
-              <option value="active">正常</option>
-              <option value="suspended">停用</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
             </select>
           </div>
           <div className="sm:col-span-3">
-            <SaveButton />
+            <SaveButton tip="Save merchant info" />
           </div>
         </form>
         <form action={uploadMerchantLogoByAdmin} className="mt-4 flex items-end gap-3 border-t border-border pt-4">
           <input type="hidden" name="id" value={m.id} />
           <div className="flex-1">
-            <label className="mb-1 block text-xs text-muted">Logo（≤2MB）</label>
+            <label className="mb-1 block text-xs text-muted">Logo (≤2MB)</label>
             <input name="logo" type="file" accept="image/*" className="input" required />
           </div>
-          <SubmitButton label="上传 Logo" variant="outline" />
+          <ActionButton icon="upload" tip="Upload this logo" label="Upload" />
+        </form>
+      </section>
+
+      {/* Per-merchant modules */}
+      <section className="card p-5">
+        <h2 className="mb-1 text-sm font-semibold">Modules</h2>
+        <p className="mb-4 text-xs text-muted">
+          Switch modules off for this merchant only. Globally disabled modules stay off regardless.
+        </p>
+        <form action={saveMerchantModules} className="space-y-3">
+          <input type="hidden" name="merchant_id" value={m.id} />
+          {TOGGLABLE_MODULES.map((mod) => (
+            <label key={mod.key} className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
+              <span>
+                <span className="block text-sm font-medium">{mod.name}</span>
+                <span className="block text-xs text-muted">{mod.description}</span>
+              </span>
+              <input type="checkbox" name={`mod_${mod.key}`} defaultChecked={!disabled.includes(mod.key)} className="h-4 w-4" />
+            </label>
+          ))}
+          <SaveButton tip="Save module overrides for this merchant" />
         </form>
       </section>
 
       {/* Login accounts */}
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">登录账号</h2>
-        <div className="space-y-3">
-          {(users ?? []).map((u: MerchantUser) => (
-            <div key={u.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
-              <div>
-                <p className="mono-num text-sm font-medium">{u.username}</p>
-                <p className="text-xs text-muted">
-                  {u.name || "—"} · {u.must_change_password ? "待首次改密" : "已激活"}
-                </p>
+      {can(cu, "users", "view") && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Login Accounts</h2>
+          <div className="space-y-3">
+            {((users ?? []) as (User & { role: Role | null })[]).map((u) => (
+              <div key={u.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <p className="mono-num text-sm font-medium">{u.username}</p>
+                  <p className="text-xs text-muted">
+                    {u.name || "—"} · {u.role?.name ?? "No role"}
+                    {u.must_change_password && " · first login pending"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ActiveTag active={u.active} />
+                  <form action={toggleMerchantUser}>
+                    <input type="hidden" name="id" value={u.id} />
+                    <input type="hidden" name="merchant_id" value={m.id} />
+                    <input type="hidden" name="active" value={String(!u.active)} />
+                    <ActionButton icon="power" tip={u.active ? "Deactivate this account" : "Activate this account"} />
+                  </form>
+                  <form action={resetMerchantUserPassword} className="flex items-center gap-2">
+                    <input type="hidden" name="id" value={u.id} />
+                    <input type="hidden" name="merchant_id" value={m.id} />
+                    <input name="password" type="text" placeholder="New password" autoComplete="off" className="input w-28 py-1 text-xs" required />
+                    <ActionButton icon="key" tip="Reset password (forces change at next login)" />
+                  </form>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <ActiveTag active={u.active} />
-                <form action={toggleMerchantUser}>
-                  <input type="hidden" name="id" value={u.id} />
-                  <input type="hidden" name="merchant_id" value={m.id} />
-                  <input type="hidden" name="active" value={String(!u.active)} />
-                  <button type="submit" className="rounded-md border border-border px-2.5 py-1 text-xs text-muted hover:border-accent hover:text-foreground">
-                    {u.active ? "停用" : "启用"}
-                  </button>
-                </form>
-                <form action={resetMerchantUserPassword} className="flex items-center gap-2">
-                  <input type="hidden" name="id" value={u.id} />
-                  <input type="hidden" name="merchant_id" value={m.id} />
-                  <input
-                    name="password"
-                    type="text"
-                    placeholder="新密码"
-                    autoComplete="off"
-                    className="input w-28 py-1 text-xs"
-                    required
-                  />
-                  <SubmitButton label="重置密码" variant="outline" />
-                </form>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="card mt-4 p-5">
-          <h3 className="mb-4 text-sm font-semibold">新增登录账号</h3>
-          <form action={createMerchantUser} className="grid gap-4 sm:grid-cols-4 sm:items-end">
-            <input type="hidden" name="merchant_id" value={m.id} />
-            <div>
-              <label className="mb-1 block text-xs text-muted">用户名</label>
-              <input name="username" autoComplete="off" className="input mono-num" required />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">显示名（可选）</label>
-              <input name="name" className="input" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">初始密码</label>
-              <input name="password" type="text" autoComplete="off" className="input mono-num" required />
-            </div>
-            <SubmitButton label="创建账号" />
-          </form>
-        </div>
-      </section>
+          <div className="card mt-4 p-5">
+            <h3 className="mb-4 text-sm font-semibold">Add Login Account</h3>
+            <form action={createMerchantUser} className="grid gap-4 sm:grid-cols-4 sm:items-end">
+              <input type="hidden" name="merchant_id" value={m.id} />
+              <div>
+                <label className="mb-1 block text-xs text-muted">Username</label>
+                <input name="username" autoComplete="off" className="input mono-num" required />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted">Display Name (optional)</label>
+                <input name="name" className="input" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted">Initial Password</label>
+                <input name="password" type="text" autoComplete="off" className="input mono-num" required />
+              </div>
+              <ActionButton icon="plus" tip="Create account with the Merchant Owner role" label="Create" variant="primary" />
+            </form>
+          </div>
+        </section>
+      )}
 
       {/* Owners */}
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
-          Owner（{(owners ?? []).length}）
-        </h2>
-        <div className="card divide-y divide-border">
-          {(owners ?? []).length === 0 && <p className="px-5 py-6 text-sm text-muted">还没有 Owner。</p>}
-          {(owners ?? []).map((o: Owner) => (
-            <Link
-              key={o.id}
-              href={`/admin/owners/${o.id}`}
-              className="flex items-center justify-between px-5 py-3 transition-colors hover:bg-surface-raised"
-            >
-              <div>
-                <p className="text-sm font-medium">{o.full_name || "（未填写姓名）"}</p>
-                <p className="mono-num text-xs text-muted">{o.id_number || "—"}</p>
-              </div>
-              <OwnerStatusTag status={o.status as OwnerStatus} />
-            </Link>
-          ))}
-        </div>
-      </section>
+      {can(cu, "owners", "view") && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+            Owners ({(owners ?? []).length})
+          </h2>
+          <div className="card divide-y divide-border">
+            {(owners ?? []).length === 0 && <p className="px-5 py-6 text-sm text-muted">No owners yet.</p>}
+            {((owners ?? []) as Owner[]).map((o) => (
+              <Link key={o.id} href={`/admin/owners/${o.id}`} className="flex items-center justify-between px-5 py-3 transition-colors hover:bg-surface-raised">
+                <div>
+                  <p className="text-sm font-medium">{o.full_name || "(no name yet)"}</p>
+                  <p className="mono-num text-xs text-muted">{o.id_number || "—"}</p>
+                </div>
+                <OwnerStatusTag status={o.status as OwnerStatus} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

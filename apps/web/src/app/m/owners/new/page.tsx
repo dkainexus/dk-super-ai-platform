@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireMerchant } from "@/lib/auth";
+import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerForm } from "@/components/owner-form";
@@ -10,7 +10,9 @@ export default async function NewOwnerPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const { merchant } = await requireMerchant();
+  const cu = await requireMerchantUser();
+  await requirePerm("owners", "add");
+  const merchant = cu.merchant;
   const { error } = await searchParams;
 
   const { data: fields } = await db()
@@ -24,9 +26,9 @@ export default async function NewOwnerPage({
     <div className="space-y-6">
       <div>
         <Link href="/m/owners" className="text-xs text-muted hover:text-foreground">
-          ← Owner 管理
+          ← Owners
         </Link>
-        <h1 className="mt-1 text-xl font-semibold">新增 Owner</h1>
+        <h1 className="mt-1 text-xl font-semibold">New Owner</h1>
       </div>
       <ErrorBanner message={error} />
       <div className="card p-5">

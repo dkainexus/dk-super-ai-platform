@@ -15,7 +15,7 @@ async function FilePreview({ path }: { path: string | null | undefined }) {
   return (
     <a href={url} target="_blank" rel="noreferrer" className="mb-2 block">
       {isPdf ? (
-        <span className="text-xs text-accent-strong underline">已上传 PDF（点击查看）</span>
+        <span className="text-xs text-accent-strong underline">PDF uploaded (click to view)</span>
       ) : (
         <img src={url} alt="" className="h-24 w-auto rounded-lg border border-border object-cover" />
       )}
@@ -41,20 +41,20 @@ export async function OwnerForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs text-muted">姓名 *</label>
+          <label className="mb-1 block text-xs text-muted">Full Name *</label>
           <input name="full_name" defaultValue={owner?.full_name ?? ""} className="input" required disabled={locked} />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted">ID 号码 *</label>
+          <label className="mb-1 block text-xs text-muted">ID Number *</label>
           <input name="id_number" defaultValue={owner?.id_number ?? ""} className="input mono-num" disabled={locked} />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted">ID 正面照片 *</label>
+          <label className="mb-1 block text-xs text-muted">ID Front Photo *</label>
           <FilePreview path={owner?.id_front_path} />
           {!locked && <input name="id_front" type="file" accept="image/*,.pdf" className="input" />}
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted">ID 背面照片 *</label>
+          <label className="mb-1 block text-xs text-muted">ID Back Photo *</label>
           <FilePreview path={owner?.id_back_path} />
           {!locked && <input name="id_back" type="file" accept="image/*,.pdf" className="input" />}
         </div>
@@ -62,7 +62,7 @@ export async function OwnerForm({
 
       {fields.length > 0 && (
         <div className="border-t border-border pt-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">国家自定义字段</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Country Custom Fields</p>
           <div className="grid gap-4 sm:grid-cols-2">
             {fields.map((f) => {
               const v = byField.get(f.id);
@@ -77,7 +77,7 @@ export async function OwnerForm({
                     </>
                   ) : f.field_type === "select" ? (
                     <select name={`cf_${f.id}`} defaultValue={v?.value_text ?? ""} className="input" disabled={locked}>
-                      <option value="">— 请选择 —</option>
+                      <option value="">— Select —</option>
                       {(f.options ?? []).map((opt) => (
                         <option key={opt} value={opt}>
                           {opt}
@@ -101,11 +101,11 @@ export async function OwnerForm({
       )}
 
       <div className="border-t border-border pt-4">
-        <label className="mb-1 block text-xs text-muted">备注（可选）</label>
+        <label className="mb-1 block text-xs text-muted">Notes (optional)</label>
         <textarea name="notes" defaultValue={owner?.notes ?? ""} rows={2} className="input" disabled={locked} />
       </div>
 
-      {!locked && <SaveButton label={owner ? "保存修改" : "创建 Owner"} />}
+      {!locked && <SaveButton label={owner ? "Save Changes" : "Create Owner"} />}
     </form>
   );
 }

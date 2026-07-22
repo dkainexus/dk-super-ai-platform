@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireMerchant } from "@/lib/auth";
+import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { env } from "@/lib/env";
 import { submitOwnerForReview, deleteOwner, generateOwnerInvite } from "@/app/actions/merchant";
@@ -18,7 +18,9 @@ export default async function MerchantOwnerDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const { merchant } = await requireMerchant();
+  const cu = await requireMerchantUser();
+  const scope = (await requirePerm("owners", "view")).scope;
+  const merchant = cu.merchant;
   const { id } = await params;
   const { error } = await searchParams;
 
@@ -30,6 +32,7 @@ export default async function MerchantOwnerDetailPage({
     .maybeSingle();
   if (!data) notFound();
   const owner = data as Owner;
+  if (scope === "own" && owner.created_by && owner.created_by !== cu.user.id) notFound();
 
   const [{ data: fields }, { data: values }] = await Promise.all([
     db()
@@ -45,10 +48,10 @@ export default async function MerchantOwnerDetailPage({
     <div className="space-y-6">
       <div>
         <Link href="/m/owners" className="text-xs text-muted hover:text-foreground">
-          ← Owner 管理
+          ← Owners
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold">{owner.full_name || "（未填写姓名）"}</h1>
+          <h1 className="text-xl font-semibold">{owner.full_name || "(no name yet)"}</h1>
           <OwnerStatusTag status={owner.status} />
         </div>
       </div>
@@ -56,37 +59,36 @@ export default async function MerchantOwnerDetailPage({
 
       {owner.status === "rejected" && owner.reject_reason && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-2.5 text-sm text-danger">
-          审核未通过:{owner.reject_reason} — 修改资料后可重新提交。
+          Rejected: {owner.reject_reason} — update the details and submit again.
         </div>
       )}
       {owner.status === "pending" && (
         <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
-          已提交审核,等待管理员处理。审核期间仍可修改资料。
+          Submitted for review. You can still edit the details while it is pending.
         </div>
       )}
 
       {/* Telegram intake */}
       <section className="card p-5">
-        <h2 className="mb-2 text-sm font-semibold">Telegram 收集资料</h2>
+        <h2 className="mb-2 text-sm font-semibold">Collect via Telegram</h2>
         {owner.telegram_user_id ? (
           <p className="text-sm text-muted">
-            ✅ 已绑定 Telegram（<span className="mono-num">{owner.telegram_user_id}</span>），Owner
-            可直接在 bot 对话里继续补交资料。
+            ✅ Telegram linked (<span className="mono-num">{owner.telegram_user_id}</span>). The owner can continue submitting documents in the bot chat.
           </p>
         ) : owner.invite_token && owner.invite_expires_at && new Date(owner.invite_expires_at) > new Date() ? (
           <div className="space-y-2">
             <p className="text-xs text-muted">
-              把这条链接发给 Owner，点开后 bot 会一步步收集资料（7 天有效，重新生成会使旧链接失效）：
+              Send this link to the owner — the bot collects everything step by step (valid 7 days; regenerating invalidates the old link):
             </p>
             <CopyField value={`https://t.me/${env.onboardingBotUsername()}?start=${owner.invite_token}`} />
           </div>
         ) : (
-          <p className="text-sm text-muted">还没有邀请链接。生成后发给 Owner，资料由 Telegram bot 自动收集。</p>
+          <p className="text-sm text-muted">No invite link yet. Generate one and send it to the owner — the Telegram bot collects the data automatically.</p>
         )}
         {owner.status !== "approved" && owner.status !== "pending" && (
           <form action={generateOwnerInvite} className="mt-3">
             <input type="hidden" name="id" value={owner.id} />
-            <SubmitButton label={owner.invite_token ? "重新生成邀请链接" : "生成邀请链接"} variant="outline" />
+            <SubmitButton label={owner.invite_token ? "Regenerate Invite Link" : "Generate Invite Link"} variant="outline" />
           </form>
         )}
       </section>
@@ -104,14 +106,14 @@ export default async function MerchantOwnerDetailPage({
           {owner.status !== "pending" ? (
             <form action={submitOwnerForReview}>
               <input type="hidden" name="id" value={owner.id} />
-              <SubmitButton label="提交审核" />
+              <SubmitButton label="Submit for Review" />
             </form>
           ) : (
             <span />
           )}
           <form action={deleteOwner}>
             <input type="hidden" name="id" value={owner.id} />
-            <SubmitButton label="删除 Owner" variant="danger" />
+            <SubmitButton label="Delete Owner" variant="danger" />
           </form>
         </div>
       )}

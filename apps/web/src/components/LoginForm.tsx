@@ -8,7 +8,7 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <button type="submit" className="btn btn-primary w-full" disabled={pending}>
-      {pending ? "…" : "登录"}
+      {pending ? "…" : "Sign In"}
     </button>
   );
 }
@@ -20,7 +20,7 @@ export function LoginForm() {
     <form action={action} className="flex flex-col gap-4">
       <div>
         <label className="block text-sm mb-1" htmlFor="username">
-          用户名
+          Username
         </label>
         <input
           id="username"
@@ -32,7 +32,7 @@ export function LoginForm() {
       </div>
       <div>
         <label className="block text-sm mb-1" htmlFor="password">
-          密码
+          Password
         </label>
         <input
           id="password"
@@ -43,7 +43,7 @@ export function LoginForm() {
           required
         />
       </div>
-      {state.error && <p className="text-sm text-red-400">{state.error}</p>}
+      {state.error && <p className="text-sm text-danger">{state.error}</p>}
       <SubmitButton />
     </form>
   );

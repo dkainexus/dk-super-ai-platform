@@ -1,17 +1,18 @@
 /* eslint-disable @next/next/no-img-element */
 import { redirect } from "next/navigation";
-import { getSessionUser, homePath } from "@/lib/auth";
+import { getCurrentUser, homePath } from "@/lib/auth";
 import { tenantFromHost } from "@/lib/tenant";
+import { platformSettings } from "@/lib/settings";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { LoginForm } from "@/components/LoginForm";
 
 export default async function LoginPage() {
-  const su = await getSessionUser();
-  if (su) redirect(homePath(su));
+  const cu = await getCurrentUser();
+  if (cu) redirect(homePath(cu));
 
   // Tenant-branded login: on a merchant's subdomain / custom domain, show
   // that merchant's logo and name instead of the platform brand.
-  const tenant = await tenantFromHost();
+  const [tenant, platform] = await Promise.all([tenantFromHost(), platformSettings()]);
   const logoUrl = tenant ? await signedUrl(ASSETS_BUCKET, tenant.logo_path) : null;
 
   return (
@@ -23,12 +24,11 @@ export default async function LoginPage() {
           ) : (
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_10px_var(--accent)]" />
           )}
-          <h1 className="text-2xl font-semibold tracking-tight">{tenant?.name ?? "DK CMS"}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{tenant?.name ?? platform.name}</h1>
         </div>
         <div className="card glow-border p-6">
           <LoginForm />
         </div>
-        {!tenant && <p className="mt-4 text-center text-xs text-muted">管理员与商家使用同一入口登录</p>}
       </div>
     </main>
   );

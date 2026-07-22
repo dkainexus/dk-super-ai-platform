@@ -1,20 +1,55 @@
-export type Role = "ceo" | "coo" | "director" | "admin" | "agent";
+import type { Action, Scope } from "./rbac";
 
+// ---------- Unified users & roles (foundation) ----------
+
+export type User = {
+  id: string;
+  username: string;
+  email: string | null;
+  password_hash: string;
+  name: string | null;
+  avatar_path: string | null;
+  merchant_id: string | null; // null = platform side
+  role_id: string | null;
+  is_superadmin: boolean;
+  must_change_password: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RoleLevel = "platform" | "merchant";
+
+export type Role = {
+  id: string;
+  level: RoleLevel;
+  merchant_id: string | null; // set = created by that merchant
+  name: string;
+  description: string | null;
+  is_system: boolean;
+  created_at: string;
+};
+
+export type RolePermission = {
+  id: string;
+  role_id: string;
+  module: string;
+  action: Action;
+  scope: Scope;
+};
+
+// Legacy staff table — still used by the Telegram bot review pages.
 export type Staff = {
   id: string;
   telegram_user_id: number;
   name: string | null;
-  role: Role;
+  role: string;
   active: boolean;
   username: string | null;
   password_hash: string | null;
   must_change_password: boolean;
   created_at: string;
 };
-
-export const REVIEWER_ROLES: Role[] = ["ceo", "coo", "admin"];
-// CMS superadmin side: who can manage countries / merchants / fields
-export const ADMIN_ROLES: Role[] = ["ceo", "coo", "admin"];
 
 // ---------- CMS ----------
 
@@ -38,6 +73,7 @@ export type Merchant = {
   subdomain: string | null;
   custom_domain: string | null;
   status: MerchantStatus;
+  disabled_modules: string[];
   created_at: string;
 };
 
@@ -85,6 +121,7 @@ export type Owner = {
   invite_token: string | null;
   invite_expires_at: string | null;
   notes: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -99,8 +136,8 @@ export type OwnerFieldValue = {
 };
 
 export const OWNER_STATUS_LABEL: Record<OwnerStatus, string> = {
-  draft: "资料收集中",
-  pending: "待审核",
-  approved: "已通过",
-  rejected: "已拒绝",
+  draft: "Collecting",
+  pending: "Pending Review",
+  approved: "Approved",
+  rejected: "Rejected",
 };

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import {
   createCountryField,
@@ -14,11 +14,11 @@ import { SaveButton, SubmitButton } from "@/components/action-buttons";
 import type { Country, CountryField, Merchant } from "@/lib/types";
 
 const FIELD_TYPE_LABEL: Record<string, string> = {
-  text: "文字",
-  number: "数字",
-  date: "日期",
-  file: "文件上传",
-  select: "下拉选择",
+  text: "Text",
+  number: "Number",
+  date: "Date",
+  file: "File Upload",
+  select: "Select",
 };
 
 export default async function CountryDetailPage({
@@ -28,7 +28,7 @@ export default async function CountryDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  await requireAdmin();
+  await requirePerm("countries", "view");
   const { id } = await params;
   const { error } = await searchParams;
 
@@ -39,7 +39,7 @@ export default async function CountryDetailPage({
   const [{ data: merchants }, { data: fields }] = await Promise.all([
     db()
       .from("merchants")
-      .select("*, merchant_users(count), owners(count)")
+      .select("*, users(count), owners(count)")
       .eq("country_id", id)
       .order("created_at"),
     db().from("country_fields").select("*").eq("country_id", id).order("sort"),
@@ -49,7 +49,7 @@ export default async function CountryDetailPage({
     <div className="space-y-8">
       <div>
         <Link href="/admin/countries" className="text-xs text-muted hover:text-foreground">
-          ← 国家管理
+          ← Countries
         </Link>
         <h1 className="mt-1 text-xl font-semibold">
           {c.flag || "🌐"} {c.name} <span className="mono-num text-sm text-muted">{c.code}</span>
@@ -59,13 +59,13 @@ export default async function CountryDetailPage({
 
       {/* ---------- Merchants ---------- */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">商家</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Merchants</h2>
         <div className="card divide-y divide-border">
           {(merchants ?? []).length === 0 && (
-            <p className="px-5 py-6 text-sm text-muted">这个国家还没有商家。</p>
+            <p className="px-5 py-6 text-sm text-muted">No merchants in this country yet.</p>
           )}
           {(merchants ?? []).map(
-            (m: Merchant & { merchant_users: { count: number }[]; owners: { count: number }[] }) => (
+            (m: Merchant & { users: { count: number }[]; owners: { count: number }[] }) => (
               <Link
                 key={m.id}
                 href={`/admin/merchants/${m.id}`}
@@ -74,38 +74,38 @@ export default async function CountryDetailPage({
                 <div>
                   <p className="text-sm font-medium">{m.name}</p>
                   <p className="text-xs text-muted">
-                    {m.subdomain ? `${m.subdomain}.***` : "未设置子域名"} · {m.merchant_users?.[0]?.count ?? 0} 个账号 ·{" "}
-                    {m.owners?.[0]?.count ?? 0} 个 Owner
+                    {m.subdomain ? `${m.subdomain}.***` : "no subdomain"} · {m.users?.[0]?.count ?? 0} account(s) ·{" "}
+                    {m.owners?.[0]?.count ?? 0} owner(s)
                   </p>
                 </div>
-                <ActiveTag active={m.status === "active"} on="正常" off="已停用" />
+                <ActiveTag active={m.status === "active"} on="Active" off="Suspended" />
               </Link>
             )
           )}
         </div>
 
         <div className="card mt-4 p-5">
-          <h3 className="mb-4 text-sm font-semibold">创建商家 + 登录账号</h3>
+          <h3 className="mb-4 text-sm font-semibold">Create Merchant + Login Account</h3>
           <form action={createMerchant} className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="country_id" value={c.id} />
             <div>
-              <label className="mb-1 block text-xs text-muted">商家名称</label>
+              <label className="mb-1 block text-xs text-muted">Merchant Name</label>
               <input name="name" className="input" required />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted">子域名（可选，小写字母数字-）</label>
+              <label className="mb-1 block text-xs text-muted">Subdomain (optional, lowercase a-z 0-9 -)</label>
               <input name="subdomain" placeholder="merchant-a" className="input mono-num" />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted">登录用户名</label>
+              <label className="mb-1 block text-xs text-muted">Login Username</label>
               <input name="username" autoComplete="off" className="input mono-num" required />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted">初始密码（首次登录强制修改）</label>
+              <label className="mb-1 block text-xs text-muted">Initial Password (must be changed at first login)</label>
               <input name="password" type="text" autoComplete="off" className="input mono-num" required />
             </div>
             <div className="sm:col-span-2">
-              <SubmitButton label="创建商家" />
+              <SubmitButton label="Create Merchant" />
             </div>
           </form>
         </div>
@@ -114,11 +114,10 @@ export default async function CountryDetailPage({
       {/* ---------- Custom fields ---------- */}
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
-          Owner 自定义字段（仅 {c.name} 生效）
+          Owner Custom Fields (apply to {c.name} only)
         </h2>
         <p className="mb-3 text-xs text-muted">
-          内置字段：姓名、ID 号码、ID 正面、ID 背面。这里添加的字段会自动出现在该国所有商家的 Owner 表单里，例如泰国的
-          Tabien Baan。
+          Built-in fields: full name, ID number, ID front, ID back. Fields added here automatically appear on every owner form in this country — e.g. Tabien Baan for Thailand.
         </p>
         <div className="space-y-3">
           {(fields ?? []).map((f: CountryField) => (
@@ -128,19 +127,19 @@ export default async function CountryDetailPage({
                 <input type="hidden" name="country_id" value={c.id} />
                 <div>
                   <label className="mb-1 block text-xs text-muted">
-                    名称 <span className="mono-num">({f.field_key} · {FIELD_TYPE_LABEL[f.field_type]})</span>
+                    Label <span className="mono-num">({f.field_key} · {FIELD_TYPE_LABEL[f.field_type]})</span>
                   </label>
                   <input name="label" defaultValue={f.label} className="input" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-muted">排序</label>
+                  <label className="mb-1 block text-xs text-muted">Sort</label>
                   <input name="sort" type="number" defaultValue={f.sort} className="input mono-num" />
                 </div>
                 <label className="flex items-center gap-2 pb-2 text-xs text-muted">
-                  <input type="checkbox" name="required" defaultChecked={f.required} /> 必填
+                  <input type="checkbox" name="required" defaultChecked={f.required} /> Required
                 </label>
                 <label className="flex items-center gap-2 pb-2 text-xs text-muted">
-                  <input type="checkbox" name="active" defaultChecked={f.active} /> 启用
+                  <input type="checkbox" name="active" defaultChecked={f.active} /> Enabled
                 </label>
                 <SaveButton />
                 <button
@@ -148,47 +147,47 @@ export default async function CountryDetailPage({
                   formAction={deleteCountryField}
                   className="rounded-md border border-danger/40 px-3 py-1.5 text-sm text-danger transition-colors hover:bg-danger/10"
                 >
-                  删除
+                  Delete
                 </button>
               </form>
               {f.field_type === "select" && (
-                <p className="mt-2 text-xs text-muted">选项：{(f.options ?? []).join(" / ")}</p>
+                <p className="mt-2 text-xs text-muted">Options: {(f.options ?? []).join(" / ")}</p>
               )}
             </div>
           ))}
         </div>
 
         <div className="card mt-4 p-5">
-          <h3 className="mb-4 text-sm font-semibold">新增字段</h3>
+          <h3 className="mb-4 text-sm font-semibold">Add Field</h3>
           <form action={createCountryField} className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="country_id" value={c.id} />
             <div>
-              <label className="mb-1 block text-xs text-muted">字段名称（显示给商家）</label>
-              <input name="label" placeholder="Tabien Baan 户口本" className="input" required />
+              <label className="mb-1 block text-xs text-muted">Field Label (shown to merchants)</label>
+              <input name="label" placeholder="Tabien Baan" className="input" required />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted">字段 key（可选，留空自动生成）</label>
+              <label className="mb-1 block text-xs text-muted">Field key (optional, auto-generated)</label>
               <input name="field_key" placeholder="tabien_baan" className="input mono-num" />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted">类型</label>
+              <label className="mb-1 block text-xs text-muted">Type</label>
               <select name="field_type" className="input">
-                <option value="text">文字</option>
-                <option value="number">数字</option>
-                <option value="date">日期</option>
-                <option value="file">文件上传</option>
-                <option value="select">下拉选择</option>
+                <option value="text">Text</option>
+                <option value="number">Number</option>
+                <option value="date">Date</option>
+                <option value="file">File Upload</option>
+                <option value="select">Select</option>
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted">下拉选项（仅下拉类型，逗号分隔）</label>
-              <input name="options" placeholder="选项A, 选项B" className="input" />
+              <label className="mb-1 block text-xs text-muted">Options (select type only, comma separated)</label>
+              <input name="options" placeholder="Option A, Option B" className="input" />
             </div>
             <label className="flex items-center gap-2 text-sm text-muted">
-              <input type="checkbox" name="required" /> 必填字段
+              <input type="checkbox" name="required" /> Required field
             </label>
             <div className="sm:col-span-2">
-              <SubmitButton label="添加字段" />
+              <SubmitButton label="Add Field" />
             </div>
           </form>
         </div>

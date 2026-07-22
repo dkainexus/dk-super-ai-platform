@@ -1,16 +1,16 @@
-import { requireUser, canReview } from "@/lib/auth";
+import { requireBotStaff, canReview } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { reviewCandidateAction } from "@/app/actions/documents";
 
 const DOC_LABELS: Record<string, string> = {
-  photo_full_body: "全身照",
-  id_front: "身份证正面",
-  id_back: "身份证反面",
+  photo_full_body: "Full-body Photo",
+  id_front: "ID Front",
+  id_back: "ID Back",
   tabian_baan: "Tabian Baan",
 };
 
 export default async function DocumentsPage() {
-  const user = await requireUser();
+  const user = await requireBotStaff();
   const supabase = db();
 
   const { data: candidates } = await supabase
@@ -37,10 +37,10 @@ export default async function DocumentsPage() {
 
   return (
     <div>
-      <h1 className="text-xl mb-4">待审核申请（{candidates?.length ?? 0}）</h1>
+      <h1 className="text-xl mb-4">Pending Applications ({candidates?.length ?? 0})</h1>
 
       {(candidates ?? []).length === 0 && (
-        <p className="text-[var(--fg-muted)]">目前没有待审核的申请。</p>
+        <p className="text-[var(--fg-muted)]">No pending applications.</p>
       )}
 
       <div className="grid gap-4">
@@ -48,7 +48,7 @@ export default async function DocumentsPage() {
           <div key={candidate.id} className="card p-5">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="font-medium">{candidate.full_name || "（未填写姓名）"}</p>
+                <p className="font-medium">{candidate.full_name || "(no name)"}</p>
                 <p className="text-sm text-[var(--fg-muted)]">
                   {candidate.groups?.title || candidate.groups?.code}
                 </p>
@@ -59,14 +59,14 @@ export default async function DocumentsPage() {
                     <input type="hidden" name="candidateId" value={candidate.id} />
                     <input type="hidden" name="decision" value="approved" />
                     <button type="submit" className="btn btn-success">
-                      通过
+                      Approve
                     </button>
                   </form>
                   <form action={reviewCandidateAction}>
                     <input type="hidden" name="candidateId" value={candidate.id} />
                     <input type="hidden" name="decision" value="rejected" />
                     <button type="submit" className="btn btn-danger">
-                      拒绝
+                      Reject
                     </button>
                   </form>
                 </div>

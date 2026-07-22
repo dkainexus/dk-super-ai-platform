@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { requireBotStaff } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 
 const STALE_MS = 60_000;
@@ -9,7 +9,7 @@ function isOnline(lastHeartbeatAt: string | null): boolean {
 }
 
 export default async function JobsPage() {
-  await requireUser();
+  await requireBotStaff();
   const supabase = db();
 
   const [{ data: bots }, { data: jobs }] = await Promise.all([
@@ -19,7 +19,7 @@ export default async function JobsPage() {
 
   return (
     <div>
-      <h1 className="text-xl mb-4">Bot 状态</h1>
+      <h1 className="text-xl mb-4">Bot Status</h1>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
         {(bots ?? []).map((bot) => (
           <div key={bot.bot_key} className="card p-4">
@@ -31,7 +31,7 @@ export default async function JobsPage() {
         ))}
       </div>
 
-      <h2 className="text-xl mb-4">最近任务</h2>
+      <h2 className="text-xl mb-4">Recent Jobs</h2>
       <div className="scroll-x overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-left text-[var(--fg-muted)]">

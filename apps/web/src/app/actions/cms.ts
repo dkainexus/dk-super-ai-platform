@@ -1,12 +1,12 @@
 "use server";
 
-// Superadmin CMS actions: countries / merchants / custom fields / owner review.
-// All guarded by requireAdmin(); the service-role client bypasses RLS.
+// Platform CMS actions: countries / merchants / custom fields / owner review.
+// Guarded by requirePerm(module, action); the service-role client bypasses RLS.
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
-import { requireAdmin } from "@/lib/auth";
+import { requirePerm } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { slugify } from "@/lib/slug";
 import { uploadFile, fileExt, ASSETS_BUCKET } from "@/lib/storage";
@@ -19,20 +19,20 @@ function fail(path: string, message: string): never {
 // ---------- Countries ----------
 
 export async function createCountry(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("countries", "add");
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
   const name = String(formData.get("name") ?? "").trim();
   const flag = String(formData.get("flag") ?? "").trim() || null;
-  if (!/^[A-Z]{2}$/.test(code)) fail("/admin/countries", "国家代码需为 2 位字母，例如 TH");
-  if (!name) fail("/admin/countries", "请输入国家名称");
+  if (!/^[A-Z]{2}$/.test(code)) fail("/admin/countries", "Country code must be 2 letters, e.g. TH");
+  if (!name) fail("/admin/countries", "Please enter a country name");
 
   const { error } = await db().from("countries").insert({ code, name, flag });
-  if (error) fail("/admin/countries", `创建失败：${error.message}`);
+  if (error) fail("/admin/countries", `Failed to create: ${error.message}`);
   revalidatePath("/admin/countries");
 }
 
 export async function toggleCountry(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("countries", "edit");
   const id = String(formData.get("id") ?? "");
   const active = String(formData.get("active") ?? "") === "true";
   await db().from("countries").update({ active }).eq("id", id);
@@ -42,7 +42,7 @@ export async function toggleCountry(formData: FormData): Promise<void> {
 // ---------- Custom fields ----------
 
 export async function createCountryField(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("countries", "edit");
   const countryId = String(formData.get("country_id") ?? "");
   const back = `/admin/countries/${countryId}`;
   const label = String(formData.get("label") ?? "").trim();
@@ -51,8 +51,8 @@ export async function createCountryField(formData: FormData): Promise<void> {
   const required = formData.get("required") === "on";
   const optionsRaw = String(formData.get("options") ?? "").trim();
 
-  if (!label) fail(back, "请输入字段名称");
-  if (!["text", "number", "date", "file", "select"].includes(fieldType)) fail(back, "字段类型无效");
+  if (!label) fail(back, "Please enter a field label");
+  if (!["text", "number", "date", "file", "select"].includes(fieldType)) fail(back, "Invalid field type");
 
   let fieldKey = slugify(rawKey || label);
   if (!fieldKey) fieldKey = `field_${Date.now().toString(36)}`;
@@ -61,7 +61,7 @@ export async function createCountryField(formData: FormData): Promise<void> {
     fieldType === "select"
       ? optionsRaw.split(/[,，\n]/).map((s) => s.trim()).filter(Boolean)
       : [];
-  if (fieldType === "select" && options.length === 0) fail(back, "下拉字段需要至少一个选项");
+  if (fieldType === "select" && options.length === 0) fail(back, "Select fields need at least one option");
 
   const { count } = await db()
     .from("country_fields")
@@ -77,12 +77,12 @@ export async function createCountryField(formData: FormData): Promise<void> {
     required,
     sort: ((count ?? 0) + 1) * 10,
   });
-  if (error) fail(back, `创建失败：${error.message}`);
+  if (error) fail(back, `Failed to create: ${error.message}`);
   revalidatePath(back);
 }
 
 export async function updateCountryField(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("countries", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
   const back = `/admin/countries/${countryId}`;
@@ -90,14 +90,14 @@ export async function updateCountryField(formData: FormData): Promise<void> {
   const required = formData.get("required") === "on";
   const sort = parseInt(String(formData.get("sort") ?? "100"), 10) || 100;
   const active = formData.get("active") === "on";
-  if (!label) fail(back, "字段名称不能为空");
+  if (!label) fail(back, "Field label cannot be empty");
 
   await db().from("country_fields").update({ label, required, sort, active }).eq("id", id);
   revalidatePath(back);
 }
 
 export async function deleteCountryField(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("countries", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
   const back = `/admin/countries/${countryId}`;
@@ -118,7 +118,7 @@ export async function deleteCountryField(formData: FormData): Promise<void> {
 // ---------- Merchants ----------
 
 export async function createMerchant(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("merchants", "add");
   const countryId = String(formData.get("country_id") ?? "");
   const back = `/admin/countries/${countryId}`;
   const name = String(formData.get("name") ?? "").trim();
@@ -126,109 +126,120 @@ export async function createMerchant(formData: FormData): Promise<void> {
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (!name) fail(back, "请输入商家名称");
-  if (!/^[a-z0-9_.-]{3,30}$/.test(username)) fail(back, "登录用户名需 3-30 位字母数字");
-  if (password.length < 6) fail(back, "初始密码至少 6 位");
+  if (!name) fail(back, "Please enter a merchant name");
+  if (!/^[a-z0-9_.-]{3,30}$/.test(username)) fail(back, "Login username must be 3-30 characters");
+  if (password.length < 6) fail(back, "Initial password must be at least 6 characters");
 
-  // Username must be unique across both login tables (staff wins at login).
-  const { data: staffClash } = await db().from("staff").select("id").ilike("username", username).maybeSingle();
-  const { data: muClash } = await db().from("merchant_users").select("id").ilike("username", username).maybeSingle();
-  if (staffClash || muClash) fail(back, "该用户名已被占用");
+  const { data: clash } = await db().from("users").select("id").ilike("username", username).maybeSingle();
+  if (clash) fail(back, "This username is already taken");
 
   const { data: merchant, error } = await db()
     .from("merchants")
     .insert({ country_id: countryId, name, subdomain })
     .select("id")
     .single();
-  if (error || !merchant) fail(back, `创建失败：${error?.message ?? "unknown"}`);
+  if (error || !merchant) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
 
-  const { error: uerr } = await db().from("merchant_users").insert({
+  const { data: ownerRole } = await db()
+    .from("roles")
+    .select("id")
+    .eq("name", "Merchant Owner")
+    .eq("is_system", true)
+    .single();
+  const { error: uerr } = await db().from("users").insert({
     merchant_id: merchant.id,
     username,
     password_hash: await hashPassword(password),
     name,
+    role_id: ownerRole?.id ?? null,
   });
   if (uerr) {
     await db().from("merchants").delete().eq("id", merchant.id);
-    fail(back, `创建登录账号失败：${uerr.message}`);
+    fail(back, `Failed to create login account: ${uerr.message}`);
   }
   revalidatePath(back);
   redirect(`/admin/merchants/${merchant.id}`);
 }
 
 export async function updateMerchantByAdmin(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("merchants", "edit");
   const id = String(formData.get("id") ?? "");
   const back = `/admin/merchants/${id}`;
   const name = String(formData.get("name") ?? "").trim();
   const subdomain = slugify(String(formData.get("subdomain") ?? "").trim()).replace(/_/g, "-") || null;
   const status = String(formData.get("status") ?? "active");
-  if (!name) fail(back, "商家名称不能为空");
+  if (!name) fail(back, "Merchant name cannot be empty");
 
   const { error } = await db()
     .from("merchants")
     .update({ name, subdomain, status: status === "suspended" ? "suspended" : "active" })
     .eq("id", id);
-  if (error) fail(back, `保存失败：${error.message}`);
+  if (error) fail(back, `Failed to save: ${error.message}`);
   revalidatePath(back);
 }
 
 export async function createMerchantUser(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("users", "add");
   const merchantId = String(formData.get("merchant_id") ?? "");
   const back = `/admin/merchants/${merchantId}`;
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const name = String(formData.get("name") ?? "").trim() || null;
 
-  if (!/^[a-z0-9_.-]{3,30}$/.test(username)) fail(back, "用户名需 3-30 位字母数字");
-  if (password.length < 6) fail(back, "初始密码至少 6 位");
+  if (!/^[a-z0-9_.-]{3,30}$/.test(username)) fail(back, "Username must be 3-30 characters");
+  if (password.length < 6) fail(back, "Initial password must be at least 6 characters");
 
-  const { data: staffClash } = await db().from("staff").select("id").ilike("username", username).maybeSingle();
-  const { data: muClash } = await db().from("merchant_users").select("id").ilike("username", username).maybeSingle();
-  if (staffClash || muClash) fail(back, "该用户名已被占用");
+  const { data: clash } = await db().from("users").select("id").ilike("username", username).maybeSingle();
+  if (clash) fail(back, "This username is already taken");
 
-  const { error } = await db().from("merchant_users").insert({
+  const { data: ownerRole } = await db()
+    .from("roles")
+    .select("id")
+    .eq("name", "Merchant Owner")
+    .eq("is_system", true)
+    .single();
+  const { error } = await db().from("users").insert({
     merchant_id: merchantId,
     username,
     password_hash: await hashPassword(password),
     name,
+    role_id: ownerRole?.id ?? null,
   });
-  if (error) fail(back, `创建失败：${error.message}`);
+  if (error) fail(back, `Failed to create: ${error.message}`);
   revalidatePath(back);
 }
 
 export async function resetMerchantUserPassword(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("users", "edit");
   const id = String(formData.get("id") ?? "");
   const merchantId = String(formData.get("merchant_id") ?? "");
   const back = `/admin/merchants/${merchantId}`;
   const password = String(formData.get("password") ?? "");
-  if (password.length < 6) fail(back, "新密码至少 6 位");
+  if (password.length < 6) fail(back, "New password must be at least 6 characters");
 
   await db()
-    .from("merchant_users")
+    .from("users")
     .update({ password_hash: await hashPassword(password), must_change_password: true })
     .eq("id", id);
   revalidatePath(back);
 }
 
 export async function toggleMerchantUser(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("users", "edit");
   const id = String(formData.get("id") ?? "");
   const merchantId = String(formData.get("merchant_id") ?? "");
   const active = String(formData.get("active") ?? "") === "true";
-  await db().from("merchant_users").update({ active }).eq("id", id);
+  await db().from("users").update({ active }).eq("id", id);
   revalidatePath(`/admin/merchants/${merchantId}`);
 }
 
 export async function uploadMerchantLogoByAdmin(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requirePerm("merchants", "edit");
   const id = String(formData.get("id") ?? "");
   const back = `/admin/merchants/${id}`;
   const file = formData.get("logo");
-  if (!(file instanceof File) || file.size === 0) fail(back, "请选择 logo 文件");
-  if (file.size > 2 * 1024 * 1024) fail(back, "logo 不能超过 2MB");
+  if (!(file instanceof File) || file.size === 0) fail(back, "Please choose a logo file");
+  if (file.size > 2 * 1024 * 1024) fail(back, "Logo must be under 2MB");
 
   const path = await uploadFile(ASSETS_BUCKET, `logos/${id}.${fileExt(file)}`, file);
   await db().from("merchants").update({ logo_path: path }).eq("id", id);
@@ -238,20 +249,20 @@ export async function uploadMerchantLogoByAdmin(formData: FormData): Promise<voi
 // ---------- Owner review ----------
 
 export async function reviewOwner(formData: FormData): Promise<void> {
-  const staff = await requireAdmin();
+  const { cu } = await requirePerm("owners", "edit");
   const id = String(formData.get("id") ?? "");
   const back = `/admin/owners/${id}`;
   const decision = String(formData.get("decision") ?? "");
   const reason = String(formData.get("reason") ?? "").trim() || null;
-  if (decision !== "approved" && decision !== "rejected") fail(back, "无效操作");
-  if (decision === "rejected" && !reason) fail(back, "请填写拒绝原因");
+  if (decision !== "approved" && decision !== "rejected") fail(back, "Invalid operation");
+  if (decision === "rejected" && !reason) fail(back, "Please provide a rejection reason");
 
   const { data: owner } = await db()
     .from("owners")
     .update({
       status: decision,
       reject_reason: decision === "rejected" ? reason : null,
-      reviewed_by: staff.id,
+      reviewed_by: cu.user.id,
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -265,7 +276,7 @@ export async function reviewOwner(formData: FormData): Promise<void> {
       target_bot: "onboarding",
       scope: { owner_id: id },
       payload: { telegram_user_id: owner.telegram_user_id, decision, reason },
-      requested_by: { source: "web", staff_id: staff.id },
+      requested_by: { source: "web", staff_id: cu.user.id },
     });
   }
   revalidatePath("/admin/owners");

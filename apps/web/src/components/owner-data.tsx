@@ -17,12 +17,12 @@ function Item({ label, children }: { label: string; children: React.ReactNode })
 
 async function FileThumb({ path, label }: { path: string | null; label: string }) {
   const url = await signedUrl(DOCS_BUCKET, path);
-  if (!url) return <span className="text-sm text-muted">未上传</span>;
+  if (!url) return <span className="text-sm text-muted">Not uploaded</span>;
   const isPdf = (path ?? "").toLowerCase().endsWith(".pdf");
   return (
     <a href={url} target="_blank" rel="noreferrer" className="block">
       {isPdf ? (
-        <span className="text-sm text-accent-strong underline">查看 PDF</span>
+        <span className="text-sm text-accent-strong underline">View PDF</span>
       ) : (
         <img
           src={url}
@@ -50,21 +50,21 @@ export async function OwnerData({ owner }: { owner: Owner }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Item label="姓名">{owner.full_name || <span className="text-muted">未填写</span>}</Item>
-        <Item label="ID 号码">
+        <Item label="Full Name">{owner.full_name || <span className="text-muted">Not provided</span>}</Item>
+        <Item label="ID Number">
           <span className="mono-num">{owner.id_number || "—"}</span>
         </Item>
-        <Item label="ID 正面">
+        <Item label="ID Front">
           <FileThumb path={owner.id_front_path} label="ID front" />
         </Item>
-        <Item label="ID 背面">
+        <Item label="ID Back">
           <FileThumb path={owner.id_back_path} label="ID back" />
         </Item>
       </div>
 
       {visible.length > 0 && (
         <div className="border-t border-border pt-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">国家自定义字段</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Country Custom Fields</p>
           <div className="grid gap-4 sm:grid-cols-2">
             {visible.map((f) => {
               const v = byField.get(f.id);
@@ -74,7 +74,7 @@ export async function OwnerData({ owner }: { owner: Owner }) {
                     <FileThumb path={v?.file_path ?? null} label={f.label} />
                   ) : (
                     <span className={f.field_type === "number" ? "mono-num" : ""}>
-                      {v?.value_text || <span className="text-muted">未填写</span>}
+                      {v?.value_text || <span className="text-muted">Not provided</span>}
                     </span>
                   )}
                 </Item>
@@ -86,7 +86,7 @@ export async function OwnerData({ owner }: { owner: Owner }) {
 
       {owner.notes && (
         <div className="border-t border-border pt-4">
-          <Item label="备注">{owner.notes}</Item>
+          <Item label="Notes">{owner.notes}</Item>
         </div>
       )}
     </div>

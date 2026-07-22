@@ -8,7 +8,7 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <button type="submit" className="btn btn-primary w-full" disabled={pending}>
-      {pending ? "…" : "更新密码"}
+      {pending ? "…" : "Update Password"}
     </button>
   );
 }
@@ -21,20 +21,20 @@ export function ChangePasswordForm({ requireCurrent }: { requireCurrent: boolean
       {requireCurrent && (
         <div>
           <label className="mb-1 block text-sm" htmlFor="current">
-            当前密码
+            Current Password
           </label>
           <input id="current" name="current" type="password" autoComplete="current-password" className="input w-full" required />
         </div>
       )}
       <div>
         <label className="mb-1 block text-sm" htmlFor="next">
-          新密码（至少 6 位）
+          New Password (min. 6 characters)
         </label>
         <input id="next" name="next" type="password" autoComplete="new-password" className="input w-full" required />
       </div>
       <div>
         <label className="mb-1 block text-sm" htmlFor="confirm">
-          确认新密码
+          Confirm New Password
         </label>
         <input id="confirm" name="confirm" type="password" autoComplete="new-password" className="input w-full" required />
       </div>

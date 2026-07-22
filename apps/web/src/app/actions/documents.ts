@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
-import { requireUser, canReview } from "@/lib/auth";
+import { requireBotStaff, canReview } from "@/lib/auth";
 import { createJob } from "@/lib/jobs";
 
 export async function reviewCandidateAction(formData: FormData): Promise<void> {
-  const user = await requireUser();
+  const user = await requireBotStaff();
   if (!canReview(user)) throw new Error("not authorized to review documents");
 
   const candidateId = String(formData.get("candidateId") ?? "");

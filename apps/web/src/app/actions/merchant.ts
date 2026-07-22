@@ -5,7 +5,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
-import { requireMerchant } from "@/lib/auth";
+import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { slugify, randomToken } from "@/lib/slug";
 import { uploadFile, fileExt, ASSETS_BUCKET, DOCS_BUCKET } from "@/lib/storage";
 import { attachDomain, detachDomain, vercelEnabled } from "@/lib/vercel";
@@ -18,21 +18,22 @@ function fail(path: string, message: string): never {
 // ---------- Branding ----------
 
 export async function updateMerchantSettings(formData: FormData): Promise<void> {
-  const { merchant } = await requireMerchant();
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("settings", "edit");
   const back = "/m/settings";
   const name = String(formData.get("name") ?? "").trim();
   const subdomain = slugify(String(formData.get("subdomain") ?? "").trim()).replace(/_/g, "-") || null;
   const customDomain = String(formData.get("custom_domain") ?? "").trim().toLowerCase() || null;
-  if (!name) fail(back, "名称不能为空");
-  if (customDomain && !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(customDomain)) fail(back, "域名格式不正确");
+  if (!name) fail(back, "Name cannot be empty");
+  if (customDomain && !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(customDomain)) fail(back, "Invalid domain format");
 
   const { error } = await db()
     .from("merchants")
     .update({ name, subdomain, custom_domain: customDomain })
     .eq("id", merchant.id);
   if (error) {
-    const msg = error.message.includes("duplicate") ? "该子域名/域名已被占用" : error.message;
-    fail(back, `保存失败：${msg}`);
+    const msg = error.message.includes("duplicate") ? "This subdomain/domain is already taken" : error.message;
+    fail(back, `Failed to save: ${msg}`);
   }
 
   // Best-effort Vercel routing sync: attach the new custom domain, detach the
@@ -41,18 +42,19 @@ export async function updateMerchantSettings(formData: FormData): Promise<void> 
     if (merchant.custom_domain) await detachDomain(merchant.custom_domain);
     if (customDomain) {
       const r = await attachDomain(customDomain);
-      if (!r.ok) fail(back, `域名已保存，但接入失败：${r.error}（可能已被其他网站使用）`);
+      if (!r.ok) fail(back, `Domain saved but attach failed: ${r.error} (it may already be in use elsewhere)`);
     }
   }
   revalidatePath("/m", "layout");
 }
 
 export async function uploadMerchantLogo(formData: FormData): Promise<void> {
-  const { merchant } = await requireMerchant();
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("settings", "edit");
   const back = "/m/settings";
   const file = formData.get("logo");
-  if (!(file instanceof File) || file.size === 0) fail(back, "请选择 logo 文件");
-  if (file.size > 2 * 1024 * 1024) fail(back, "logo 不能超过 2MB");
+  if (!(file instanceof File) || file.size === 0) fail(back, "Please choose a logo file");
+  if (file.size > 2 * 1024 * 1024) fail(back, "Logo must be under 2MB");
 
   const path = await uploadFile(ASSETS_BUCKET, `logos/${merchant.id}.${fileExt(file)}`, file);
   await db().from("merchants").update({ logo_path: path }).eq("id", merchant.id);
@@ -68,7 +70,7 @@ async function getOwnedOwner(ownerId: string, merchantId: string): Promise<Owner
     .eq("id", ownerId)
     .eq("merchant_id", merchantId)
     .maybeSingle();
-  if (!data) fail("/m/owners", "Owner 不存在");
+  if (!data) fail("/m/owners", "Owner not found");
   return data as Owner;
 }
 
@@ -84,19 +86,21 @@ async function activeFields(countryId: string): Promise<CountryField[]> {
 
 /** Create or update an owner from the dynamic form. Shared by /m/owners/new and edit. */
 export async function saveOwner(formData: FormData): Promise<void> {
-  const { merchant } = await requireMerchant();
+  const cu = await requireMerchantUser();
+  const merchant = cu.merchant;
+  await requirePerm("owners", "edit");
   const existingId = String(formData.get("id") ?? "") || null;
   const back = existingId ? `/m/owners/${existingId}` : "/m/owners/new";
 
   const fullName = String(formData.get("full_name") ?? "").trim();
   const idNumber = String(formData.get("id_number") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim() || null;
-  if (!fullName) fail(back, "请输入姓名");
+  if (!fullName) fail(back, "Please enter the full name");
 
   let owner: Owner;
   if (existingId) {
     owner = await getOwnedOwner(existingId, merchant.id);
-    if (owner.status === "approved") fail(back, "已通过审核的 Owner 不能修改");
+    if (owner.status === "approved") fail(back, "Approved owners cannot be modified");
     const { data } = await db()
       .from("owners")
       .update({
@@ -118,10 +122,11 @@ export async function saveOwner(formData: FormData): Promise<void> {
         full_name: fullName,
         id_number: idNumber || null,
         notes,
+        created_by: cu.user.id,
       })
       .select("*")
       .single();
-    if (error || !data) fail(back, `创建失败：${error?.message ?? "unknown"}`);
+    if (error || !data) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
     owner = data as Owner;
   }
 
@@ -133,7 +138,7 @@ export async function saveOwner(formData: FormData): Promise<void> {
   ] as const) {
     const file = formData.get(field);
     if (file instanceof File && file.size > 0) {
-      if (file.size > 8 * 1024 * 1024) fail(back, "证件照不能超过 8MB");
+      if (file.size > 8 * 1024 * 1024) fail(back, "ID photos must be under 8MB");
       patch[col] = await uploadFile(DOCS_BUCKET, `owners/${owner.id}/${field}.${fileExt(file)}`, file);
     }
   }
@@ -147,7 +152,7 @@ export async function saveOwner(formData: FormData): Promise<void> {
     if (f.field_type === "file") {
       const file = formData.get(`cff_${f.id}`);
       if (file instanceof File && file.size > 0) {
-        if (file.size > 8 * 1024 * 1024) fail(back, `${f.label} 文件不能超过 8MB`);
+        if (file.size > 8 * 1024 * 1024) fail(back, `${f.label} file must be under 8MB`);
         const path = await uploadFile(
           DOCS_BUCKET,
           `owners/${owner.id}/f_${f.field_key}.${fileExt(file)}`,
@@ -184,18 +189,19 @@ export async function saveOwner(formData: FormData): Promise<void> {
 
 /** Validate required fields and move the owner into the review queue. */
 export async function submitOwnerForReview(formData: FormData): Promise<void> {
-  const { merchant } = await requireMerchant();
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("owners", "edit");
   const id = String(formData.get("id") ?? "");
   const back = `/m/owners/${id}`;
   const owner = await getOwnedOwner(id, merchant.id);
-  if (owner.status === "approved") fail(back, "该 Owner 已通过审核");
-  if (owner.status === "pending") fail(back, "该 Owner 已在审核队列中");
+  if (owner.status === "approved") fail(back, "This owner is already approved");
+  if (owner.status === "pending") fail(back, "This owner is already pending review");
 
   const missing: string[] = [];
-  if (!owner.full_name) missing.push("姓名");
-  if (!owner.id_number) missing.push("ID 号码");
-  if (!owner.id_front_path) missing.push("ID 正面照片");
-  if (!owner.id_back_path) missing.push("ID 背面照片");
+  if (!owner.full_name) missing.push("Full name");
+  if (!owner.id_number) missing.push("ID number");
+  if (!owner.id_front_path) missing.push("ID front photo");
+  if (!owner.id_back_path) missing.push("ID back photo");
 
   const fields = await activeFields(merchant.country_id);
   const { data: values } = await db()
@@ -210,7 +216,7 @@ export async function submitOwnerForReview(formData: FormData): Promise<void> {
     if (!has) missing.push(f.label);
   }
 
-  if (missing.length > 0) fail(back, `资料不完整，缺少：${missing.join("、")}`);
+  if (missing.length > 0) fail(back, `Incomplete: missing ${missing.join(", ")}`);
 
   await db()
     .from("owners")
@@ -231,12 +237,13 @@ export async function submitOwnerForReview(formData: FormData): Promise<void> {
  * bot flow can resume.
  */
 export async function generateOwnerInvite(formData: FormData): Promise<void> {
-  const { merchant } = await requireMerchant();
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("owners", "edit");
   const id = String(formData.get("id") ?? "");
   const back = `/m/owners/${id}`;
   const owner = await getOwnedOwner(id, merchant.id);
-  if (owner.status === "approved") fail(back, "已通过审核的 Owner 不需要邀请链接");
-  if (owner.status === "pending") fail(back, "该 Owner 正在审核中");
+  if (owner.status === "approved") fail(back, "Approved owners do not need an invite link");
+  if (owner.status === "pending") fail(back, "This owner is pending review");
 
   const expires = new Date();
   expires.setDate(expires.getDate() + 7);
@@ -254,10 +261,11 @@ export async function generateOwnerInvite(formData: FormData): Promise<void> {
 }
 
 export async function deleteOwner(formData: FormData): Promise<void> {
-  const { merchant } = await requireMerchant();
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("owners", "delete");
   const id = String(formData.get("id") ?? "");
   const owner = await getOwnedOwner(id, merchant.id);
-  if (owner.status === "approved") fail(`/m/owners/${id}`, "已通过审核的 Owner 不能删除");
+  if (owner.status === "approved") fail(`/m/owners/${id}`, "Approved owners cannot be deleted");
   await db().from("owners").delete().eq("id", owner.id);
   revalidatePath("/m/owners");
   redirect("/m/owners");

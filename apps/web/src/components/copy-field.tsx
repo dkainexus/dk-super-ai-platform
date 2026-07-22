@@ -21,7 +21,7 @@ export function CopyField({ value }: { value: string }) {
         }}
         className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition-colors hover:border-accent"
       >
-        {copied ? "已复制 ✓" : "复制"}
+        {copied ? "Copied ✓" : "Copy"}
       </button>
     </div>
   );

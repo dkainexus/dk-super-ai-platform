@@ -15,7 +15,7 @@ export function OwnerStatusTag({ status }: { status: OwnerStatus }) {
   );
 }
 
-export function ActiveTag({ active, on = "启用", off = "停用" }: { active: boolean; on?: string; off?: string }) {
+export function ActiveTag({ active, on = "Active", off = "Inactive" }: { active: boolean; on?: string; off?: string }) {
   return (
     <span
       className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
