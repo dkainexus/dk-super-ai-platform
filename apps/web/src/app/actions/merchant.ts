@@ -95,6 +95,8 @@ export async function saveOwner(formData: FormData): Promise<void> {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const idNumber = String(formData.get("id_number") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  const bankId = String(formData.get("bank_id") ?? "") || null;
+  const bankAccountNo = String(formData.get("bank_account_no") ?? "").trim() || null;
   if (!fullName) fail(back, "Please enter the full name");
 
   let owner: Owner;
@@ -107,6 +109,8 @@ export async function saveOwner(formData: FormData): Promise<void> {
         full_name: fullName,
         id_number: idNumber || null,
         notes,
+        bank_id: bankId,
+        bank_account_no: bankAccountNo,
         updated_at: new Date().toISOString(),
       })
       .eq("id", owner.id)
@@ -122,6 +126,8 @@ export async function saveOwner(formData: FormData): Promise<void> {
         full_name: fullName,
         id_number: idNumber || null,
         notes,
+        bank_id: bankId,
+        bank_account_no: bankAccountNo,
         created_by: cu.user.id,
       })
       .select("*")
@@ -135,10 +141,11 @@ export async function saveOwner(formData: FormData): Promise<void> {
   for (const [field, col] of [
     ["id_front", "id_front_path"],
     ["id_back", "id_back_path"],
+    ["photo_full_body", "photo_full_body_path"],
   ] as const) {
     const file = formData.get(field);
     if (file instanceof File && file.size > 0) {
-      if (file.size > 8 * 1024 * 1024) fail(back, "ID photos must be under 8MB");
+      if (file.size > 8 * 1024 * 1024) fail(back, "Photos must be under 8MB");
       patch[col] = await uploadFile(DOCS_BUCKET, `owners/${owner.id}/${field}.${fileExt(file)}`, file);
     }
   }
@@ -202,6 +209,7 @@ export async function submitOwnerForReview(formData: FormData): Promise<void> {
   if (!owner.id_number) missing.push("ID number");
   if (!owner.id_front_path) missing.push("ID front photo");
   if (!owner.id_back_path) missing.push("ID back photo");
+  if (!owner.photo_full_body_path) missing.push("Full-body photo");
 
   const fields = await activeFields(merchant.country_id);
   const { data: values } = await db()

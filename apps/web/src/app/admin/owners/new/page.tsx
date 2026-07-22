@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { adminSaveOwner } from "@/app/actions/cms";
+import { banksForCountry } from "@/lib/banks";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerForm } from "@/components/owner-form";
 import type { Country, CountryField, Merchant } from "@/lib/types";
@@ -32,6 +33,7 @@ export default async function AdminNewOwnerPage({
         .eq("active", true)
         .order("sort")
     : { data: [] };
+  const banks = selected ? await banksForCountry(selected.country_id, null) : [];
 
   return (
     <div className="space-y-6">
@@ -72,6 +74,7 @@ export default async function AdminNewOwnerPage({
           </h2>
           <OwnerForm
             fields={(fields ?? []) as CountryField[]}
+            banks={banks}
             action={adminSaveOwner}
             hidden={{ merchant_id: selected.id }}
           />

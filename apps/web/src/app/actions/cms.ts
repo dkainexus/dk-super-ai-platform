@@ -312,12 +312,21 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const idNumber = String(formData.get("id_number") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  const bankId = String(formData.get("bank_id") ?? "") || null;
+  const bankAccountNo = String(formData.get("bank_account_no") ?? "").trim() || null;
   if (!fullName) fail(back, "Please enter the full name");
 
   if (owner) {
     await db()
       .from("owners")
-      .update({ full_name: fullName, id_number: idNumber || null, notes, updated_at: new Date().toISOString() })
+      .update({
+        full_name: fullName,
+        id_number: idNumber || null,
+        notes,
+        bank_id: bankId,
+        bank_account_no: bankAccountNo,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", owner.id);
   } else {
     const { data, error } = await db()
@@ -328,6 +337,8 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
         full_name: fullName,
         id_number: idNumber || null,
         notes,
+        bank_id: bankId,
+        bank_account_no: bankAccountNo,
         created_by: cu.user.id,
       })
       .select("*")
@@ -341,10 +352,11 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
   for (const [field, col] of [
     ["id_front", "id_front_path"],
     ["id_back", "id_back_path"],
+    ["photo_full_body", "photo_full_body_path"],
   ] as const) {
     const file = formData.get(field);
     if (file instanceof File && file.size > 0) {
-      if (file.size > 8 * 1024 * 1024) fail(back, "ID photos must be under 8MB");
+      if (file.size > 8 * 1024 * 1024) fail(back, "Photos must be under 8MB");
       patch[col] = await uploadFile("owner-docs", `owners/${owner.id}/${field}.${fileExt(file)}`, file);
     }
   }

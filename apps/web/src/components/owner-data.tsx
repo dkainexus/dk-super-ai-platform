@@ -35,9 +35,12 @@ async function FileThumb({ path, label }: { path: string | null; label: string }
 }
 
 export async function OwnerData({ owner }: { owner: Owner }) {
-  const [{ data: fields }, { data: values }] = await Promise.all([
+  const [{ data: fields }, { data: values }, { data: bank }] = await Promise.all([
     db().from("country_fields").select("*").eq("country_id", owner.country_id).order("sort"),
     db().from("owner_field_values").select("*").eq("owner_id", owner.id),
+    owner.bank_id
+      ? db().from("banks").select("name, code").eq("id", owner.bank_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   const byField = new Map(
     ((values ?? []) as OwnerFieldValue[]).map((v) => [v.field_id, v])
@@ -59,6 +62,21 @@ export async function OwnerData({ owner }: { owner: Owner }) {
         </Item>
         <Item label="ID Back">
           <FileThumb path={owner.id_back_path} label="ID back" />
+        </Item>
+        <Item label="Full-Body Photo">
+          <FileThumb path={owner.photo_full_body_path} label="Full-body photo" />
+        </Item>
+        <Item label="Bank">
+          {bank ? (
+            <span>
+              {bank.name} {bank.code && <span className="mono-num text-xs text-muted">({bank.code})</span>}
+            </span>
+          ) : (
+            <span className="text-muted">Not selected</span>
+          )}
+        </Item>
+        <Item label="Bank Account Number">
+          <span className="mono-num">{owner.bank_account_no || "—"}</span>
         </Item>
       </div>
 

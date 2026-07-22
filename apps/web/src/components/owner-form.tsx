@@ -6,7 +6,7 @@
 import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 import { saveOwner } from "@/app/actions/merchant";
 import { SaveButton } from "@/components/action-buttons";
-import type { CountryField, Owner, OwnerFieldValue } from "@/lib/types";
+import type { Bank, CountryField, Owner, OwnerFieldValue } from "@/lib/types";
 
 async function FilePreview({ path }: { path: string | null | undefined }) {
   const url = await signedUrl(DOCS_BUCKET, path ?? null);
@@ -25,6 +25,7 @@ async function FilePreview({ path }: { path: string | null | undefined }) {
 
 export async function OwnerForm({
   fields,
+  banks = [],
   owner,
   values,
   action = saveOwner,
@@ -32,6 +33,7 @@ export async function OwnerForm({
   locked: lockedProp,
 }: {
   fields: CountryField[];
+  banks?: Bank[];
   owner?: Owner;
   values?: OwnerFieldValue[];
   action?: (formData: FormData) => Promise<void>;
@@ -67,7 +69,35 @@ export async function OwnerForm({
           <FilePreview path={owner?.id_back_path} />
           {!locked && <input name="id_back" type="file" accept="image/*,.pdf" className="input" />}
         </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted">Full-Body Photo *</label>
+          <FilePreview path={owner?.photo_full_body_path} />
+          {!locked && <input name="photo_full_body" type="file" accept="image/*" className="input" />}
+        </div>
       </div>
+
+      {banks.length > 0 && (
+        <div className="border-t border-border pt-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Bank Account</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-muted">Bank</label>
+              <select name="bank_id" defaultValue={owner?.bank_id ?? ""} className="input" disabled={locked}>
+                <option value="">— Select a bank —</option>
+                {banks.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} {b.code ? `(${b.code})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Bank Account Number</label>
+              <input name="bank_account_no" defaultValue={owner?.bank_account_no ?? ""} className="input mono-num" disabled={locked} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {fields.length > 0 && (
         <div className="border-t border-border pt-4">

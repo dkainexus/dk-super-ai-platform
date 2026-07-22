@@ -113,6 +113,9 @@ export type Owner = {
   id_number: string | null;
   id_front_path: string | null;
   id_back_path: string | null;
+  photo_full_body_path: string | null;
+  bank_id: string | null;
+  bank_account_no: string | null;
   status: OwnerStatus;
   reject_reason: string | null;
   reviewed_by: string | null;
@@ -140,4 +143,14 @@ export const OWNER_STATUS_LABEL: Record<OwnerStatus, string> = {
   pending: "Pending Review",
   approved: "Approved",
   rejected: "Rejected",
+};
+
+export type Bank = {
+  id: string;
+  country_id: string;
+  name: string;
+  code: string | null;
+  active: boolean;
+  sort: number;
+  created_at: string;
 };

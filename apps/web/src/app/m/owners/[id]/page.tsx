@@ -5,6 +5,7 @@ import { db } from "@/lib/supabase";
 import { env } from "@/lib/env";
 import { submitOwnerForReview, deleteOwner, generateOwnerInvite } from "@/app/actions/merchant";
 import { CopyField } from "@/components/copy-field";
+import { banksForCountry } from "@/lib/banks";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
@@ -34,7 +35,7 @@ export default async function MerchantOwnerDetailPage({
   const owner = data as Owner;
   if (scope === "own" && owner.created_by && owner.created_by !== cu.user.id) notFound();
 
-  const [{ data: fields }, { data: values }] = await Promise.all([
+  const [{ data: fields }, { data: values }, banks] = await Promise.all([
     db()
       .from("country_fields")
       .select("*")
@@ -42,6 +43,7 @@ export default async function MerchantOwnerDetailPage({
       .eq("active", true)
       .order("sort"),
     db().from("owner_field_values").select("*").eq("owner_id", owner.id),
+    banksForCountry(merchant.country_id, merchant),
   ]);
 
   return (
@@ -96,6 +98,7 @@ export default async function MerchantOwnerDetailPage({
       <div className="card p-5">
         <OwnerForm
           fields={(fields ?? []) as CountryField[]}
+          banks={banks}
           owner={owner}
           values={(values ?? []) as OwnerFieldValue[]}
         />
