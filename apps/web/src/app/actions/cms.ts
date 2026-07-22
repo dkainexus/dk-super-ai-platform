@@ -471,7 +471,7 @@ export async function deleteBank(formData: FormData): Promise<void> {
 
 export async function createOccupation(formData: FormData): Promise<void> {
   await requirePerm("settings", "edit");
-  const back = "/admin/settings/occupations";
+  const back = "/admin/settings/owners";
   const name = String(formData.get("name") ?? "").trim();
   const companyType = String(formData.get("company_type") ?? "").trim() || null;
   if (!name) fail(back, "Please enter the occupation name");
@@ -490,7 +490,7 @@ export async function createOccupation(formData: FormData): Promise<void> {
 export async function updateOccupation(formData: FormData): Promise<void> {
   await requirePerm("settings", "edit");
   const id = String(formData.get("id") ?? "");
-  const back = "/admin/settings/occupations";
+  const back = "/admin/settings/owners";
   const name = String(formData.get("name") ?? "").trim();
   const companyType = String(formData.get("company_type") ?? "").trim() || null;
   const sort = parseInt(String(formData.get("sort") ?? "100"), 10) || 100;
@@ -507,6 +507,6 @@ export async function deleteOccupation(formData: FormData): Promise<void> {
   await requirePerm("settings", "edit");
   const id = String(formData.get("id") ?? "");
   await db().from("occupations").delete().eq("id", id);
-  revalidatePath("/admin/settings/occupations");
-  redirect("/admin/settings/occupations");
+  revalidatePath("/admin/settings/owners");
+  redirect("/admin/settings/owners");
 }

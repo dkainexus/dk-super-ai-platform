@@ -7,10 +7,10 @@ import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
 import type { Occupation } from "@/lib/types";
 
-// Global occupations list (shared by all countries), managed under Settings.
-// Company Type is what the occupation maps to when deciding which kind of
-// company to register for an owner.
-export default async function OccupationsSettingsPage({
+// Owners module settings. Currently holds the global Occupations list
+// (Company Type = which kind of company to register for that occupation);
+// future owner-module settings live here too.
+export default async function OwnersModuleSettingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
@@ -27,13 +27,18 @@ export default async function OccupationsSettingsPage({
         <Link href="/admin/settings" className="text-xs text-muted hover:text-foreground">
           ← Settings
         </Link>
-        <h1 className="mt-1 text-xl font-semibold">Occupations</h1>
+        <h1 className="mt-1 text-xl font-semibold">Owners Module Settings</h1>
         <p className="mt-1 text-sm text-muted">
-          One global list used by all countries. <b>Company Type</b> is what that occupation maps to when deciding
-          which kind of company to register.
+          Configuration for the Owners module.
         </p>
       </div>
       <ErrorBanner message={error} />
+
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Occupations</h2>
+      <p className="-mt-4 text-xs text-muted">
+        One global list used by all countries. <b>Company Type</b> is what that occupation maps to when deciding which
+        kind of company to register.
+      </p>
 
       <div className="space-y-3">
         {((occupations ?? []) as Occupation[]).map((o) => (
