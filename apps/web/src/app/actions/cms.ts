@@ -42,9 +42,9 @@ export async function toggleCountry(formData: FormData): Promise<void> {
 // ---------- Custom fields ----------
 
 export async function createCountryField(formData: FormData): Promise<void> {
-  await requirePerm("countries", "edit");
+  await requirePerm("settings", "edit");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/countries/${countryId}`;
+  const back = `/admin/settings/owners?country=${countryId}`;
   const label = String(formData.get("label") ?? "").trim();
   const rawKey = String(formData.get("field_key") ?? "").trim();
   const fieldType = String(formData.get("field_type") ?? "text") as FieldType;
@@ -78,14 +78,14 @@ export async function createCountryField(formData: FormData): Promise<void> {
     sort: ((count ?? 0) + 1) * 10,
   });
   if (error) fail(back, `Failed to create: ${error.message}`);
-  revalidatePath(back);
+  revalidatePath("/admin/settings/owners");
 }
 
 export async function updateCountryField(formData: FormData): Promise<void> {
-  await requirePerm("countries", "edit");
+  await requirePerm("settings", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/countries/${countryId}`;
+  const back = `/admin/settings/owners?country=${countryId}`;
   const label = String(formData.get("label") ?? "").trim();
   const required = formData.get("required") === "on";
   const sort = parseInt(String(formData.get("sort") ?? "100"), 10) || 100;
@@ -93,14 +93,14 @@ export async function updateCountryField(formData: FormData): Promise<void> {
   if (!label) fail(back, "Field label cannot be empty");
 
   await db().from("country_fields").update({ label, required, sort, active }).eq("id", id);
-  revalidatePath(back);
+  revalidatePath("/admin/settings/owners");
 }
 
 export async function deleteCountryField(formData: FormData): Promise<void> {
-  await requirePerm("countries", "edit");
+  await requirePerm("settings", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/countries/${countryId}`;
+  const back = `/admin/settings/owners?country=${countryId}`;
 
   // Refuse to delete a field that already has values; deactivate instead.
   const { count } = await db()
@@ -112,7 +112,7 @@ export async function deleteCountryField(formData: FormData): Promise<void> {
   } else {
     await db().from("country_fields").delete().eq("id", id);
   }
-  revalidatePath(back);
+  revalidatePath("/admin/settings/owners");
 }
 
 // ---------- Merchants ----------

@@ -16,6 +16,8 @@ export type ModuleDef = {
   core?: boolean; // not togglable
   adminNav?: { href: string; label: string };
   merchantNav?: { href: string; label: string };
+  /** Platform-side module settings page — shown as a sidebar sub-item. */
+  settingsHref?: string;
 };
 
 export const MODULES: ModuleDef[] = [
@@ -37,6 +39,7 @@ export const MODULES: ModuleDef[] = [
     description: "Ask questions about your data — answers are scoped to your role and permissions",
     adminNav: { href: "/admin/ai", label: "AI Assistant" },
     merchantNav: { href: "/m/ai", label: "AI Assistant" },
+    settingsHref: "/admin/settings/ai",
   },
   {
     key: "owners",
@@ -44,6 +47,7 @@ export const MODULES: ModuleDef[] = [
     description: "Owner records with per-country custom fields and review flow",
     adminNav: { href: "/admin/owners", label: "Owners" },
     merchantNav: { href: "/m/owners", label: "Owners" },
+    settingsHref: "/admin/settings/owners",
   },
   {
     key: "countries",

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export type NavItem = { href: string; label: string };
+export type NavItem = { href: string; label: string; children?: NavItem[] };
 export type NavSection = { heading?: string; items: NavItem[] };
 
 export function SidebarNav({ sections }: { sections: NavSection[] }) {
@@ -26,23 +26,41 @@ export function SidebarNav({ sections }: { sections: NavSection[] }) {
           <div className="space-y-0.5">
             {section.items.map((l) => {
               const active = isActive(l.href);
+              const childActive = (l.children ?? []).some((c) => isActive(c.href));
               return (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                    active
-                      ? "bg-accent-soft font-medium text-accent-strong"
-                      : "text-muted hover:bg-surface-raised hover:text-foreground"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-1.5 w-1.5 rounded-full ${
-                      active ? "bg-accent" : "bg-border"
+                <div key={l.href}>
+                  <Link
+                    href={l.href}
+                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                      active
+                        ? "bg-accent-soft font-medium text-accent-strong"
+                        : "text-muted hover:bg-surface-raised hover:text-foreground"
                     }`}
-                  />
-                  {l.label}
-                </Link>
+                  >
+                    <span
+                      className={`inline-block h-1.5 w-1.5 rounded-full ${
+                        active || childActive ? "bg-accent" : "bg-border"
+                      }`}
+                    />
+                    {l.label}
+                  </Link>
+                  {(l.children ?? []).map((c) => {
+                    const cActive = isActive(c.href);
+                    return (
+                      <Link
+                        key={c.href}
+                        href={c.href}
+                        className={`ml-4 flex items-center gap-2 rounded-lg border-l border-border py-1.5 pl-4 pr-3 text-xs transition-colors ${
+                          cActive
+                            ? "border-accent font-medium text-accent-strong"
+                            : "text-muted hover:text-foreground"
+                        }`}
+                      >
+                        {c.label}
+                      </Link>
+                    );
+                  })}
+                </div>
               );
             })}
           </div>

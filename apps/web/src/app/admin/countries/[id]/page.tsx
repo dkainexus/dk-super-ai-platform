@@ -2,24 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import {
-  createCountryField,
-  updateCountryField,
-  deleteCountryField,
-  createMerchant,
-} from "@/app/actions/cms";
+import { createMerchant } from "@/app/actions/cms";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
-import { SaveButton, SubmitButton } from "@/components/action-buttons";
-import type { Country, CountryField, Merchant } from "@/lib/types";
-
-const FIELD_TYPE_LABEL: Record<string, string> = {
-  text: "Text",
-  number: "Number",
-  date: "Date",
-  file: "File Upload",
-  select: "Select",
-};
+import { SubmitButton } from "@/components/action-buttons";
+import type { Country, Merchant } from "@/lib/types";
 
 export default async function CountryDetailPage({
   params,
@@ -36,14 +23,11 @@ export default async function CountryDetailPage({
   if (!country) notFound();
   const c = country as Country;
 
-  const [{ data: merchants }, { data: fields }] = await Promise.all([
-    db()
-      .from("merchants")
-      .select("*, users(count), owners(count)")
-      .eq("country_id", id)
-      .order("created_at"),
-    db().from("country_fields").select("*").eq("country_id", id).order("sort"),
-  ]);
+  const { data: merchants } = await db()
+    .from("merchants")
+    .select("*, users(count), owners(count)")
+    .eq("country_id", id)
+    .order("created_at");
 
   return (
     <div className="space-y-8">
@@ -111,86 +95,15 @@ export default async function CountryDetailPage({
         </div>
       </section>
 
-      {/* ---------- Custom fields ---------- */}
+      {/* Custom fields now live under Owners module settings */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
-          Owner Custom Fields (apply to {c.name} only)
-        </h2>
-        <p className="mb-3 text-xs text-muted">
-          Built-in fields: full name, ID number, ID front, ID back. Fields added here automatically appear on every owner form in this country — e.g. Tabien Baan for Thailand.
-        </p>
-        <div className="space-y-3">
-          {(fields ?? []).map((f: CountryField) => (
-            <div key={f.id} className="card p-4">
-              <form action={updateCountryField} className="grid items-end gap-3 sm:grid-cols-[1fr_7rem_5rem_5rem_auto_auto]">
-                <input type="hidden" name="id" value={f.id} />
-                <input type="hidden" name="country_id" value={c.id} />
-                <div>
-                  <label className="mb-1 block text-xs text-muted">
-                    Label <span className="mono-num">({f.field_key} · {FIELD_TYPE_LABEL[f.field_type]})</span>
-                  </label>
-                  <input name="label" defaultValue={f.label} className="input" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted">Sort</label>
-                  <input name="sort" type="number" defaultValue={f.sort} className="input mono-num" />
-                </div>
-                <label className="flex items-center gap-2 pb-2 text-xs text-muted">
-                  <input type="checkbox" name="required" defaultChecked={f.required} /> Required
-                </label>
-                <label className="flex items-center gap-2 pb-2 text-xs text-muted">
-                  <input type="checkbox" name="active" defaultChecked={f.active} /> Enabled
-                </label>
-                <SaveButton />
-                <button
-                  type="submit"
-                  formAction={deleteCountryField}
-                  className="rounded-md border border-danger/40 px-3 py-1.5 text-sm text-danger transition-colors hover:bg-danger/10"
-                >
-                  Delete
-                </button>
-              </form>
-              {f.field_type === "select" && (
-                <p className="mt-2 text-xs text-muted">Options: {(f.options ?? []).join(" / ")}</p>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="card mt-4 p-5">
-          <h3 className="mb-4 text-sm font-semibold">Add Field</h3>
-          <form action={createCountryField} className="grid gap-4 sm:grid-cols-2">
-            <input type="hidden" name="country_id" value={c.id} />
-            <div>
-              <label className="mb-1 block text-xs text-muted">Field Label (shown to merchants)</label>
-              <input name="label" placeholder="Tabien Baan" className="input" required />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Field key (optional, auto-generated)</label>
-              <input name="field_key" placeholder="tabien_baan" className="input mono-num" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Type</label>
-              <select name="field_type" className="input">
-                <option value="text">Text</option>
-                <option value="number">Number</option>
-                <option value="date">Date</option>
-                <option value="file">File Upload</option>
-                <option value="select">Select</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Options (select type only, comma separated)</label>
-              <input name="options" placeholder="Option A, Option B" className="input" />
-            </div>
-            <label className="flex items-center gap-2 text-sm text-muted">
-              <input type="checkbox" name="required" /> Required field
-            </label>
-            <div className="sm:col-span-2">
-              <SubmitButton label="Add Field" />
-            </div>
-          </form>
-        </div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Owner Custom Fields</h2>
+        <Link
+          href={`/admin/settings/owners?country=${c.id}`}
+          className="inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent"
+        >
+          Manage {c.name} custom fields in Owners Module Settings →
+        </Link>
       </section>
     </div>
   );

@@ -4,6 +4,7 @@
 // uploads are previewed via signed URLs and kept unless a new file is chosen.
 
 import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
+import { PhotoInput } from "@/components/photo-input";
 import { saveOwner } from "@/app/actions/merchant";
 import { SaveButton } from "@/components/action-buttons";
 import type { Bank, CountryField, Occupation, Owner, OwnerFieldValue } from "@/lib/types";
@@ -104,17 +105,17 @@ export async function OwnerForm({
         <div>
           <label className="mb-1 block text-xs text-muted">ID Front Photo *</label>
           <FilePreview path={owner?.id_front_path} />
-          {!locked && <input name="id_front" type="file" accept="image/*,.pdf" className="input" />}
+          {!locked && <PhotoInput name="id_front" accept="image/*,.pdf" />}
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted">ID Back Photo *</label>
           <FilePreview path={owner?.id_back_path} />
-          {!locked && <input name="id_back" type="file" accept="image/*,.pdf" className="input" />}
+          {!locked && <PhotoInput name="id_back" accept="image/*,.pdf" />}
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted">Full-Body Photo *</label>
           <FilePreview path={owner?.photo_full_body_path} />
-          {!locked && <input name="photo_full_body" type="file" accept="image/*" className="input" />}
+          {!locked && <PhotoInput name="photo_full_body" accept="image/*" />}
         </div>
       </div>
 
@@ -154,7 +155,7 @@ export async function OwnerForm({
                   {f.field_type === "file" ? (
                     <>
                       <FilePreview path={v?.file_path} />
-                      {!locked && <input name={`cff_${f.id}`} type="file" accept="image/*,.pdf" className="input" />}
+                      {!locked && <PhotoInput name={`cff_${f.id}`} accept="image/*,.pdf" />}
                     </>
                   ) : f.field_type === "select" ? (
                     <select name={`cf_${f.id}`} defaultValue={v?.value_text ?? ""} className="input" disabled={locked}>

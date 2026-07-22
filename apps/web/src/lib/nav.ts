@@ -2,20 +2,26 @@ import "server-only";
 import { can, type CurrentUser } from "./auth";
 import { globalModuleToggles, moduleEnabledFor } from "./settings";
 import { MODULES } from "@/modules/registry";
-import type { NavSection } from "@/components/sidebar-nav";
+import type { NavItem, NavSection } from "@/components/sidebar-nav";
 
 /** Sidebar sections for the current user: permission- and toggle-filtered. */
 export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   const toggles = await globalModuleToggles();
   const isMerchant = Boolean(cu.merchant);
 
-  const items: { href: string; label: string }[] = [];
+  const canSettings = Boolean(can(cu, "settings", "view"));
+  const items: NavItem[] = [];
   for (const m of MODULES) {
     const nav = isMerchant ? m.merchantNav : m.adminNav;
     if (!nav) continue;
     if (!m.core && !moduleEnabledFor(m.key, toggles, cu.merchant)) continue;
     if (!can(cu, m.key, "view")) continue;
-    items.push(nav);
+    const item: NavItem = { ...nav };
+    // Module settings as a sub-menu item (platform side, settings permission).
+    if (!isMerchant && m.settingsHref && canSettings) {
+      item.children = [{ href: m.settingsHref, label: "Module Settings" }];
+    }
+    items.push(item);
   }
 
   const home = isMerchant ? "/m" : "/admin";
