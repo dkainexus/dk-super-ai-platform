@@ -24,6 +24,9 @@ export default async function CountriesPage({
   return (
     <div className="space-y-8">
       <h1 className="text-xl font-semibold">国家管理</h1>
+      <p className="text-sm text-muted">
+        点击国家进入后，可以创建商家账号、配置该国的 Owner 自定义字段。
+      </p>
       <ErrorBanner message={error} />
 
       <div className="card divide-y divide-border">
@@ -52,6 +55,12 @@ export default async function CountriesPage({
                   {c.active ? "停用" : "启用"}
                 </button>
               </form>
+              <Link
+                href={`/admin/countries/${c.id}`}
+                className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-accent-strong"
+              >
+                进入管理 →
+              </Link>
             </div>
           </div>
         ))}
