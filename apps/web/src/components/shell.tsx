@@ -4,18 +4,25 @@ import "server-only";
 // registry. Both /admin and /m layouts use this.
 
 import { AppShell } from "@/components/app-shell";
+import { AiWidget } from "@/components/ai-chat";
 import { logoutAction } from "@/app/actions/auth";
 import { navSectionsFor } from "@/lib/nav";
-import { platformSettings } from "@/lib/settings";
+import { platformSettings, globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
-import type { CurrentUser } from "@/lib/auth";
+import { can, type CurrentUser } from "@/lib/auth";
+import { aiSettings, activeKey } from "@/lib/ai";
 
 export async function Shell({ cu, children }: { cu: CurrentUser; children: React.ReactNode }) {
-  const [sections, platform, avatarUrl] = await Promise.all([
+  const [sections, platform, avatarUrl, toggles] = await Promise.all([
     navSectionsFor(cu),
     platformSettings(),
     signedUrl(ASSETS_BUCKET, cu.user.avatar_path, 60 * 60 * 12),
+    globalModuleToggles(),
   ]);
+
+  // Floating AI Assistant — for users whose role can view the AI module.
+  const aiOn = Boolean(can(cu, "ai", "view")) && moduleEnabledFor("ai", toggles, cu.merchant);
+  const ai = aiOn ? await aiSettings() : null;
 
   const merchantLogo = cu.merchant
     ? await signedUrl(ASSETS_BUCKET, cu.merchant.logo_path, 60 * 60 * 12)
@@ -37,6 +44,13 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
       logoutAction={logoutAction}
     >
       {children}
+      {ai && (
+        <AiWidget
+          configured={Boolean(activeKey(ai))}
+          greeting={`Hi ${cu.user.name || cu.user.username}! Ask me anything about the data you have access to.`}
+          fullPageHref={cu.merchant ? "/m/ai" : "/admin/ai"}
+        />
+      )}
     </AppShell>
   );
 }

@@ -176,10 +176,13 @@ export type ChatMessage = { role: "user" | "assistant"; content: string };
 
 async function askClaude(s: AiSettings, system: string, messages: ChatMessage[]): Promise<string> {
   const client = new Anthropic({ apiKey: s.claude_api_key });
+  const model = s.claude_model || AI_DEFAULTS.claude_model;
+  // Adaptive thinking exists on Opus 4.6+/Sonnet 4.6+/Fable — Haiku rejects it.
+  const supportsAdaptive = /^claude-(opus-4-[6-9]|sonnet-(4-6|5)|fable-5)/.test(model);
   const response = await client.messages.create({
-    model: s.claude_model || AI_DEFAULTS.claude_model,
+    model,
     max_tokens: 8192,
-    thinking: { type: "adaptive" },
+    ...(supportsAdaptive ? { thinking: { type: "adaptive" as const } } : {}),
     system,
     messages,
   });
