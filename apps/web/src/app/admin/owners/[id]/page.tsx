@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { reviewOwner } from "@/modules/owners/actions";
+import { reviewOwner, setOwnerBanned } from "@/modules/owners/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
@@ -41,6 +41,23 @@ export default async function AdminOwnerDetailPage({
             <Link href={`/admin/owners/${o.id}/edit`} className="rounded-md border border-border px-3 py-1 text-xs text-foreground transition-colors hover:border-accent">
               Edit ✎
             </Link>
+          )}
+          {can(cu, "owners", "edit") && (
+            <form action={setOwnerBanned}>
+              <input type="hidden" name="id" value={o.id} />
+              <input type="hidden" name="banned" value={String(o.status !== "banned")} />
+              <button
+                type="submit"
+                title={o.status === "banned" ? "Lift the ban (owner returns to Approved)" : "Ban this owner — banned owners cannot be bound to companies"}
+                className={`rounded-md border px-3 py-1 text-xs transition-colors ${
+                  o.status === "banned"
+                    ? "border-border text-muted hover:border-accent hover:text-foreground"
+                    : "border-danger/40 text-danger hover:bg-danger/10"
+                }`}
+              >
+                {o.status === "banned" ? "Unban" : "Ban"}
+              </button>
+            </form>
           )}
         </div>
         <p className="mt-1 text-sm text-muted">

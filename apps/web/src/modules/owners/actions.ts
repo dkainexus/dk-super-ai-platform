@@ -309,3 +309,23 @@ export async function deleteOccupation(formData: FormData): Promise<void> {
   redirect("/admin/settings/owners");
 }
 
+
+/** Ban / unban an owner. Unban returns the owner to Approved. */
+export async function setOwnerBanned(formData: FormData): Promise<void> {
+  const { cu, scope } = await requirePerm("owners", "edit");
+  const id = String(formData.get("id") ?? "");
+  const banned = String(formData.get("banned") ?? "") === "true";
+  const base = cu.merchant ? "/m/owners" : "/admin/owners";
+
+  const { data: owner } = await db().from("owners").select("id, merchant_id, created_by").eq("id", id).maybeSingle();
+  if (!owner) redirect(base);
+  if (scope === "merchant" && owner.merchant_id !== cu.user.merchant_id) redirect(base);
+  if (scope === "own" && owner.created_by !== cu.user.id) redirect(base);
+
+  await db()
+    .from("owners")
+    .update({ status: banned ? "banned" : "approved", updated_at: new Date().toISOString() })
+    .eq("id", id);
+  revalidatePath(base);
+  redirect(`${base}/${id}`);
+}

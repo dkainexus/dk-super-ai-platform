@@ -25,7 +25,7 @@ export default async function MerchantDashboard() {
     list = (data ?? []) as typeof list;
   }
 
-  const counts: Record<OwnerStatus, number> = { draft: 0, pending: 0, approved: 0, rejected: 0 };
+  const counts: Record<OwnerStatus, number> = { draft: 0, pending: 0, approved: 0, rejected: 0, banned: 0 };
   for (const o of list) counts[o.status as OwnerStatus]++;
 
   return (

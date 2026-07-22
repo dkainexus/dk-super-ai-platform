@@ -118,6 +118,38 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
     }));
   }
 
+  const companyScope = can(cu, "companies", "view");
+  if (companyScope && on("companies")) {
+    let q = db()
+      .from("companies")
+      .select(
+        "name, company_id, company_type, business_start_date, status, province, district, subdistrict, street, address_no, postal_code, notes, merchant_id, country_id, created_at, members:company_members(role, share_percent, owner:owners(full_name))"
+      )
+      .order("created_at", { ascending: false })
+      .limit(LIMIT);
+    if (companyScope === "merchant" && cu.user.merchant_id) q = q.eq("merchant_id", cu.user.merchant_id);
+    if (companyScope === "own") q = q.eq("created_by", cu.user.id);
+    const { data: companies } = await q;
+    ctx.companies = ((companies ?? []) as Row[]).map((c) => ({
+      name: c.name,
+      company_id: c.company_id,
+      company_type: c.company_type,
+      business_start_date: c.business_start_date,
+      status: c.status,
+      address: [c.address_no, c.street, c.subdistrict, c.district, c.province, c.postal_code]
+        .filter(Boolean)
+        .join(", ") || null,
+      province: c.province,
+      district: c.district,
+      merchant: merchantName.get(c.merchant_id as string) ?? null,
+      country: countryName.get(c.country_id as string) ?? null,
+      members: ((c.members as { role: string; share_percent: number | null; owner: { full_name?: string } | null }[]) ?? []).map(
+        (m) => ({ role: m.role, name: m.owner?.full_name ?? null, share_percent: m.share_percent })
+      ),
+      notes: c.notes,
+    }));
+  }
+
   if (can(cu, "banks", "view") && on("banks")) {
     const { data: banks } = await db().from("banks").select("country_id, name, code, active").order("sort");
     ctx.banks = ((banks ?? []) as Row[]).map((b) => ({

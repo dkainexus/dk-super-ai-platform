@@ -105,7 +105,7 @@ export type CountryField = {
   created_at: string;
 };
 
-export type OwnerStatus = "draft" | "pending" | "approved" | "rejected";
+export type OwnerStatus = "draft" | "pending" | "approved" | "rejected" | "banned";
 
 export type Owner = {
   id: string;
@@ -150,6 +150,7 @@ export const OWNER_STATUS_LABEL: Record<OwnerStatus, string> = {
   pending: "Pending Review",
   approved: "Approved",
   rejected: "Rejected",
+  banned: "Banned",
 };
 
 export type Bank = {
@@ -181,4 +182,45 @@ export type TelegramBot = {
   last_check_ok: boolean | null;
   last_check_at: string | null;
   created_at: string;
+};
+
+// ---------- Companies module ----------
+
+export type CompanyStatus = "preparing" | "registered" | "closed" | "banned";
+
+export type Company = {
+  id: string;
+  merchant_id: string;
+  country_id: string;
+  name: string;
+  company_id: string | null; // official registration number
+  company_type: string | null;
+  business_start_date: string | null;
+  address_no: string | null;
+  street: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postal_code: string | null;
+  status: CompanyStatus;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CompanyMember = {
+  id: string;
+  company_id: string;
+  owner_id: string;
+  role: "owner" | "shareholder";
+  share_percent: number | null;
+  created_at: string;
+};
+
+export const COMPANY_STATUS_LABEL: Record<CompanyStatus, string> = {
+  preparing: "Preparing",
+  registered: "Registered",
+  closed: "Closed",
+  banned: "Banned",
 };

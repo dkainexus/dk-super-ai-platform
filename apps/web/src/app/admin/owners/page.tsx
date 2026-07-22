@@ -10,6 +10,7 @@ const STATUSES: { value: string; label: string }[] = [
   { value: "draft", label: "Collecting" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
+  { value: "banned", label: "Banned" },
 ];
 
 export default async function AdminOwnersPage({
