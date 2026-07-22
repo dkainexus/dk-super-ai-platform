@@ -314,6 +314,10 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const bankId = String(formData.get("bank_id") ?? "") || null;
   const bankAccountNo = String(formData.get("bank_account_no") ?? "").trim() || null;
+  const gender = String(formData.get("gender") ?? "") || null;
+  const maritalStatus = String(formData.get("marital_status") ?? "") || null;
+  const phone = String(formData.get("phone") ?? "").trim() || null;
+  const email = String(formData.get("email") ?? "").trim() || null;
   if (!fullName) fail(back, "Please enter the full name");
 
   if (owner) {
@@ -325,6 +329,10 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
         notes,
         bank_id: bankId,
         bank_account_no: bankAccountNo,
+        gender,
+        marital_status: maritalStatus,
+        phone,
+        email,
         updated_at: new Date().toISOString(),
       })
       .eq("id", owner.id);
@@ -339,6 +347,10 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
         notes,
         bank_id: bankId,
         bank_account_no: bankAccountNo,
+        gender,
+        marital_status: maritalStatus,
+        phone,
+        email,
         created_by: cu.user.id,
       })
       .select("*")

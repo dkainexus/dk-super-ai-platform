@@ -111,6 +111,10 @@ export type Owner = {
   country_id: string;
   full_name: string | null;
   id_number: string | null;
+  gender: "male" | "female" | "other" | null;
+  marital_status: "single" | "married" | "divorced" | "widowed" | null;
+  phone: string | null;
+  email: string | null;
   id_front_path: string | null;
   id_back_path: string | null;
   photo_full_body_path: string | null;

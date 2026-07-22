@@ -57,6 +57,18 @@ export async function OwnerData({ owner }: { owner: Owner }) {
         <Item label="ID Number">
           <span className="mono-num">{owner.id_number || "—"}</span>
         </Item>
+        <Item label="Gender">
+          <span className="capitalize">{owner.gender || <span className="text-muted">Not provided</span>}</span>
+        </Item>
+        <Item label="Marital Status">
+          <span className="capitalize">{owner.marital_status || <span className="text-muted">Not provided</span>}</span>
+        </Item>
+        <Item label="Phone Number">
+          <span className="mono-num">{owner.phone || "—"}</span>
+        </Item>
+        <Item label="Private Email">
+          <span className="mono-num">{owner.email || "—"}</span>
+        </Item>
         <Item label="ID Front">
           <FileThumb path={owner.id_front_path} label="ID front" />
         </Item>

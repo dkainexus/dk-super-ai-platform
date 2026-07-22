@@ -60,6 +60,33 @@ export async function OwnerForm({
           <input name="id_number" defaultValue={owner?.id_number ?? ""} className="input mono-num" disabled={locked} />
         </div>
         <div>
+          <label className="mb-1 block text-xs text-muted">Gender</label>
+          <select name="gender" defaultValue={owner?.gender ?? ""} className="input" disabled={locked}>
+            <option value="">— Select —</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted">Marital Status</label>
+          <select name="marital_status" defaultValue={owner?.marital_status ?? ""} className="input" disabled={locked}>
+            <option value="">— Select —</option>
+            <option value="single">Single</option>
+            <option value="married">Married</option>
+            <option value="divorced">Divorced</option>
+            <option value="widowed">Widowed</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted">Phone Number</label>
+          <input name="phone" defaultValue={owner?.phone ?? ""} className="input mono-num" disabled={locked} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted">Private Email</label>
+          <input name="email" type="email" defaultValue={owner?.email ?? ""} className="input mono-num" disabled={locked} />
+        </div>
+        <div>
           <label className="mb-1 block text-xs text-muted">ID Front Photo *</label>
           <FilePreview path={owner?.id_front_path} />
           {!locked && <input name="id_front" type="file" accept="image/*,.pdf" className="input" />}
