@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "DK AP System",
+    "name": "Work Hub",
     "slug": "dk-app",
-    "version": "1.8.0",
+    "version": "1.7.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dkapp",
@@ -19,7 +19,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.dkglobal.app",
-      "versionCode": 8,
+      "versionCode": 7,
       "permissions": [
         "android.permission.REQUEST_INSTALL_PACKAGES"
       ]
