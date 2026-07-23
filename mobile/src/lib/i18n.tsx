@@ -51,6 +51,44 @@ const STRINGS: Dict = {
     zh: "账号提交功能将在后续版本开放。",
   },
 
+  // Bank accounts
+  select_company: { en: "Company", th: "บริษัท", vi: "Công ty", zh: "公司" },
+  select_bank: { en: "Bank", th: "ธนาคาร", vi: "Ngân hàng", zh: "银行" },
+  branch_address: { en: "Branch Address", th: "ที่อยู่สาขา", vi: "Địa chỉ chi nhánh", zh: "分行地址" },
+  account_number: { en: "Account Number", th: "เลขบัญชี", vi: "Số tài khoản", zh: "账号号码" },
+  account_limit: { en: "Account Limit", th: "วงเงินบัญชี", vi: "Hạn mức tài khoản", zh: "账户限额" },
+  sim_number: { en: "SIM Card Number", th: "เบอร์ซิมการ์ด", vi: "Số SIM", zh: "SIM卡号码" },
+  login_id: { en: "Login / User ID", th: "ชื่อผู้ใช้เข้าสู่ระบบ", vi: "ID đăng nhập", zh: "登录账号/User ID" },
+  payment_channels: { en: "PAYMENT CHANNELS", th: "ช่องทางการชำระเงิน", vi: "KÊNH THANH TOÁN", zh: "支付渠道" },
+  linked_value: {
+    en: "Linked number / ID (optional)",
+    th: "หมายเลขที่ผูกไว้ (ไม่บังคับ)",
+    vi: "Số liên kết (không bắt buộc)",
+    zh: "绑定号码（选填）",
+  },
+  submit_review: { en: "Submit for Review", th: "ส่งตรวจสอบ", vi: "Gửi để duyệt", zh: "提交审核" },
+  submitted: { en: "Submitted 🎉", th: "ส่งแล้ว 🎉", vi: "Đã gửi 🎉", zh: "已提交 🎉" },
+  submitted_body: {
+    en: "Your bank account was submitted and is pending review.",
+    th: "ส่งบัญชีธนาคารแล้ว รอการตรวจสอบ",
+    vi: "Tài khoản ngân hàng đã được gửi và đang chờ duyệt.",
+    zh: "银行账号已提交，等待审核。",
+  },
+  submit_failed: { en: "Submission failed", th: "ส่งไม่สำเร็จ", vi: "Gửi thất bại", zh: "提交失败" },
+  required_fields: {
+    en: "Please fill in company, bank and account number.",
+    th: "กรุณาเลือกบริษัท ธนาคาร และกรอกเลขบัญชี",
+    vi: "Vui lòng chọn công ty, ngân hàng và nhập số tài khoản.",
+    zh: "请选择公司、银行并填写账号。",
+  },
+  no_accounts: { en: "No accounts yet", th: "ยังไม่มีบัญชี", vi: "Chưa có tài khoản", zh: "还没有账号" },
+  no_accounts_body: {
+    en: "Submit your first bank account with the button below.",
+    th: "กดปุ่มด้านล่างเพื่อส่งบัญชีธนาคารแรกของคุณ",
+    vi: "Nhấn nút bên dưới để gửi tài khoản ngân hàng đầu tiên.",
+    zh: "点击下方按钮提交你的第一个银行账号。",
+  },
+
   // Withdraw
   available_balance: { en: "AVAILABLE BALANCE", th: "ยอดเงินที่ถอนได้", vi: "SỐ DƯ KHẢ DỤNG", zh: "可用余额" },
   enter_amount: { en: "ENTER AMOUNT", th: "ระบุจำนวนเงิน", vi: "NHẬP SỐ TIỀN", zh: "输入金额" },

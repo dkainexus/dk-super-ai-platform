@@ -32,7 +32,14 @@ export async function POST(
     );
   }
 
-  const questions = await examQuestions(id);
+  let questions = await examQuestions(id);
+  // Random-draw exams: grade only the questions that were actually on the
+  // drawn paper (the app submits every paper question, answered or not).
+  if (exam.draw_count && exam.draw_count > 0 && exam.draw_count < questions.length) {
+    const submitted = new Set(answers.map((a) => a.question_id));
+    const drawn = questions.filter((q) => submitted.has(q.id));
+    if (drawn.length > 0) questions = drawn;
+  }
   let result;
   try {
     result = await gradeAttempt(exam, questions, answers);

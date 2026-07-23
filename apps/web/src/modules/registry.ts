@@ -27,6 +27,7 @@ import { walletModule } from "@/modules/wallet";
 import { trainingModule } from "@/modules/training";
 import { notificationsModule } from "@/modules/notifications";
 import { examsModule } from "@/modules/exams";
+import { bankAccountsModule } from "@/modules/bank-accounts";
 
 export type ModuleDef = {
   key: string;
@@ -76,6 +77,7 @@ export const MODULES: ModuleDef[] = [
   ownersModule,
   companiesModule,
   walletModule,
+  bankAccountsModule,
   trainingModule,
   notificationsModule,
   examsModule,

@@ -64,6 +64,7 @@ function Root({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="wallet/rewards" options={{ title: t("my_rewards") }} />
         <Stack.Screen name="wallet/transactions" options={{ title: t("transactions") }} />
         <Stack.Screen name="wallet/requests" options={{ title: t("requests") }} />
+        <Stack.Screen name="submit-account" options={{ title: t("submit_new_account") }} />
       </Stack>
     </>
   );

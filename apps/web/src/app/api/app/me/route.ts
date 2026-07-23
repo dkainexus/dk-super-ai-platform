@@ -44,6 +44,7 @@ export async function GET(req: Request): Promise<Response> {
       notifications: on("notifications"),
       exams: on("exams"),
       wallet: on("wallet"),
+      bank_accounts: on("bank_accounts"),
     },
   });
 }

@@ -57,6 +57,7 @@ export default function TabsLayout() {
         name="myaccount"
         options={{
           title: t("my_account"),
+          href: me.modules.bank_accounts ? undefined : null,
           tabBarIcon: () => (
             <View style={styles.fab}>
               <Ionicons name="briefcase-outline" color={colors.background} size={24} />

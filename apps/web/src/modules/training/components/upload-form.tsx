@@ -188,8 +188,25 @@ export function TrainingUploadForm({
       )}
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      <button type="submit" disabled={busy} className="btn-primary">
-        {busy ? "Uploading…" : "Upload"}
+      <button
+        type="submit"
+        disabled={busy}
+        title="Upload the video and save it"
+        className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-background transition-opacity hover:bg-accent-strong disabled:opacity-50"
+      >
+        {busy ? (
+          <>
+            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            Uploading… {pct}%
+          </>
+        ) : (
+          <>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4M4 20h16" />
+            </svg>
+            Upload Video
+          </>
+        )}
       </button>
     </form>
   );

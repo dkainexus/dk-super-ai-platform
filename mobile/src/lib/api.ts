@@ -64,7 +64,7 @@ export type Me = {
   merchant: { name: string; logo_url: string | null };
   country: { name: string | null; flag: string | null; currency: string | null };
   unread_notifications: number;
-  modules: { training: boolean; notifications: boolean; exams: boolean; wallet: boolean };
+  modules: { training: boolean; notifications: boolean; exams: boolean; wallet: boolean; bank_accounts: boolean };
 };
 
 export type VideoItem = {
@@ -139,6 +139,41 @@ export async function logout(): Promise<void> {
   await setToken(null);
 }
 
+
+export type BankAccountItem = {
+  id: string;
+  bank: string;
+  company: string;
+  account_no: string;
+  status: "pending" | "active" | "suspended" | "closed" | "rejected";
+  condition: string;
+  reject_reason: string | null;
+  activated_at: string | null;
+  created_at: string;
+};
+
+export type BankOption = {
+  id: string;
+  name: string;
+  code: string | null;
+  account_fields: { key: string; label: string }[];
+  channels: string[];
+};
+
+export type BankAccountSubmit = {
+  company_id: string;
+  bank_id: string;
+  branch_address?: string;
+  account_no: string;
+  account_limit?: number;
+  email?: string;
+  sim_number?: string;
+  login_id?: string;
+  password?: string;
+  extra?: Record<string, string>;
+  channels?: Record<string, { enabled: boolean; value?: string }>;
+};
+
 export type WalletTx = {
   id: string;
   type: "reward" | "rent" | "withdrawal" | "refund" | "adjustment";
@@ -177,6 +212,11 @@ export type WalletInfo = {
 
 export const api = {
   me: () => request<Me>("/me"),
+  bankAccounts: () => request<{ accounts: BankAccountItem[] }>("/bank-accounts"),
+  bankAccountOptions: () =>
+    request<{ companies: { id: string; name: string }[]; banks: BankOption[] }>("/bank-accounts/options"),
+  submitBankAccount: (payload: BankAccountSubmit) =>
+    request<{ ok: true }>("/bank-accounts", { method: "POST", body: JSON.stringify(payload) }),
   wallet: () => request<WalletInfo>("/wallet"),
   withdraw: (amount: number) =>
     request<{ ok: true }>("/wallet/withdraw", { method: "POST", body: JSON.stringify({ amount }) }),

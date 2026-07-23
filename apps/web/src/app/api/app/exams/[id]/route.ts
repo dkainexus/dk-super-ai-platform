@@ -20,7 +20,16 @@ export async function GET(
     );
   }
 
-  const questions = await examQuestions(id);
+  let questions = await examQuestions(id);
+  // Random draw: sample N questions per attempt when configured.
+  if (exam.draw_count && exam.draw_count > 0 && exam.draw_count < questions.length) {
+    const pool = [...questions];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    questions = pool.slice(0, exam.draw_count);
+  }
   return Response.json({
     exam: { id: exam.id, title: exam.title, pass_score: exam.pass_score },
     questions: questions.map((q) => ({

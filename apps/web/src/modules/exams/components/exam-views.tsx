@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { createExam, updateExam, saveExamContent, deleteExam, deleteQuestion } from "../actions";
+import { createExam, updateExam, saveExamContent, deleteExam, deleteQuestion, generateQuestions } from "../actions";
 import { QuestionForm } from "./question-form";
+import { GenerateButton } from "./generate-button";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
@@ -88,6 +89,10 @@ export function ExamsIndexView({
               <label className="mb-1 block text-xs text-muted">Retake wait (minutes)</label>
               <input name="retake_wait_minutes" type="number" min={0} defaultValue={0} className="input mono-num" />
             </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Random Questions (blank = all)</label>
+              <input name="draw_count" type="number" min={0} placeholder="all" className="input mono-num" />
+            </div>
             <ActionButton icon="plus" tip="Create this exam and pick questions next" label="Create Exam" variant="primary" />
           </div>
         </form>
@@ -118,6 +123,7 @@ export function ExamsIndexView({
 export function QuestionBankView({
   base,
   error,
+  generated,
   canAdd,
   canEdit,
   canDelete,
@@ -127,6 +133,7 @@ export function QuestionBankView({
 }: {
   base: string;
   error?: string;
+  generated?: string;
   canAdd: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -145,6 +152,72 @@ export function QuestionBankView({
         </p>
       </div>
       <ErrorBanner message={error} />
+      {generated && (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
+          ✨ AI generated {generated} questions — review them below and edit anything that needs polish.
+        </p>
+      )}
+
+      {canAdd && (
+        <section className="card border-accent/30 p-5">
+          <h2 className="mb-1 text-sm font-semibold">✨ Generate with AI</h2>
+          <p className="mb-3 text-xs text-muted">
+            Describe a topic and the AI writes the questions straight into the bank (marked scope applies).
+          </p>
+          <form action={generateQuestions} className="grid gap-3 sm:grid-cols-[1fr_6rem_9rem_9rem_auto]">
+            <div>
+              <label className="mb-1 block text-xs text-muted">Topic / source material</label>
+              <input name="topic" className="input" placeholder="e.g. Bank account safety rules for new members" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">How many</label>
+              <input name="count" type="number" min={1} max={20} defaultValue={5} className="input mono-num" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Type</label>
+              <select name="qtype" className="input">
+                <option value="choice">Choice</option>
+                <option value="essay">Essay (AI)</option>
+                <option value="mix">Mix</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Language</label>
+              <select name="language" className="input">
+                <option>English</option>
+                <option value="Thai">ไทย</option>
+                <option value="Vietnamese">Tiếng Việt</option>
+                <option value="Chinese">中文</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <GenerateButton />
+            </div>
+            {merchants && countries && (
+              <div className="grid gap-3 sm:col-span-full sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs text-muted">White Label</label>
+                  <select name="merchant_id" className="input">
+                    <option value="">All white labels</option>
+                    {merchants.map((m) => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Country</label>
+                  <select name="country_id" className="input">
+                    <option value="">All countries</option>
+                    {countries.map((c) => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </form>
+        </section>
+      )}
 
       {canAdd && (
         <section className="card p-5">
@@ -298,6 +371,10 @@ export function ExamDetailView({
             <div>
               <label className="mb-1 block text-xs text-muted">Retake wait (min)</label>
               <input name="retake_wait_minutes" type="number" min={0} defaultValue={exam.retake_wait_minutes} className="input mono-num" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Random Questions (blank = all)</label>
+              <input name="draw_count" type="number" min={0} defaultValue={exam.draw_count ?? ""} placeholder="all" className="input mono-num" />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Sort</label>

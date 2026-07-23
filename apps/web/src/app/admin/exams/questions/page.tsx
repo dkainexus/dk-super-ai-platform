@@ -6,10 +6,10 @@ import type { Country, ExamQuestion, Merchant } from "@/lib/types";
 export default async function AdminQuestionBankPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; generated?: string }>;
 }) {
   const { cu } = await requirePerm("exams", "view");
-  const { error } = await searchParams;
+  const { error, generated } = await searchParams;
 
   const [{ data: questions }, { data: merchants }, { data: countries }] = await Promise.all([
     db().from("exam_questions").select("*").order("created_at", { ascending: false }),
@@ -33,6 +33,7 @@ export default async function AdminQuestionBankPage({
     <QuestionBankView
       base="/admin/exams"
       error={error}
+      generated={generated}
       canAdd={Boolean(can(cu, "exams", "add"))}
       canEdit={Boolean(can(cu, "exams", "edit"))}
       canDelete={Boolean(can(cu, "exams", "delete"))}

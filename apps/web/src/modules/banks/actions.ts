@@ -6,6 +6,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
+import { ASSETS_BUCKET, fileExt, uploadFile } from "@/lib/storage";
+
+/** "App PIN" → "app_pin" — stable keys for per-bank extra account fields. */
+function slugKey(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "field";
+}
 
 function fail(path: string, message: string): never {
   const sep = path.includes("?") ? "&" : "?";
@@ -46,7 +52,30 @@ export async function updateBank(formData: FormData): Promise<void> {
   const active = formData.get("active") === "on";
   if (!name) fail(back, "Bank name cannot be empty");
 
-  const { error } = await db().from("banks").update({ name, code, sort, active }).eq("id", id);
+  // Per-bank extra account fields (one label per line) + payment channels (comma separated)
+  const accountFields = String(formData.get("account_fields") ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((label) => ({ key: slugKey(label), label }));
+  const channels = String(formData.get("channels") ?? "")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+
+  const patch: Record<string, unknown> = { name, code, sort, active, account_fields: accountFields, channels };
+
+  const logo = formData.get("logo");
+  if (logo instanceof File && logo.size > 0) {
+    if (!logo.type.startsWith("image/")) fail(back, "The logo must be an image");
+    try {
+      patch.logo_path = await uploadFile(ASSETS_BUCKET, `bank-logos/${id}.${fileExt(logo)}`, logo);
+    } catch (e) {
+      fail(back, e instanceof Error ? e.message : "Logo upload failed");
+    }
+  }
+
+  const { error } = await db().from("banks").update(patch).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);
   revalidatePath("/admin/banks");
   redirect(back);

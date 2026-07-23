@@ -1,6 +1,7 @@
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { manualCredit } from "@/modules/wallet/actions";
+import { OwnerPicker } from "@/modules/wallet/components/owner-picker";
 import { WithdrawalsQueue } from "@/modules/wallet/components/withdrawals-queue";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
@@ -23,7 +24,7 @@ export default async function AdminWalletsPage({
   const [{ data: withdrawals }, { data: wallets }, { data: owners }] = await Promise.all([
     wq,
     db().from("wallets").select("*").order("balance", { ascending: false }),
-    db().from("owners").select("id, full_name, merchant_id, status, merchant:merchants(name)"),
+    db().from("owners").select("id, full_name, merchant_id, country_id, status, merchant:merchants(name), country:countries(flag, name)"),
   ]);
 
   const ownerById = new Map(
@@ -102,21 +103,20 @@ export default async function AdminWalletsPage({
           <p className="mb-4 text-xs text-muted">
             Credit a reward or rent into an owner&apos;s wallet (adjustments may be negative). The owner is notified.
           </p>
-          <form action={manualCredit} className="grid gap-4 sm:grid-cols-[1fr_8rem_8rem_1fr_auto] sm:items-end">
+          <form action={manualCredit} className="grid gap-4 sm:grid-cols-2 sm:items-end lg:grid-cols-[1fr_1fr_1fr_7rem_7rem_1fr_auto]">
             <input type="hidden" name="back" value="/admin/wallets" />
-            <div>
-              <label className="mb-1 block text-xs text-muted">Owner</label>
-              <select name="owner_id" className="input" required>
-                <option value="">— Select an owner —</option>
-                {((owners ?? []) as unknown as (Owner & { merchant: { name: string } | null })[])
-                  .filter((o) => o.status !== "banned")
-                  .map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.full_name ?? "(no name)"} ({o.merchant?.name ?? "—"})
-                    </option>
-                  ))}
-              </select>
-            </div>
+            <OwnerPicker
+              owners={((owners ?? []) as unknown as (Owner & { merchant: { name: string } | null; country: { flag: string | null; name: string } | null })[])
+                .filter((o) => o.status !== "banned")
+                .map((o) => ({
+                  id: o.id,
+                  name: o.full_name ?? "(no name)",
+                  merchant_id: o.merchant_id,
+                  merchant_name: o.merchant?.name ?? "—",
+                  country_id: o.country_id ?? null,
+                  country_name: o.country ? `${o.country.flag ?? ""} ${o.country.name}`.trim() : "—",
+                }))}
+            />
             <div>
               <label className="mb-1 block text-xs text-muted">Type</label>
               <select name="type" className="input">

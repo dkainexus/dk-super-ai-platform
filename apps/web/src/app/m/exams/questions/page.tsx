@@ -7,12 +7,12 @@ import type { ExamQuestion } from "@/lib/types";
 export default async function MerchantQuestionBankPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; generated?: string }>;
 }) {
   const cu = await requireMerchantUser();
   await requirePerm("exams", "view");
   const { active } = await activeCountry(cu);
-  const { error } = await searchParams;
+  const { error, generated } = await searchParams;
 
   let q = db()
     .from("exam_questions")
@@ -32,6 +32,7 @@ export default async function MerchantQuestionBankPage({
     <QuestionBankView
       base="/m/exams"
       error={error}
+      generated={generated}
       canAdd={Boolean(can(cu, "exams", "add"))}
       canEdit={Boolean(can(cu, "exams", "edit"))}
       canDelete={Boolean(can(cu, "exams", "delete"))}

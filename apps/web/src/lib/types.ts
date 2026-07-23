@@ -291,6 +291,7 @@ export type Exam = {
   description: string | null;
   pass_score: number;
   retake_wait_minutes: number;
+  draw_count: number | null;
   published: boolean;
   sort: number;
   created_by: string | null;
