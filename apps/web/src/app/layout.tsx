@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DK CMS",
-  description: "DK CMS — merchant & owner management",
+  title: "DK AP System",
+  description: "DK AP System — merchant & owner management",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

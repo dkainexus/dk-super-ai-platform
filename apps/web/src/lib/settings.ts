@@ -16,7 +16,7 @@ export async function setSetting(key: string, value: unknown): Promise<void> {
 export type PlatformSettings = { name: string };
 
 export async function platformSettings(): Promise<PlatformSettings> {
-  return getSetting<PlatformSettings>("platform", { name: "DK CMS" });
+  return getSetting<PlatformSettings>("platform", { name: "DK AP System" });
 }
 
 /** Global module toggles: { owners: true, ... } (missing key = enabled). */
