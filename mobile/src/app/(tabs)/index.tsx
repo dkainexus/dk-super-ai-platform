@@ -1,37 +1,49 @@
-import { useCallback, useState } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store";
 import { api, type VideoItem, type WalletInfo } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
-import { Card, CoinIcon, Muted, Tag, Screen } from "../../components/ui";
-import { colors, palettes } from "../../lib/theme";
+import { Card, Muted, Screen } from "../../components/ui";
+import { useI18n } from "../../lib/i18n";
+import { colors, fonts, palettes } from "../../lib/theme";
 
-// Home: wallet hero (balance + quick actions), Training progress, My Account.
+// Home: wallet hero (balance + eye toggle + quick actions) and Training.
+
+const HIDE_KEY = "dk_balance_hidden";
 
 const ACTIONS = [
-  { key: "rewards", label: "My Reward", icon: "gift-outline", href: "/wallet/rewards" },
-  { key: "transactions", label: "Transactions", icon: "receipt-outline", href: "/wallet/transactions" },
-  { key: "withdraw", label: "Withdraw", icon: "cash-outline", href: "/wallet" },
-  { key: "requests", label: "Requests", icon: "time-outline", href: "/wallet/requests" },
+  { key: "my_reward", icon: "gift-outline", href: "/wallet/rewards" },
+  { key: "transactions", icon: "receipt-outline", href: "/wallet/transactions" },
+  { key: "withdraw", icon: "cash-outline", href: "/wallet" },
+  { key: "requests", icon: "time-outline", href: "/wallet/requests" },
 ] as const;
-
-// Placeholder list until account submission is wired to the CMS.
-const EXAMPLE_ACCOUNTS = [
-  { id: "1", name: "@sunny_bkk", platform: "TikTok", emoji: "🎵", status: "ACTIVE", color: colors.success },
-  { id: "2", name: "@mike.trader", platform: "Facebook", emoji: "📘", status: "PENDING", color: colors.warning },
-  { id: "3", name: "@nan_2024", platform: "Instagram", emoji: "📸", status: "REVIEW", color: colors.accentStrong },
-];
 
 export default function HomeScreen() {
   const { me, refresh } = useAuth();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [unread, setUnread] = useState(0);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
+  const [hidden, setHidden] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    SecureStore.getItemAsync(HIDE_KEY)
+      .then((v) => setHidden(v === "1"))
+      .catch(() => {});
+  }, []);
+
+  const toggleHidden = useCallback(() => {
+    setHidden((h) => {
+      SecureStore.setItemAsync(HIDE_KEY, h ? "0" : "1").catch(() => {});
+      return !h;
+    });
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -83,7 +95,7 @@ export default function HomeScreen() {
           <View style={styles.hero}>
             <View style={styles.heroTop}>
               <View style={{ flex: 1 }}>
-                <Muted style={{ fontSize: 12 }}>Hello,</Muted>
+                <Muted style={{ fontSize: 12 }}>{t("hello")}</Muted>
                 <Text style={styles.hello}>{me?.owner.name ?? me?.owner.username ?? ""}</Text>
               </View>
               {me?.modules.notifications && (
@@ -92,7 +104,7 @@ export default function HomeScreen() {
                   style={styles.bellBtn}
                   hitSlop={8}
                 >
-                  <Ionicons name="notifications-outline" size={21} color={colors.foreground} />
+                  <Ionicons name="notifications-outline" size={20} color={colors.foreground} />
                   {unread > 0 && (
                     <View style={styles.bellBadge}>
                       <Text style={styles.bellBadgeText}>{unread > 99 ? "99+" : unread}</Text>
@@ -104,18 +116,31 @@ export default function HomeScreen() {
 
             {me?.modules.wallet && (
               <>
-                <Muted style={styles.balanceLabel}>WALLET BALANCE</Muted>
-                <Text style={styles.balanceValue}>
-                  {(wallet?.balance ?? 0).toLocaleString()}{" "}
-                  <Text style={styles.balanceCurrency}>{wallet?.currency ?? ""}</Text>
-                </Text>
+                <Muted style={styles.balanceLabel}>{t("wallet_balance")}</Muted>
+                <View style={styles.balanceRow}>
+                  <Text style={styles.balanceValue}>
+                    {hidden ? "••••••" : (wallet?.balance ?? 0).toLocaleString()}
+                    {!hidden && (
+                      <Text style={styles.balanceCurrency}> {wallet?.currency ?? ""}</Text>
+                    )}
+                  </Text>
+                  <Pressable onPress={toggleHidden} hitSlop={10} style={styles.eyeBtn}>
+                    <Ionicons
+                      name={hidden ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color={colors.muted}
+                    />
+                  </Pressable>
+                </View>
                 <View style={styles.actionRow}>
                   {ACTIONS.map((a) => (
-                    <Pressable key={a.key} style={styles.action} onPress={() => router.push(a.href)}>
-                      <View style={styles.actionIcon}>
-                        <Ionicons name={a.icon} size={20} color={colors.accent} />
-                      </View>
-                      <Text style={styles.actionLabel}>{a.label}</Text>
+                    <Pressable
+                      key={a.key}
+                      style={({ pressed }) => [styles.action, pressed && { opacity: 0.8 }]}
+                      onPress={() => router.push(a.href)}
+                    >
+                      <Ionicons name={a.icon} size={21} color={colors.accent} />
+                      <Text style={styles.actionLabel}>{t(a.key)}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -127,13 +152,20 @@ export default function HomeScreen() {
         {/* Training */}
         {me?.modules.training && (
           <View style={{ gap: 10 }}>
-            <Text style={styles.sectionTitle}>TRAINING</Text>
+            <Text style={styles.sectionTitle}>{t("training").toUpperCase()}</Text>
             <Pressable onPress={() => router.push("/(tabs)/training")}>
               <Card style={styles.trainingCard}>
-                <CoinIcon emoji="🎬" from={palettes.violet.from} to={palettes.violet.to} />
+                <LinearGradient
+                  colors={[palettes.violet.from, palettes.violet.to]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.trainingIcon}
+                >
+                  <Ionicons name="play" size={19} color="#fff" />
+                </LinearGradient>
                 <View style={{ flex: 1, gap: 6 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={styles.trainingTitle}>Your progress</Text>
+                    <Text style={styles.trainingTitle}>{t("your_progress")}</Text>
                     <Text style={styles.trainingPct}>{progressPct}%</Text>
                   </View>
                   <View style={styles.progressTrack}>
@@ -145,7 +177,7 @@ export default function HomeScreen() {
                     />
                   </View>
                   <Muted style={{ fontSize: 12 }}>
-                    {completed} of {videos.length} videos completed
+                    {t("videos_completed", { done: completed, total: videos.length })}
                   </Muted>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.muted} />
@@ -153,51 +185,20 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         )}
-
-        {/* My Account */}
-        <View style={{ gap: 10 }}>
-          <Text style={styles.sectionTitle}>MY ACCOUNT</Text>
-          <Card style={{ padding: 0 }}>
-            {EXAMPLE_ACCOUNTS.map((a, i) => (
-              <View
-                key={a.id}
-                style={[styles.accountRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}
-              >
-                <View style={styles.accountIcon}>
-                  <Text style={{ fontSize: 18 }}>{a.emoji}</Text>
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={styles.accountName}>{a.name}</Text>
-                  <Muted style={{ fontSize: 12 }}>{a.platform}</Muted>
-                </View>
-                <Tag label={a.status} color={a.color} />
-              </View>
-            ))}
-          </Card>
-          <Pressable
-            onPress={() =>
-              Alert.alert("Coming soon", "Account submission will be available in an upcoming update.")
-            }
-            style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.85 }]}
-          >
-            <Ionicons name="add-circle-outline" size={19} color={colors.background} />
-            <Text style={styles.submitText}>Submit New Account</Text>
-          </Pressable>
-        </View>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  heroBorder: { borderRadius: 20, padding: 1.5 },
-  hero: { borderRadius: 18.5, backgroundColor: colors.surface, padding: 18 },
-  heroTop: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  hello: { color: colors.foreground, fontSize: 20, fontWeight: "700" },
+  heroBorder: { borderRadius: 22, padding: 1.5 },
+  hero: { borderRadius: 20.5, backgroundColor: colors.surface, padding: 18 },
+  heroTop: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
+  hello: { color: colors.foreground, fontSize: 18, fontFamily: fonts.bold },
   bellBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
@@ -216,33 +217,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  bellBadgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
-  balanceLabel: { fontSize: 11, letterSpacing: 1.5, fontWeight: "700" },
+  bellBadgeText: { color: "#fff", fontSize: 10, fontFamily: fonts.extrabold },
+  balanceLabel: { fontSize: 11, letterSpacing: 1.5, fontFamily: fonts.bold },
+  balanceRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   balanceValue: {
     color: colors.accent,
-    fontSize: 40,
-    fontWeight: "800",
+    fontSize: 34,
+    fontFamily: fonts.extrabold,
     marginTop: 4,
     fontVariant: ["tabular-nums"],
   },
-  balanceCurrency: { color: colors.muted, fontSize: 16, fontWeight: "600" },
+  balanceCurrency: { color: colors.muted, fontSize: 15, fontFamily: fonts.semibold },
+  eyeBtn: { marginTop: 6 },
   actionRow: { flexDirection: "row", gap: 8, marginTop: 16 },
-  action: { flex: 1, alignItems: "center", gap: 6 },
-  actionIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: colors.accentSoft,
-    borderWidth: 1,
-    borderColor: colors.border,
+  action: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  actionLabel: { color: colors.foreground, fontSize: 10.5, fontWeight: "600" },
-  sectionTitle: { color: colors.muted, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
+  actionLabel: { color: colors.foreground, fontSize: 10, fontFamily: fonts.semibold },
+  sectionTitle: { color: colors.muted, fontSize: 11, fontFamily: fonts.bold, letterSpacing: 1.2 },
   trainingCard: { flexDirection: "row", alignItems: "center", gap: 12 },
-  trainingTitle: { color: colors.foreground, fontSize: 14, fontWeight: "600" },
-  trainingPct: { color: colors.accent, fontSize: 14, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  trainingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingLeft: 2,
+  },
+  trainingTitle: { color: colors.foreground, fontSize: 14, fontFamily: fonts.semibold },
+  trainingPct: { color: colors.accent, fontSize: 14, fontFamily: fonts.extrabold, fontVariant: ["tabular-nums"] },
   progressTrack: {
     height: 7,
     borderRadius: 4,
@@ -250,26 +261,4 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   progressFill: { height: "100%", borderRadius: 4 },
-  accountRow: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
-  accountIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  accountName: { color: colors.foreground, fontSize: 14, fontWeight: "600" },
-  submitBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    paddingVertical: 13,
-  },
-  submitText: { color: colors.background, fontSize: 15, fontWeight: "700" },
 });

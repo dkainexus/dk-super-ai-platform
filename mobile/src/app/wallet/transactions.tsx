@@ -3,17 +3,19 @@ import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { api, type WalletInfo, type WalletTx } from "../../lib/api";
 import { CoinIcon, Muted, Screen } from "../../components/ui";
-import { colors, palettes } from "../../lib/theme";
+import { useI18n } from "../../lib/i18n";
+import { colors, palettes, fonts } from "../../lib/theme";
 
-const TX_META: Record<WalletTx["type"], { label: string; emoji: string; from: string; to: string }> = {
-  reward: { label: "Reward", emoji: "🏆", from: palettes.amber.from, to: palettes.amber.to },
-  rent: { label: "Rent", emoji: "🏠", from: palettes.blue.from, to: palettes.blue.to },
-  withdrawal: { label: "Withdrawal", emoji: "💸", from: palettes.pink.from, to: palettes.pink.to },
-  refund: { label: "Refund", emoji: "↩️", from: palettes.mint.from, to: palettes.mint.to },
-  adjustment: { label: "Adjustment", emoji: "⚖️", from: palettes.violet.from, to: palettes.violet.to },
+const TX_META: Record<WalletTx["type"], { key: string; emoji: string; from: string; to: string }> = {
+  reward: { key: "tx_reward", emoji: "🏆", from: palettes.amber.from, to: palettes.amber.to },
+  rent: { key: "tx_rent", emoji: "🏠", from: palettes.blue.from, to: palettes.blue.to },
+  withdrawal: { key: "tx_withdrawal", emoji: "💸", from: palettes.pink.from, to: palettes.pink.to },
+  refund: { key: "tx_refund", emoji: "↩️", from: palettes.mint.from, to: palettes.mint.to },
+  adjustment: { key: "tx_adjustment", emoji: "⚖️", from: palettes.violet.from, to: palettes.violet.to },
 };
 
 export default function TransactionsScreen() {
+  const { t } = useI18n();
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -50,7 +52,7 @@ export default function TransactionsScreen() {
           wallet ? (
             <View style={styles.empty}>
               <Text style={{ fontSize: 44 }}>📄</Text>
-              <Muted>No transactions yet.</Muted>
+              <Muted>{t("no_transactions")}</Muted>
             </View>
           ) : null
         }
@@ -60,7 +62,7 @@ export default function TransactionsScreen() {
             <View style={styles.row}>
               <CoinIcon emoji={meta.emoji} from={meta.from} to={meta.to} />
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.rowTitle}>{meta.label}</Text>
+                <Text style={styles.rowTitle}>{t(meta.key)}</Text>
                 <Muted style={{ fontSize: 12 }}>
                   {new Date(item.created_at).toLocaleDateString()}
                   {item.note ? ` · ${item.note}` : ""}
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 12,
   },
-  rowTitle: { color: colors.foreground, fontSize: 14, fontWeight: "600" },
-  amount: { fontSize: 16, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  rowTitle: { color: colors.foreground, fontSize: 14, fontFamily: fonts.semibold },
+  amount: { fontSize: 16, fontFamily: fonts.extrabold, fontVariant: ["tabular-nums"] },
   empty: { alignItems: "center", gap: 10, paddingTop: 80 },
 });

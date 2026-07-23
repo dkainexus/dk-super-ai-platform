@@ -4,7 +4,8 @@ import { useFocusEffect } from "expo-router";
 import { api, type NotificationItem } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { Button, Muted, Screen, Tag } from "../../components/ui";
-import { colors } from "../../lib/theme";
+import { colors, fonts } from "../../lib/theme";
+import { useI18n } from "../../lib/i18n";
 
 const TYPE_COLORS: Record<NotificationItem["type"], string> = {
   general: colors.muted,
@@ -23,6 +24,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function NotificationsScreen() {
+  const { t } = useI18n();
   const { refresh } = useAuth();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
@@ -92,7 +94,7 @@ export default function NotificationsScreen() {
           loaded ? (
             <View style={styles.empty}>
               <Text style={{ fontSize: 40 }}>🔔</Text>
-              <Muted>No notifications yet.</Muted>
+              <Muted>{t("no_notifications")}</Muted>
             </View>
           ) : null
         }
@@ -130,7 +132,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   rowUnread: { borderColor: `${colors.accent}55`, backgroundColor: colors.surfaceRaised },
-  title: { color: colors.foreground, fontSize: 15, fontWeight: "600" },
+  title: { color: colors.foreground, fontSize: 15, fontFamily: fonts.semibold },
   unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent, marginLeft: "auto" },
   empty: { alignItems: "center", gap: 10, paddingTop: 80 },
 });

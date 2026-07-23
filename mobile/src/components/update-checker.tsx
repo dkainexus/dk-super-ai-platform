@@ -5,7 +5,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as IntentLauncher from "expo-intent-launcher";
 import Constants from "expo-constants";
 import { Button, Muted } from "./ui";
-import { colors } from "../lib/theme";
+import { colors, fonts } from "../lib/theme";
+import { useI18n } from "../lib/i18n";
 
 // In-app updater: checks /api/app/version on launch, and when a newer
 // version is published shows a prompt — one tap downloads the APK with a
@@ -17,6 +18,7 @@ const API_BASE: string =
 type Release = { version_code: number; version_name: string; notes: string | null; url: string | null };
 
 export function UpdateChecker() {
+  const { t } = useI18n();
   const [release, setRelease] = useState<Release | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -57,7 +59,7 @@ export function UpdateChecker() {
         flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
       });
     } catch {
-      Alert.alert("Update failed", "Could not download the update. Please try again later.");
+      Alert.alert(t("update_failed"), t("update_failed_body"));
     } finally {
       setDownloading(false);
     }
@@ -69,7 +71,7 @@ export function UpdateChecker() {
     <Modal visible transparent animationType="fade" onRequestClose={() => setDismissed(true)}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>Update available</Text>
+          <Text style={styles.title}>{t("update_available")}</Text>
           <Text style={styles.version}>v{release.version_name}</Text>
           {release.notes ? <Muted style={styles.notes}>{release.notes}</Muted> : null}
 
@@ -78,13 +80,13 @@ export function UpdateChecker() {
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: `${pct}%` }]} />
               </View>
-              <Muted style={{ marginTop: 8, textAlign: "center" }}>Downloading… {pct}%</Muted>
+              <Muted style={{ marginTop: 8, textAlign: "center" }}>{t("downloading", { pct })}</Muted>
             </View>
           ) : (
             <View style={{ marginTop: 16, gap: 10 }}>
-              <Button label="Update Now" onPress={install} />
+              <Button label={t("update_now")} onPress={install} />
               <Pressable onPress={() => setDismissed(true)} style={styles.later}>
-                <Muted style={{ textAlign: "center" }}>Later</Muted>
+                <Muted style={{ textAlign: "center" }}>{t("later")}</Muted>
               </Pressable>
             </View>
           )}
@@ -108,8 +110,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 22,
   },
-  title: { color: colors.foreground, fontSize: 18, fontWeight: "700" },
-  version: { color: colors.accent, fontSize: 26, fontWeight: "700", marginTop: 4 },
+  title: { color: colors.foreground, fontSize: 18, fontFamily: fonts.bold },
+  version: { color: colors.accent, fontSize: 26, fontFamily: fonts.bold, marginTop: 4 },
   notes: { marginTop: 8, lineHeight: 20 },
   progressTrack: {
     height: 8,

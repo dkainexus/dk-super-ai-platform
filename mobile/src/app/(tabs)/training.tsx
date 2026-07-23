@@ -12,7 +12,8 @@ import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api, type VideoItem } from "../../lib/api";
 import { Muted, Screen } from "../../components/ui";
-import { colors } from "../../lib/theme";
+import { colors, fonts } from "../../lib/theme";
+import { useI18n } from "../../lib/i18n";
 
 function fmtDuration(s: number | null): string {
   if (!s) return "";
@@ -21,6 +22,7 @@ function fmtDuration(s: number | null): string {
 }
 
 export default function TrainingScreen() {
+  const { t } = useI18n();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -63,7 +65,7 @@ export default function TrainingScreen() {
           loaded ? (
             <View style={styles.empty}>
               <Text style={{ fontSize: 40 }}>🎬</Text>
-              <Muted>No training videos yet. Pull to refresh.</Muted>
+              <Muted>{t("no_videos")}</Muted>
             </View>
           ) : null
         }
@@ -151,7 +153,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   durText: { color: "#fff", fontSize: 11, fontVariant: ["tabular-nums"] },
-  title: { color: colors.foreground, fontSize: 13, fontWeight: "600", flexShrink: 1 },
+  title: { color: colors.foreground, fontSize: 13, fontFamily: fonts.semibold, flexShrink: 1 },
   progressTrack: {
     height: 4,
     borderRadius: 2,

@@ -11,7 +11,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors, radius } from "../lib/theme";
+import { colors, radius, fonts } from "../lib/theme";
 
 export function Card({
   children,
@@ -94,7 +94,7 @@ export function Tag({ label, color = colors.muted }: { label: string; color?: st
 }
 
 export function Muted({ children, style }: { children: React.ReactNode; style?: object }) {
-  return <Text style={[{ color: colors.muted, fontSize: 13 }, style]}>{children}</Text>;
+  return <Text style={[{ color: colors.muted, fontSize: 13, fontFamily: fonts.regular }, style]}>{children}</Text>;
 }
 
 export function Screen({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   btnPrimary: { backgroundColor: colors.accent },
   btnOutline: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceRaised },
   btnDanger: { borderWidth: 1, borderColor: `${colors.danger}66`, backgroundColor: "transparent" },
-  btnText: { fontSize: 15, fontWeight: "600", color: colors.foreground },
+  btnText: { fontSize: 15, fontFamily: fonts.semibold, color: colors.foreground },
   input: {
     height: 48,
     borderRadius: radius.control,
@@ -138,6 +138,7 @@ const styles = StyleSheet.create({
     color: colors.foreground,
     paddingHorizontal: 14,
     fontSize: 15,
+    fontFamily: fonts.regular,
   },
   tag: {
     borderWidth: 1,
@@ -146,5 +147,5 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     alignSelf: "flex-start",
   },
-  tagText: { fontSize: 10, fontWeight: "600" },
+  tagText: { fontSize: 10, fontFamily: fonts.semibold },
 });

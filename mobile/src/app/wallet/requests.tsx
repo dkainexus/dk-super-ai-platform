@@ -4,7 +4,8 @@ import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api, type WalletInfo, type WithdrawalItem } from "../../lib/api";
 import { Muted, Screen, Tag } from "../../components/ui";
-import { colors } from "../../lib/theme";
+import { useI18n } from "../../lib/i18n";
+import { colors, fonts } from "../../lib/theme";
 
 // Withdrawal requests + their review status.
 
@@ -15,6 +16,7 @@ const STATUS: Record<WithdrawalItem["status"], { color: string; icon: keyof type
 };
 
 export default function RequestsScreen() {
+  const { t } = useI18n();
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -51,7 +53,7 @@ export default function RequestsScreen() {
           wallet ? (
             <View style={styles.empty}>
               <Text style={{ fontSize: 44 }}>🧾</Text>
-              <Muted>No withdrawal requests yet.</Muted>
+              <Muted>{t("no_requests")}</Muted>
             </View>
           ) : null
         }
@@ -101,6 +103,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  rowTitle: { color: colors.foreground, fontSize: 15, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  rowTitle: { color: colors.foreground, fontSize: 15, fontFamily: fonts.bold, fontVariant: ["tabular-nums"] },
   empty: { alignItems: "center", gap: 10, paddingTop: 80 },
 });

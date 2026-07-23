@@ -5,9 +5,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { login } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { Button, Input, Screen } from "../components/ui";
-import { colors } from "../lib/theme";
+import { colors, fonts } from "../lib/theme";
+import { useI18n } from "../lib/i18n";
 
 export default function LoginScreen() {
+  const { t } = useI18n();
   const { me, refresh } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -49,26 +51,26 @@ export default function LoginScreen() {
             <Text style={styles.badgeText}>DK</Text>
           </LinearGradient>
         </View>
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Sign in with the account your manager gave you</Text>
+        <Text style={styles.title}>{t("welcome_back")}</Text>
+        <Text style={styles.subtitle}>{t("login_subtitle")}</Text>
 
         <View style={{ gap: 12, marginTop: 28 }}>
           <Input
-            placeholder="Username"
+            placeholder={t("username")}
             autoCapitalize="none"
             autoCorrect={false}
             value={username}
             onChangeText={setUsername}
           />
           <Input
-            placeholder="Password"
+            placeholder={t("password")}
             secureTextEntry
             value={password}
             onChangeText={setPassword}
             onSubmitEditing={onLogin}
           />
           {error && <Text style={styles.error}>{error}</Text>}
-          <Button label="Sign In" onPress={onLogin} busy={busy} />
+          <Button label={t("sign_in")} onPress={onLogin} busy={busy} />
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -85,11 +87,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: { fontSize: 26, fontWeight: "800", color: colors.background },
+  badgeText: { fontSize: 26, fontFamily: fonts.extrabold, color: colors.background },
   title: {
     color: colors.foreground,
     fontSize: 26,
-    fontWeight: "700",
+    fontFamily: fonts.bold,
     textAlign: "center",
   },
   subtitle: { color: colors.muted, fontSize: 14, textAlign: "center", marginTop: 6 },

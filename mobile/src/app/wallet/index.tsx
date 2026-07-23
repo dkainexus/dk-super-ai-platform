@@ -5,13 +5,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { api, ApiError, type WalletInfo } from "../../lib/api";
 import { Button, Muted, Screen } from "../../components/ui";
-import { colors, palettes } from "../../lib/theme";
+import { useI18n } from "../../lib/i18n";
+import { colors, palettes, fonts } from "../../lib/theme";
 
 // Withdraw screen: balance hero + amount entry with quick-pick chips.
 
 const CHIPS = [0.25, 0.5, 0.75, 1] as const;
 
 export default function WithdrawScreen() {
+  const { t } = useI18n();
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -42,12 +44,12 @@ export default function WithdrawScreen() {
       await api.withdraw(value);
       setAmount("");
       Alert.alert(
-        "Request sent 🎉",
-        "Your withdrawal request has been received. Track it under Requests.",
+        t("request_sent"),
+        t("request_sent_body"),
         [{ text: "OK", onPress: () => router.back() }]
       );
     } catch (e) {
-      Alert.alert("Withdrawal failed", e instanceof ApiError ? e.message : "Please try again.");
+      Alert.alert(t("withdrawal_failed"), e instanceof ApiError ? e.message : t("try_again"));
     } finally {
       setSubmitting(false);
     }
@@ -64,7 +66,7 @@ export default function WithdrawScreen() {
           style={styles.heroBorder}
         >
           <View style={styles.hero}>
-            <Muted style={styles.heroLabel}>AVAILABLE BALANCE</Muted>
+            <Muted style={styles.heroLabel}>{t("available_balance")}</Muted>
             <Text style={styles.heroValue}>
               {balance.toLocaleString()} <Text style={styles.heroCurrency}>{wallet?.currency ?? ""}</Text>
             </Text>
@@ -82,18 +84,17 @@ export default function WithdrawScreen() {
         {pending ? (
           <View style={styles.pendingCard}>
             <Text style={{ fontSize: 30 }}>⏳</Text>
-            <Text style={styles.pendingTitle}>Withdrawal pending</Text>
+            <Text style={styles.pendingTitle}>{t("withdrawal_pending")}</Text>
             <Muted style={{ textAlign: "center" }}>
-              {pending.amount.toLocaleString()} {pending.currency} is being processed. You can request
-              again once it completes.
+              {t("withdrawal_pending_body", { amount: pending.amount.toLocaleString(), currency: pending.currency })}
             </Muted>
-            <Button label="View Requests" variant="outline" onPress={() => router.push("/wallet/requests")} />
+            <Button label={t("view_requests")} variant="outline" onPress={() => router.push("/wallet/requests")} />
           </View>
         ) : (
           <>
             {/* Amount entry */}
             <View style={styles.amountCard}>
-              <Muted style={styles.amountLabel}>ENTER AMOUNT</Muted>
+              <Muted style={styles.amountLabel}>{t("enter_amount")}</Muted>
               <View style={styles.amountRow}>
                 <TextInput
                   value={amount}
@@ -124,19 +125,19 @@ export default function WithdrawScreen() {
               </View>
               {Number.isFinite(value) && value > balance && (
                 <Muted style={{ color: colors.danger, fontSize: 12 }}>
-                  Amount exceeds your balance.
+                  {t("amount_exceeds")}
                 </Muted>
               )}
             </View>
 
             <Button
-              label={valid ? `Withdraw ${value.toLocaleString()} ${wallet?.currency ?? ""}` : "Withdraw"}
+              label={valid ? `${t("withdraw")} ${value.toLocaleString()} ${wallet?.currency ?? ""}` : t("withdraw")}
               busy={submitting}
               variant={valid ? "primary" : "outline"}
               onPress={submit}
             />
             <Muted style={{ textAlign: "center", fontSize: 12 }}>
-              Funds are transferred to your registered bank account after review.
+              {t("funds_note")}
             </Muted>
           </>
         )}
@@ -148,15 +149,15 @@ export default function WithdrawScreen() {
 const styles = StyleSheet.create({
   heroBorder: { borderRadius: 18, padding: 1.5 },
   hero: { borderRadius: 16.5, backgroundColor: colors.surface, padding: 20 },
-  heroLabel: { fontSize: 11, letterSpacing: 1.5, fontWeight: "700" },
+  heroLabel: { fontSize: 11, letterSpacing: 1.5, fontFamily: fonts.bold },
   heroValue: {
     color: colors.accent,
     fontSize: 38,
-    fontWeight: "800",
+    fontFamily: fonts.extrabold,
     marginTop: 6,
     fontVariant: ["tabular-nums"],
   },
-  heroCurrency: { color: colors.muted, fontSize: 16, fontWeight: "600" },
+  heroCurrency: { color: colors.muted, fontSize: 16, fontFamily: fonts.semibold },
   bankRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   pendingCard: {
     backgroundColor: colors.surface,
@@ -167,7 +168,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  pendingTitle: { color: colors.foreground, fontSize: 17, fontWeight: "700" },
+  pendingTitle: { color: colors.foreground, fontSize: 17, fontFamily: fonts.bold },
   amountCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 14,
   },
-  amountLabel: { fontSize: 11, letterSpacing: 1.5, fontWeight: "700" },
+  amountLabel: { fontSize: 11, letterSpacing: 1.5, fontFamily: fonts.bold },
   amountRow: {
     flexDirection: "row",
     alignItems: "baseline",
@@ -189,13 +190,13 @@ const styles = StyleSheet.create({
   amountInput: {
     color: colors.foreground,
     fontSize: 44,
-    fontWeight: "800",
+    fontFamily: fonts.extrabold,
     minWidth: 90,
     textAlign: "center",
     padding: 0,
     fontVariant: ["tabular-nums"],
   },
-  amountCurrency: { color: colors.muted, fontSize: 18, fontWeight: "600" },
+  amountCurrency: { color: colors.muted, fontSize: 18, fontFamily: fonts.semibold },
   chipRow: { flexDirection: "row", gap: 8 },
   chip: {
     flex: 1,
@@ -207,5 +208,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.foreground, fontSize: 13, fontWeight: "700" },
+  chipText: { color: colors.foreground, fontSize: 13, fontFamily: fonts.bold },
 });

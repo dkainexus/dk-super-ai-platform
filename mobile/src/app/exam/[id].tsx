@@ -15,7 +15,7 @@ import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api, type ExamPaper, type ExamResult } from "../../lib/api";
 import { Button, Card, Muted, Screen } from "../../components/ui";
-import { colors } from "../../lib/theme";
+import { colors, fonts } from "../../lib/theme";
 
 export default function ExamScreen() {
   const { id, title } = useLocalSearchParams<{ id: string; title?: string }>();
@@ -211,8 +211,8 @@ export default function ExamScreen() {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
-  gradingTitle: { color: colors.foreground, fontSize: 18, fontWeight: "700" },
-  qTitle: { color: colors.foreground, fontSize: 15, fontWeight: "600", flexShrink: 1 },
+  gradingTitle: { color: colors.foreground, fontSize: 18, fontFamily: fonts.bold },
+  qTitle: { color: colors.foreground, fontSize: 15, fontFamily: fonts.semibold, flexShrink: 1 },
   option: {
     flexDirection: "row",
     alignItems: "center",
@@ -250,6 +250,6 @@ const styles = StyleSheet.create({
   resultHero: { alignItems: "center", gap: 6, paddingVertical: 24 },
   passBorder: { borderColor: `${colors.success}66` },
   failBorder: { borderColor: `${colors.danger}66` },
-  scoreText: { fontSize: 42, fontWeight: "800", fontVariant: ["tabular-nums"] },
-  resultTitle: { color: colors.foreground, fontSize: 18, fontWeight: "700" },
+  scoreText: { fontSize: 42, fontFamily: fonts.extrabold, fontVariant: ["tabular-nums"] },
+  resultTitle: { color: colors.foreground, fontSize: 18, fontFamily: fonts.bold },
 });

@@ -4,9 +4,11 @@ import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api, type ExamListItem } from "../../lib/api";
 import { Muted, Screen, Tag } from "../../components/ui";
-import { colors } from "../../lib/theme";
+import { colors, fonts } from "../../lib/theme";
+import { useI18n } from "../../lib/i18n";
 
 export default function ExamsScreen() {
+  const { t } = useI18n();
   const [exams, setExams] = useState<ExamListItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -47,7 +49,7 @@ export default function ExamsScreen() {
           loaded ? (
             <View style={styles.empty}>
               <Text style={{ fontSize: 40 }}>📝</Text>
-              <Muted>No exams yet. Pull to refresh.</Muted>
+              <Muted>{t("no_exams")}</Muted>
             </View>
           ) : null
         }
@@ -138,7 +140,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  title: { color: colors.foreground, fontSize: 15, fontWeight: "600" },
+  title: { color: colors.foreground, fontSize: 15, fontFamily: fonts.semibold },
   lockBox: {
     marginTop: 10,
     borderRadius: 10,
@@ -156,6 +158,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
   },
-  takeText: { color: colors.background, fontSize: 14, fontWeight: "700" },
+  takeText: { color: colors.background, fontSize: 14, fontFamily: fonts.bold },
   empty: { alignItems: "center", gap: 10, paddingTop: 80 },
 });
