@@ -53,6 +53,8 @@ export default function TrainingScreen() {
       <FlatList
         data={videos}
         keyExtractor={(v) => v.id}
+        numColumns={2}
+        columnWrapperStyle={{ gap: 12 }}
         contentContainerStyle={{ padding: 16, gap: 12 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
@@ -84,7 +86,7 @@ export default function TrainingScreen() {
                   </View>
                 )}
                 <View style={styles.playBadge}>
-                  <Ionicons name="play" size={16} color={colors.background} />
+                  <Ionicons name="play" size={14} color={colors.background} />
                 </View>
                 {v.duration_seconds ? (
                   <View style={styles.durBadge}>
@@ -92,20 +94,15 @@ export default function TrainingScreen() {
                   </View>
                 ) : null}
               </View>
-              <View style={{ padding: 14, gap: 6 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Text style={styles.title} numberOfLines={1}>
+              <View style={{ padding: 10, gap: 5 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={styles.title} numberOfLines={2}>
                     {v.title}
                   </Text>
                   {v.completed && (
-                    <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                    <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                   )}
                 </View>
-                {v.description ? (
-                  <Muted style={{ fontSize: 12 }}>
-                    {v.description.length > 90 ? `${v.description.slice(0, 90)}…` : v.description}
-                  </Muted>
-                ) : null}
                 {pct > 0 && !v.completed && (
                   <View style={styles.progressTrack}>
                     <View style={[styles.progressFill, { width: `${pct}%` }]} />
@@ -122,10 +119,11 @@ export default function TrainingScreen() {
 
 const styles = StyleSheet.create({
   card: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: "hidden",
   },
   thumbWrap: { position: "relative" },
@@ -133,11 +131,11 @@ const styles = StyleSheet.create({
   thumbFallback: { alignItems: "center", justifyContent: "center" },
   playBadge: {
     position: "absolute",
-    right: 12,
-    bottom: 12,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    right: 8,
+    bottom: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
@@ -145,15 +143,15 @@ const styles = StyleSheet.create({
   },
   durBadge: {
     position: "absolute",
-    left: 12,
-    bottom: 12,
+    left: 8,
+    bottom: 8,
     backgroundColor: "rgba(0,0,0,0.7)",
     borderRadius: 4,
     paddingHorizontal: 5,
     paddingVertical: 1,
   },
   durText: { color: "#fff", fontSize: 11, fontVariant: ["tabular-nums"] },
-  title: { color: colors.foreground, fontSize: 15, fontWeight: "600", flexShrink: 1 },
+  title: { color: colors.foreground, fontSize: 13, fontWeight: "600", flexShrink: 1 },
   progressTrack: {
     height: 4,
     borderRadius: 2,

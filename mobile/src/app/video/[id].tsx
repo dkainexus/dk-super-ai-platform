@@ -41,25 +41,31 @@ export default function VideoScreen() {
       .catch(() => setError("Could not play this video"));
   }, [url, player]);
 
-  // Report watch progress every 10s while playing, and once more on exit.
+  // Report watch progress every 10s while playing, immediately when playback
+  // reaches the end, and once more on exit (reading the live position — the
+  // interval snapshot alone can miss the final stretch and never mark
+  // completion on short videos).
   const last = useRef({ seconds: 0, duration: 0 });
   useEffect(() => {
-    const timer = setInterval(() => {
-      const seconds = Math.floor(player.currentTime || 0);
-      const duration = Math.floor(player.duration || 0);
+    const report = () => {
+      const seconds = Math.max(Math.floor(player.currentTime || 0), last.current.seconds);
+      const duration = Math.floor(player.duration || 0) || last.current.duration;
       if (seconds > 0) {
         last.current = { seconds, duration };
         const completed = duration > 0 && seconds / duration >= 0.9;
         api.reportProgress(String(id), seconds, completed).catch(() => {});
       }
-    }, 10000);
+    };
+    const timer = setInterval(report, 10000);
+    const ended = player.addListener("playToEnd", () => {
+      const duration = Math.floor(player.duration || 0) || last.current.duration;
+      last.current = { seconds: duration, duration };
+      api.reportProgress(String(id), duration, true).catch(() => {});
+    });
     return () => {
       clearInterval(timer);
-      const { seconds, duration } = last.current;
-      if (seconds > 0) {
-        const completed = duration > 0 && seconds / duration >= 0.9;
-        api.reportProgress(String(id), seconds, completed).catch(() => {});
-      }
+      ended.remove();
+      report();
     };
   }, [id, player]);
 

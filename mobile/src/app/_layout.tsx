@@ -5,16 +5,23 @@ import * as SplashScreen from "expo-splash-screen";
 import * as ScreenCapture from "expo-screen-capture";
 import { AuthProvider, useAuth } from "../lib/auth-context";
 import { UpdateChecker } from "../components/update-checker";
+import { initNotifications } from "../lib/notification-poller";
 import { colors } from "../lib/theme";
 
 SplashScreen.preventAutoHideAsync();
 
 function Root() {
-  const { ready } = useAuth();
+  const { ready, me } = useAuth();
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
+
+  // Once logged in, set up system notifications (channel + permission +
+  // background poll) so alerts land in the phone's notification tray.
+  useEffect(() => {
+    if (me?.modules.notifications) initNotifications();
+  }, [me?.modules.notifications]);
 
   // FLAG_SECURE for the whole app: blocks screenshots and makes screen
   // recordings render black (training-content protection).
