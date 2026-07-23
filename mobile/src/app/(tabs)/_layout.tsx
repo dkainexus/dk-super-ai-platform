@@ -44,6 +44,16 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="exams"
+        options={{
+          title: "Exams",
+          href: me.modules.exams ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="school-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="notifications"
         options={{
           title: "Alerts",

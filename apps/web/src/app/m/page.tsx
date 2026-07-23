@@ -63,6 +63,19 @@ export default async function MerchantDashboard() {
     videoCount = count ?? 0;
   }
 
+  const examsOn = moduleEnabledFor("exams", toggles, cu.merchant, active) && can(cu, "exams", "view");
+  let examCount = 0;
+  if (examsOn) {
+    let q = db()
+      .from("exams")
+      .select("id", { count: "exact", head: true })
+      .or(`merchant_id.is.null,merchant_id.eq.${cu.merchant.id}`)
+      .eq("published", true);
+    if (active) q = q.or(`country_id.is.null,country_id.eq.${active.id}`);
+    const { count } = await q;
+    examCount = count ?? 0;
+  }
+
   let notifCount = 0;
   let notifUnread = 0;
   if (notificationsOn) {
@@ -142,7 +155,7 @@ export default async function MerchantDashboard() {
             ))}
           </div>
 
-          {(trainingOn || notificationsOn) && (
+          {(trainingOn || notificationsOn || examsOn) && (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {trainingOn && (
                 <StatCard
@@ -151,6 +164,15 @@ export default async function MerchantDashboard() {
                   icon="🎬"
                   palette={PALETTES.violet}
                   href="/m/training"
+                />
+              )}
+              {examsOn && (
+                <StatCard
+                  label="Exams"
+                  value={examCount}
+                  icon="📝"
+                  palette={PALETTES.blue}
+                  href="/m/exams"
                 />
               )}
               {notificationsOn && (

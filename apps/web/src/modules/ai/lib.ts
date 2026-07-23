@@ -213,6 +213,28 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
     }));
   }
 
+  const examScope = can(cu, "exams", "view");
+  if (examScope && on("exams")) {
+    let q = db()
+      .from("exams")
+      .select("title, pass_score, published, merchant_id, country_id, attempts:exam_attempts(score, passed, owner:owners(full_name, merchant_id))")
+      .order("sort")
+      .limit(50);
+    if (cu.merchant) q = q.or(`merchant_id.is.null,merchant_id.eq.${cu.merchant.id}`);
+    const { data: examRows } = await q;
+    ctx.exams = ((examRows ?? []) as Row[]).map((e) => ({
+      title: e.title,
+      pass_score: e.pass_score,
+      published: e.published,
+      white_label: e.merchant_id ? merchantName.get(e.merchant_id as string) ?? null : "(all)",
+      country: e.country_id ? countryName.get(e.country_id as string) ?? null : "(all)",
+      attempts: ((e.attempts as { score: number | null; passed: boolean | null; owner: { full_name?: string; merchant_id?: string } | null }[]) ?? [])
+        // Merchants only see their own owners' attempts on shared exams.
+        .filter((a) => !cu.merchant || a.owner?.merchant_id === cu.merchant.id)
+        .map((a) => ({ owner: a.owner?.full_name ?? null, score: a.score, passed: a.passed })),
+    }));
+  }
+
   if (!cu.merchant && can(cu, "telegram", "view") && on("telegram")) {
     const { data: bots } = await db()
       .from("telegram_bots")
@@ -291,6 +313,16 @@ async function askChatGpt(s: AiSettings, system: string, messages: ChatMessage[]
   };
   if (!res.ok) throw new Error(json.error?.message ?? `OpenAI request failed (${res.status})`);
   return (json.choices?.[0]?.message?.content ?? "").trim();
+}
+
+/**
+ * Bare completion with the configured provider/key — no data context.
+ * Used by other modules (e.g. the AI exam grader).
+ */
+export async function aiComplete(system: string, messages: ChatMessage[]): Promise<string> {
+  const s = await aiSettings();
+  if (!activeKey(s)) throw new Error("AI is not configured (Settings ▸ AI Assistant)");
+  return s.provider === "chatgpt" ? askChatGpt(s, system, messages) : askClaude(s, system, messages);
 }
 
 /** Answer a conversation for the given user, with role-scoped data context. */

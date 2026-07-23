@@ -138,6 +138,22 @@ export default async function AdminDashboard() {
       />
     );
   }
+  if (on("exams")) {
+    const total = await countRows("exams");
+    const attempts = await countRows("exam_attempts");
+    cards.push(
+      <StatCard
+        key="exams"
+        label="Exams"
+        value={total}
+        sub={`${attempts} attempts`}
+        icon="📝"
+        palette={PALETTES.blue}
+        href="/admin/exams"
+        bars={dailyCounts(await recentDates("exam_attempts"), 12)}
+      />
+    );
+  }
   if (on("notifications")) {
     const total = await countRows("notifications");
     const unread = await countRows("notifications", (q: any) => q.is("read_at", null));

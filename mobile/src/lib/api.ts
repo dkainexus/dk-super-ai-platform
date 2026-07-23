@@ -64,7 +64,7 @@ export type Me = {
   merchant: { name: string; logo_url: string | null };
   country: { name: string | null; flag: string | null; currency: string | null };
   unread_notifications: number;
-  modules: { training: boolean; notifications: boolean };
+  modules: { training: boolean; notifications: boolean; exams: boolean };
 };
 
 export type VideoItem = {
@@ -84,6 +84,45 @@ export type NotificationItem = {
   body: string | null;
   read_at: string | null;
   created_at: string;
+};
+
+export type ExamListItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  question_count: number;
+  pass_score: number;
+  required_videos: { id: string; title: string; completed: boolean }[];
+  unlocked: boolean;
+  attempts: number;
+  best_score: number | null;
+  passed: boolean;
+  can_take: boolean;
+  wait_until: string | null;
+};
+
+export type ExamPaper = {
+  exam: { id: string; title: string; pass_score: number };
+  questions: {
+    id: string;
+    type: "choice" | "essay";
+    question: string;
+    options: string[];
+    points: number;
+  }[];
+};
+
+export type ExamAnswer = { question_id: string; answer_index?: number; answer_text?: string };
+
+export type ExamResult = {
+  score: number;
+  passed: boolean;
+  pass_score: number;
+  feedback: {
+    overall: string;
+    per_question: { question_id: string; score: number; comment: string }[];
+  };
+  questions: { id: string; question: string; type: "choice" | "essay" }[];
 };
 
 // ---------- Endpoints ----------
@@ -109,6 +148,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ seconds, completed }),
     }),
+  exams: () => request<{ exams: ExamListItem[] }>("/exams"),
+  examPaper: (id: string) => request<ExamPaper>(`/exams/${id}`),
+  submitExam: (id: string, answers: ExamAnswer[]) =>
+    request<ExamResult>(`/exams/${id}/submit`, { method: "POST", body: JSON.stringify({ answers }) }),
   notifications: () => request<{ notifications: NotificationItem[]; unread: number }>("/notifications"),
   markRead: (id?: string) =>
     request<{ ok: true }>("/notifications/read", { method: "POST", body: JSON.stringify(id ? { id } : {}) }),

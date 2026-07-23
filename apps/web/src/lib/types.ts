@@ -264,3 +264,50 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   training: "Training",
   exam: "Exam",
 };
+
+export type ExamQuestionType = "choice" | "essay";
+
+export type ExamQuestion = {
+  id: string;
+  merchant_id: string | null;
+  country_id: string | null;
+  type: ExamQuestionType;
+  question: string;
+  options: string[];
+  correct_index: number | null;
+  model_answer: string | null;
+  points: number;
+  active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Exam = {
+  id: string;
+  merchant_id: string | null;
+  country_id: string | null;
+  title: string;
+  description: string | null;
+  pass_score: number;
+  retake_wait_minutes: number;
+  published: boolean;
+  sort: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ExamAttempt = {
+  id: string;
+  exam_id: string;
+  owner_id: string;
+  answers: { question_id: string; answer_index?: number; answer_text?: string }[];
+  score: number | null;
+  passed: boolean | null;
+  feedback: {
+    overall: string;
+    per_question: { question_id: string; score: number; comment: string }[];
+  } | null;
+  created_at: string;
+};

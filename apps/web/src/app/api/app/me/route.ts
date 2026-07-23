@@ -42,6 +42,7 @@ export async function GET(req: Request): Promise<Response> {
     modules: {
       training: on("training"),
       notifications: on("notifications"),
+      exams: on("exams"),
     },
   });
 }

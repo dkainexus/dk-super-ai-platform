@@ -38,6 +38,7 @@ function Root() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="video/[id]" options={{ title: "Training" }} />
+      <Stack.Screen name="exam/[id]" options={{ title: "Exam" }} />
     </Stack>
   );
 }
