@@ -333,3 +333,45 @@ export async function setOwnerBanned(formData: FormData): Promise<void> {
   revalidatePath(base);
   redirect(`${base}/${id}`);
 }
+
+// ---------- Mobile app access ----------
+
+/** Set (or clear) an owner's mobile-app login credentials. */
+export async function setOwnerAppAccess(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("owners", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/owners/${id}`);
+  const clear = formData.get("clear") === "true";
+  const username = String(formData.get("app_username") ?? "").trim().toLowerCase();
+  const password = String(formData.get("app_password") ?? "");
+
+  let q = db().from("owners").select("id, merchant_id, app_password_hash").eq("id", id);
+  if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+  const { data: owner } = await q.maybeSingle();
+  if (!owner) fail(back, "Owner not found");
+
+  if (clear) {
+    await db()
+      .from("owners")
+      .update({ app_username: null, app_password_hash: null })
+      .eq("id", id);
+    revalidatePath(back);
+    redirect(back);
+  }
+
+  if (!/^[a-z0-9_.@-]{3,40}$/.test(username))
+    fail(back, "Username: 3-40 chars, letters/numbers/._@- only");
+  if (password && password.length < 6) fail(back, "Password must be at least 6 characters");
+  if (!password && !owner.app_password_hash) fail(back, "Please set an initial password");
+
+  const patch: Record<string, unknown> = { app_username: username };
+  if (password) {
+    const { hashPassword } = await import("@/lib/password");
+    patch.app_password_hash = await hashPassword(password);
+  }
+  const { error } = await db().from("owners").update(patch).eq("id", id);
+  if (error)
+    fail(back, error.message.includes("owners_app_username") ? "This username is already taken" : `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(`${back}?saved=app`);
+}

@@ -12,6 +12,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
 import { OwnerForm } from "@/modules/owners/components/owner-form";
+import { AppAccessCard } from "@/modules/owners/components/app-access";
 import type { CountryField, Owner, OwnerFieldValue } from "@/lib/types";
 
 export default async function MerchantOwnerDetailPage({
@@ -99,6 +100,8 @@ export default async function MerchantOwnerDetailPage({
           </form>
         )}
       </section>
+
+      <AppAccessCard owner={owner} back={`/m/owners/${owner.id}`} />
 
       <div className="card p-5">
         <OwnerForm

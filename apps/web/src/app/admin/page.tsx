@@ -122,6 +122,38 @@ export default async function AdminDashboard() {
       />
     );
   }
+  if (on("training")) {
+    const total = await countRows("training_videos");
+    const published = await countRows("training_videos", (q: any) => q.eq("published", true));
+    cards.push(
+      <StatCard
+        key="training"
+        label="Training"
+        value={total}
+        sub={`${published} published`}
+        icon="🎬"
+        palette={PALETTES.violet}
+        href="/admin/training"
+        spark={cumulative(dailyCounts(await recentDates("training_videos")), Math.max(total - 1, 0))}
+      />
+    );
+  }
+  if (on("notifications")) {
+    const total = await countRows("notifications");
+    const unread = await countRows("notifications", (q: any) => q.is("read_at", null));
+    cards.push(
+      <StatCard
+        key="notifications"
+        label="Notifications"
+        value={total}
+        sub={`${unread} unread`}
+        icon="🔔"
+        palette={PALETTES.pink}
+        href="/admin/notifications"
+        bars={dailyCounts(await recentDates("notifications"), 12)}
+      />
+    );
+  }
 
   const { data: recent } = ownersOn
     ? await db()

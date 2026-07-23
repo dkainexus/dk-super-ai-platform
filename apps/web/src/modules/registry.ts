@@ -23,6 +23,8 @@ import { telegramModule } from "@/modules/telegram";
 import { aiModule } from "@/modules/ai";
 import { ownersModule } from "@/modules/owners";
 import { companiesModule } from "@/modules/companies";
+import { trainingModule } from "@/modules/training";
+import { notificationsModule } from "@/modules/notifications";
 
 export type ModuleDef = {
   key: string;
@@ -71,6 +73,8 @@ export const MODULES: ModuleDef[] = [
   aiModule,
   ownersModule,
   companiesModule,
+  trainingModule,
+  notificationsModule,
   ...CORE_MODULES,
 ];
 

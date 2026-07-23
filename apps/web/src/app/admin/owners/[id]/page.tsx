@@ -7,6 +7,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
 import { OwnerData } from "@/modules/owners/components/owner-data";
+import { AppAccessCard } from "@/modules/owners/components/app-access";
 import type { Country, Merchant, Owner } from "@/lib/types";
 
 export default async function AdminOwnerDetailPage({
@@ -78,6 +79,8 @@ export default async function AdminOwnerDetailPage({
       <section className="card p-5">
         <OwnerData owner={o} />
       </section>
+
+      {can(cu, "owners", "edit") && <AppAccessCard owner={o} back={`/admin/owners/${o.id}`} />}
 
       {(o.status === "pending" || o.status === "draft") && (
         <section className="card p-5">

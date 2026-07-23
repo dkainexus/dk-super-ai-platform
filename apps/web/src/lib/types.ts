@@ -130,6 +130,9 @@ export type Owner = {
   telegram_user_id: number | null;
   invite_token: string | null;
   invite_expires_at: string | null;
+  app_username: string | null;
+  app_password_hash: string | null;
+  app_last_login_at: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;
@@ -223,4 +226,41 @@ export const COMPANY_STATUS_LABEL: Record<CompanyStatus, string> = {
   registered: "Registered",
   closed: "Closed",
   banned: "Banned",
+};
+
+export type TrainingVideo = {
+  id: string;
+  merchant_id: string | null; // null = all white labels
+  country_id: string | null; // null = all countries
+  title: string;
+  description: string | null;
+  video_path: string;
+  thumb_path: string | null;
+  duration_seconds: number | null;
+  sort: number;
+  published: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NotificationType = "general" | "company" | "reward" | "training" | "exam";
+
+export type AppNotification = {
+  id: string;
+  owner_id: string;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  read_at: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
+  general: "General",
+  company: "Company",
+  reward: "Reward",
+  training: "Training",
+  exam: "Exam",
 };

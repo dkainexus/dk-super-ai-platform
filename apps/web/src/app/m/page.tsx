@@ -47,6 +47,44 @@ export default async function MerchantDashboard() {
     companiesRegistered = (data ?? []).filter((c) => c.status === "registered").length;
   }
 
+  const trainingOn = moduleEnabledFor("training", toggles, cu.merchant, active) && can(cu, "training", "view");
+  const notificationsOn =
+    moduleEnabledFor("notifications", toggles, cu.merchant, active) && can(cu, "notifications", "view");
+
+  let videoCount = 0;
+  if (trainingOn) {
+    let q = db()
+      .from("training_videos")
+      .select("id", { count: "exact", head: true })
+      .or(`merchant_id.is.null,merchant_id.eq.${cu.merchant.id}`)
+      .eq("published", true);
+    if (active) q = q.or(`country_id.is.null,country_id.eq.${active.id}`);
+    const { count } = await q;
+    videoCount = count ?? 0;
+  }
+
+  let notifCount = 0;
+  let notifUnread = 0;
+  if (notificationsOn) {
+    let oq = db().from("owners").select("id").eq("merchant_id", cu.merchant.id);
+    if (active) oq = oq.eq("country_id", active.id);
+    const { data: oids } = await oq;
+    const ids = ((oids ?? []) as { id: string }[]).map((o) => o.id);
+    if (ids.length) {
+      const { count: total } = await db()
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .in("owner_id", ids);
+      const { count: unread } = await db()
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .in("owner_id", ids)
+        .is("read_at", null);
+      notifCount = total ?? 0;
+      notifUnread = unread ?? 0;
+    }
+  }
+
   const STATUS_CARDS: { status: OwnerStatus; icon: string; palette: keyof typeof PALETTES }[] = [
     { status: "draft", icon: "📥", palette: "cyan" },
     { status: "pending", icon: "⏳", palette: "amber" },
@@ -103,6 +141,30 @@ export default async function MerchantDashboard() {
               />
             ))}
           </div>
+
+          {(trainingOn || notificationsOn) && (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {trainingOn && (
+                <StatCard
+                  label="Training Videos"
+                  value={videoCount}
+                  icon="🎬"
+                  palette={PALETTES.violet}
+                  href="/m/training"
+                />
+              )}
+              {notificationsOn && (
+                <StatCard
+                  label="Notifications"
+                  value={notifCount}
+                  sub={`${notifUnread} unread`}
+                  icon="🔔"
+                  palette={PALETTES.pink}
+                  href="/m/notifications"
+                />
+              )}
+            </div>
+          )}
 
           <section>
             <div className="mb-3 flex items-center justify-between">

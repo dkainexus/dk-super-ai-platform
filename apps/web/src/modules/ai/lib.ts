@@ -174,6 +174,45 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
     ctx.occupations = occs ?? [];
   }
 
+  const trainingScope = can(cu, "training", "view");
+  if (trainingScope && on("training")) {
+    let q = db()
+      .from("training_videos")
+      .select("title, description, duration_seconds, published, merchant_id, country_id, created_at")
+      .order("sort")
+      .limit(LIMIT);
+    if (cu.merchant) q = q.or(`merchant_id.is.null,merchant_id.eq.${cu.merchant.id}`);
+    const { data: vids } = await q;
+    ctx.training_videos = ((vids ?? []) as Row[]).map((v) => ({
+      title: v.title,
+      description: v.description,
+      duration_seconds: v.duration_seconds,
+      published: v.published,
+      white_label: v.merchant_id ? merchantName.get(v.merchant_id as string) ?? null : "(all)",
+      country: v.country_id ? countryName.get(v.country_id as string) ?? null : "(all)",
+      created_at: v.created_at,
+    }));
+  }
+
+  const notifScope = can(cu, "notifications", "view");
+  if (notifScope && on("notifications")) {
+    let q = db()
+      .from("notifications")
+      .select("type, title, body, read_at, created_at, owner:owners!inner(full_name, merchant_id)")
+      .order("created_at", { ascending: false })
+      .limit(LIMIT);
+    if (cu.merchant) q = q.eq("owner.merchant_id", cu.merchant.id);
+    const { data: notifs } = await q;
+    ctx.notifications = ((notifs ?? []) as Row[]).map((n) => ({
+      type: n.type,
+      title: n.title,
+      body: n.body,
+      read: Boolean(n.read_at),
+      owner: (n.owner as { full_name?: string } | null)?.full_name ?? null,
+      created_at: n.created_at,
+    }));
+  }
+
   if (!cu.merchant && can(cu, "telegram", "view") && on("telegram")) {
     const { data: bots } = await db()
       .from("telegram_bots")
