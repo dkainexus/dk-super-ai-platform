@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as ScreenCapture from "expo-screen-capture";
 import { AuthProvider, useAuth } from "../lib/auth-context";
+import { UpdateChecker } from "../components/update-checker";
 import { colors } from "../lib/theme";
 
 SplashScreen.preventAutoHideAsync();
@@ -27,6 +28,8 @@ function Root() {
   if (!ready) return null;
 
   return (
+    <>
+    <UpdateChecker />
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.background },
@@ -40,6 +43,7 @@ function Root() {
       <Stack.Screen name="video/[id]" options={{ title: "Training" }} />
       <Stack.Screen name="exam/[id]" options={{ title: "Exam" }} />
     </Stack>
+    </>
   );
 }
 

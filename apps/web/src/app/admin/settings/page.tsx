@@ -35,6 +35,15 @@ export default async function AdminSettingsPage({
         </form>
       </section>
 
+      {/* Mobile app */}
+      <section className="card p-5">
+        <h2 className="mb-1 text-sm font-semibold">Mobile App</h2>
+        <p className="mb-3 text-xs text-muted">APK releases and in-app updates.</p>
+        <Link href="/admin/settings/app" className="inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent">
+          App Releases — upload & publish →
+        </Link>
+      </section>
+
       {/* Bot tools */}
       <section className="card p-5">
         <h2 className="mb-1 text-sm font-semibold">Bot Tools</h2>

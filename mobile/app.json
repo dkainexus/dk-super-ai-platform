@@ -2,7 +2,7 @@
   "expo": {
     "name": "DK App",
     "slug": "dk-app",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dkapp",
@@ -18,7 +18,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.dkglobal.app"
+      "package": "com.dkglobal.app",
+      "versionCode": 2,
+      "permissions": [
+        "android.permission.REQUEST_INSTALL_PACKAGES"
+      ]
     },
     "web": {
       "output": "static",
