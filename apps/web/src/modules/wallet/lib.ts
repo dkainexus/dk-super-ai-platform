@@ -65,6 +65,40 @@ export async function withdrawalsForOwner(ownerId: string, limit = 20): Promise<
 }
 
 /**
+ * The training-completion reward offer for the app's My Rewards page: the
+ * configured amount plus live progress. Null when no reward is configured
+ * for the owner's country.
+ */
+export async function trainingRewardOffer(owner: {
+  id: string;
+  merchant_id: string;
+  country_id: string;
+}): Promise<{ amount: number; total: number; completed: number } | null> {
+  const settings = await walletSettings();
+  const amount = settings.training_rewards[owner.country_id] ?? 0;
+  if (amount <= 0) return null;
+
+  const { data: videos } = await db()
+    .from("training_videos")
+    .select("id, merchant_id, country_id")
+    .eq("published", true);
+  const visible = ((videos ?? []) as { id: string; merchant_id: string | null; country_id: string | null }[]).filter(
+    (v) =>
+      (v.merchant_id === null || v.merchant_id === owner.merchant_id) &&
+      (v.country_id === null || v.country_id === owner.country_id)
+  );
+  if (visible.length === 0) return null;
+
+  const { data: done } = await db()
+    .from("training_progress")
+    .select("video_id")
+    .eq("owner_id", owner.id)
+    .not("completed_at", "is", null);
+  const doneSet = new Set(((done ?? []) as { video_id: string }[]).map((d) => d.video_id));
+  return { amount, total: visible.length, completed: visible.filter((v) => doneSet.has(v.id)).length };
+}
+
+/**
  * Training-completion reward: when the owner has completed every published
  * training video visible to them, credit the configured amount for their
  * country — once (reference-keyed). Called from the app progress endpoint.

@@ -49,6 +49,10 @@ function Root() {
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="video/[id]" options={{ title: "Training" }} />
       <Stack.Screen name="exam/[id]" options={{ title: "Exam" }} />
+      <Stack.Screen name="wallet/index" options={{ title: "Withdraw" }} />
+      <Stack.Screen name="wallet/rewards" options={{ title: "My Rewards" }} />
+      <Stack.Screen name="wallet/transactions" options={{ title: "Transactions" }} />
+      <Stack.Screen name="wallet/requests" options={{ title: "Requests" }} />
     </Stack>
     </>
   );

@@ -1,27 +1,34 @@
 import { useCallback, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api, type NotificationItem, type VideoItem, type WalletInfo } from "../../lib/api";
+import { api, type VideoItem, type WalletInfo } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
-import { Card, CoinIcon, Muted, Screen, Tag } from "../../components/ui";
+import { Card, CoinIcon, Muted, Tag, Screen } from "../../components/ui";
 import { colors, palettes } from "../../lib/theme";
 
-const TYPE_COLORS: Record<NotificationItem["type"], string> = {
-  general: colors.muted,
-  company: colors.accentStrong,
-  reward: colors.warning,
-  training: colors.success,
-  exam: colors.danger,
-};
+// Home: wallet hero (balance + quick actions), Training progress, My Account.
+
+const ACTIONS = [
+  { key: "rewards", label: "My Reward", icon: "gift-outline", href: "/wallet/rewards" },
+  { key: "transactions", label: "Transactions", icon: "receipt-outline", href: "/wallet/transactions" },
+  { key: "withdraw", label: "Withdraw", icon: "cash-outline", href: "/wallet" },
+  { key: "requests", label: "Requests", icon: "time-outline", href: "/wallet/requests" },
+] as const;
+
+// Placeholder list until account submission is wired to the CMS.
+const EXAMPLE_ACCOUNTS = [
+  { id: "1", name: "@sunny_bkk", platform: "TikTok", emoji: "🎵", status: "ACTIVE", color: colors.success },
+  { id: "2", name: "@mike.trader", platform: "Facebook", emoji: "📘", status: "PENDING", color: colors.warning },
+  { id: "3", name: "@nan_2024", platform: "Instagram", emoji: "📸", status: "REVIEW", color: colors.accentStrong },
+];
 
 export default function HomeScreen() {
   const { me, refresh } = useAuth();
   const insets = useSafeAreaInsets();
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [notifs, setNotifs] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,7 +43,6 @@ export default function HomeScreen() {
         me?.modules.wallet ? api.wallet() : Promise.resolve(null),
       ]);
       setVideos(v.videos);
-      setNotifs(n.notifications.slice(0, 5));
       setUnread(n.unread);
       setWallet(w);
     } catch {
@@ -62,149 +68,139 @@ export default function HomeScreen() {
   return (
     <Screen>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, gap: 14 }}
+        contentContainerStyle={{ padding: 16, paddingTop: insets.top + 12, gap: 18 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.hello}>Hi {me?.owner.name ?? me?.owner.username ?? ""} 👋</Text>
-            <Muted>
-              {me?.merchant.name}
-              {me?.country.name ? ` · ${me.country.flag ?? ""} ${me.country.name}` : ""}
-            </Muted>
-          </View>
-          {me?.modules.notifications && (
-            <Pressable
-              onPress={() => router.push("/(tabs)/notifications")}
-              style={styles.bellBtn}
-              hitSlop={8}
-            >
-              <Ionicons name="notifications-outline" size={22} color={colors.foreground} />
-              {unread > 0 && (
-                <View style={styles.bellBadge}>
-                  <Text style={styles.bellBadgeText}>{unread > 99 ? "99+" : unread}</Text>
-                </View>
-              )}
-            </Pressable>
-          )}
-        </View>
-
-        {/* Wallet — crypto balance card with a glowing gradient border */}
-        {me?.modules.wallet && (
-          <Pressable onPress={() => router.push("/(tabs)/wallet")}>
-            <LinearGradient
-              colors={[palettes.mint.from, palettes.blue.to, palettes.violet.to]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.walletBorder}
-            >
-              <View style={styles.walletCard}>
-                <View style={styles.walletTop}>
-                  <Muted style={styles.walletLabel}>WALLET BALANCE</Muted>
-                  <CoinIcon emoji="💰" from={palettes.amber.from} to={palettes.amber.to} />
-                </View>
-                <Text style={styles.walletValue}>
-                  {(wallet?.balance ?? 0).toLocaleString()}{" "}
-                  <Text style={styles.walletCurrency}>{wallet?.currency ?? ""}</Text>
-                </Text>
-                <View style={styles.walletBottom}>
-                  <Muted style={{ fontSize: 12 }}>
-                    {wallet?.withdrawals.some((w) => w.status === "pending")
-                      ? "Withdrawal pending…"
-                      : "Tap to withdraw"}
-                  </Muted>
-                  <Ionicons name="arrow-forward-circle" size={20} color={colors.accent} />
-                </View>
-              </View>
-            </LinearGradient>
-          </Pressable>
-        )}
-
-        {/* Hero: training progress */}
+        {/* Hero: greeting + bell + balance + quick actions */}
         <LinearGradient
-          colors={[colors.surfaceRaised, colors.surface]}
+          colors={[palettes.mint.from, palettes.blue.to, palettes.violet.to]}
           start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.hero}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroBorder}
         >
-          <Muted>Training progress</Muted>
-          <Text style={styles.heroValue}>{progressPct}%</Text>
-          <View style={styles.progressTrack}>
-            <LinearGradient
-              colors={[palettes.mint.from, "#2563eb"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.progressFill, { width: `${Math.max(progressPct, 2)}%` }]}
-            />
+          <View style={styles.hero}>
+            <View style={styles.heroTop}>
+              <View style={{ flex: 1 }}>
+                <Muted style={{ fontSize: 12 }}>Hello,</Muted>
+                <Text style={styles.hello}>{me?.owner.name ?? me?.owner.username ?? ""}</Text>
+              </View>
+              {me?.modules.notifications && (
+                <Pressable
+                  onPress={() => router.push("/(tabs)/notifications")}
+                  style={styles.bellBtn}
+                  hitSlop={8}
+                >
+                  <Ionicons name="notifications-outline" size={21} color={colors.foreground} />
+                  {unread > 0 && (
+                    <View style={styles.bellBadge}>
+                      <Text style={styles.bellBadgeText}>{unread > 99 ? "99+" : unread}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              )}
+            </View>
+
+            {me?.modules.wallet && (
+              <>
+                <Muted style={styles.balanceLabel}>WALLET BALANCE</Muted>
+                <Text style={styles.balanceValue}>
+                  {(wallet?.balance ?? 0).toLocaleString()}{" "}
+                  <Text style={styles.balanceCurrency}>{wallet?.currency ?? ""}</Text>
+                </Text>
+                <View style={styles.actionRow}>
+                  {ACTIONS.map((a) => (
+                    <Pressable key={a.key} style={styles.action} onPress={() => router.push(a.href)}>
+                      <View style={styles.actionIcon}>
+                        <Ionicons name={a.icon} size={20} color={colors.accent} />
+                      </View>
+                      <Text style={styles.actionLabel}>{a.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
-          <Muted style={{ marginTop: 8 }}>
-            {completed} of {videos.length} videos completed
-          </Muted>
         </LinearGradient>
 
-        {/* Stat cards */}
-        <View style={styles.statRow}>
-          <Pressable style={{ flex: 1 }} onPress={() => router.push("/(tabs)/training")}>
-            <Card style={styles.statCard}>
-              <CoinIcon emoji="🎬" from={palettes.violet.from} to={palettes.violet.to} />
-              <Text style={styles.statValue}>{videos.length}</Text>
-              <Muted>Training videos</Muted>
-            </Card>
-          </Pressable>
-          <Pressable style={{ flex: 1 }} onPress={() => router.push("/(tabs)/training")}>
-            <Card style={styles.statCard}>
-              <CoinIcon emoji="✅" from={palettes.mint.from} to={palettes.mint.to} />
-              <Text style={styles.statValue}>{completed}</Text>
-              <Muted>Completed</Muted>
-            </Card>
-          </Pressable>
-        </View>
-
-        {/* Latest notifications */}
-        {notifs.length > 0 && (
-          <View style={{ gap: 8 }}>
-            <Text style={styles.sectionTitle}>LATEST NEWS</Text>
-            <Card style={{ padding: 0 }}>
-              {notifs.map((n, i) => (
-                <View
-                  key={n.id}
-                  style={[styles.notifRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}
-                >
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <Tag label={n.type.toUpperCase()} color={TYPE_COLORS[n.type]} />
-                      {!n.read_at && <View style={styles.unreadDot} />}
-                    </View>
-                    <Text style={styles.notifTitle}>{n.title}</Text>
-                    {n.body ? (
-                      <Muted style={{ fontSize: 12 }} >
-                        {n.body.length > 80 ? `${n.body.slice(0, 80)}…` : n.body}
-                      </Muted>
-                    ) : null}
+        {/* Training */}
+        {me?.modules.training && (
+          <View style={{ gap: 10 }}>
+            <Text style={styles.sectionTitle}>TRAINING</Text>
+            <Pressable onPress={() => router.push("/(tabs)/training")}>
+              <Card style={styles.trainingCard}>
+                <CoinIcon emoji="🎬" from={palettes.violet.from} to={palettes.violet.to} />
+                <View style={{ flex: 1, gap: 6 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={styles.trainingTitle}>Your progress</Text>
+                    <Text style={styles.trainingPct}>{progressPct}%</Text>
                   </View>
+                  <View style={styles.progressTrack}>
+                    <LinearGradient
+                      colors={[palettes.mint.from, palettes.mint.to]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.progressFill, { width: `${Math.max(progressPct, 2)}%` }]}
+                    />
+                  </View>
+                  <Muted style={{ fontSize: 12 }}>
+                    {completed} of {videos.length} videos completed
+                  </Muted>
                 </View>
-              ))}
-            </Card>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </Card>
+            </Pressable>
           </View>
         )}
+
+        {/* My Account */}
+        <View style={{ gap: 10 }}>
+          <Text style={styles.sectionTitle}>MY ACCOUNT</Text>
+          <Card style={{ padding: 0 }}>
+            {EXAMPLE_ACCOUNTS.map((a, i) => (
+              <View
+                key={a.id}
+                style={[styles.accountRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}
+              >
+                <View style={styles.accountIcon}>
+                  <Text style={{ fontSize: 18 }}>{a.emoji}</Text>
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.accountName}>{a.name}</Text>
+                  <Muted style={{ fontSize: 12 }}>{a.platform}</Muted>
+                </View>
+                <Tag label={a.status} color={a.color} />
+              </View>
+            ))}
+          </Card>
+          <Pressable
+            onPress={() =>
+              Alert.alert("Coming soon", "Account submission will be available in an upcoming update.")
+            }
+            style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.85 }]}
+          >
+            <Ionicons name="add-circle-outline" size={19} color={colors.background} />
+            <Text style={styles.submitText}>Submit New Account</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center" },
-  hello: { color: colors.foreground, fontSize: 22, fontWeight: "700" },
+  heroBorder: { borderRadius: 20, padding: 1.5 },
+  hero: { borderRadius: 18.5, backgroundColor: colors.surface, padding: 18 },
+  heroTop: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  hello: { color: colors.foreground, fontSize: 20, fontWeight: "700" },
   bellBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -212,73 +208,68 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -4,
     right: -4,
-    minWidth: 18,
-    height: 18,
+    minWidth: 17,
+    height: 17,
     borderRadius: 9,
     paddingHorizontal: 4,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.danger,
     alignItems: "center",
     justifyContent: "center",
   },
-  bellBadgeText: { color: colors.background, fontSize: 10, fontWeight: "800" },
-  walletBorder: { borderRadius: 18, padding: 1.5 },
-  walletCard: {
-    borderRadius: 16.5,
-    backgroundColor: colors.surface,
-    padding: 18,
-  },
-  walletTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  walletLabel: { fontSize: 11, letterSpacing: 1.5, fontWeight: "700" },
-  walletValue: {
+  bellBadgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  balanceLabel: { fontSize: 11, letterSpacing: 1.5, fontWeight: "700" },
+  balanceValue: {
     color: colors.accent,
     fontSize: 40,
     fontWeight: "800",
-    marginTop: 6,
+    marginTop: 4,
     fontVariant: ["tabular-nums"],
   },
-  walletCurrency: { color: colors.muted, fontSize: 17, fontWeight: "600" },
-  walletBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  hero: {
-    borderRadius: 16,
+  balanceCurrency: { color: colors.muted, fontSize: 16, fontWeight: "600" },
+  actionRow: { flexDirection: "row", gap: 8, marginTop: 16 },
+  action: { flex: 1, alignItems: "center", gap: 6 },
+  actionIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: colors.accentSoft,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  heroValue: {
-    color: colors.accent,
-    fontSize: 44,
-    fontWeight: "800",
-    marginVertical: 4,
-    fontVariant: ["tabular-nums"],
-  },
+  actionLabel: { color: colors.foreground, fontSize: 10.5, fontWeight: "600" },
+  sectionTitle: { color: colors.muted, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
+  trainingCard: { flexDirection: "row", alignItems: "center", gap: 12 },
+  trainingTitle: { color: colors.foreground, fontSize: 14, fontWeight: "600" },
+  trainingPct: { color: colors.accent, fontSize: 14, fontWeight: "800", fontVariant: ["tabular-nums"] },
   progressTrack: {
-    height: 8,
+    height: 7,
     borderRadius: 4,
     backgroundColor: colors.background,
     overflow: "hidden",
-    marginTop: 4,
   },
   progressFill: { height: "100%", borderRadius: 4 },
-  statRow: { flexDirection: "row", gap: 14 },
-  statCard: { flex: 1, gap: 8 },
-  statValue: {
-    color: colors.foreground,
-    fontSize: 26,
-    fontWeight: "800",
-    fontVariant: ["tabular-nums"],
+  accountRow: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
+  accountIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  sectionTitle: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.2,
+  accountName: { color: colors.foreground, fontSize: 14, fontWeight: "600" },
+  submitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    paddingVertical: 13,
   },
-  notifRow: { flexDirection: "row", padding: 14 },
-  notifTitle: { color: colors.foreground, fontSize: 14, fontWeight: "600" },
-  unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent },
+  submitText: { color: colors.background, fontSize: 15, fontWeight: "700" },
 });

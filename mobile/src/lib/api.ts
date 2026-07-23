@@ -156,6 +156,15 @@ export type WithdrawalItem = {
   requested_at: string;
 };
 
+export type RewardPending = {
+  id: string;
+  title: string;
+  amount: number;
+  progress?: { completed: number; total: number };
+};
+
+export type RewardReceived = { id: string; title: string; amount: number; date: string };
+
 export type WalletInfo = {
   balance: number;
   currency: string;
@@ -163,6 +172,7 @@ export type WalletInfo = {
   bank_account_no: string | null;
   transactions: WalletTx[];
   withdrawals: WithdrawalItem[];
+  rewards?: { pending: RewardPending[]; received: RewardReceived[] };
 };
 
 export const api = {

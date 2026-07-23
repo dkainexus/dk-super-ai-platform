@@ -59,14 +59,10 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* Wallet lives on the Home card and Alerts behind the bell button — both hidden from the tab bar */}
-      <Tabs.Screen
-        name="wallet"
-        options={{ title: "Wallet", href: null, headerLeft: () => <BackButton /> }}
-      />
+      {/* Notifications lives behind the Home bell button — hidden from the tab bar */}
       <Tabs.Screen
         name="notifications"
-        options={{ title: "Alerts", href: null, headerLeft: () => <BackButton /> }}
+        options={{ title: "Notification", href: null, headerLeft: () => <BackButton /> }}
       />
       <Tabs.Screen
         name="profile"
