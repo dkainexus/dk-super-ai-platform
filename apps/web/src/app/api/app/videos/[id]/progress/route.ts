@@ -1,5 +1,6 @@
 import { db } from "@/lib/supabase";
 import { ownerFromRequest, unauthorized } from "@/lib/app-auth";
+import { maybeGrantTrainingReward } from "@/modules/wallet/lib";
 
 // POST /api/app/videos/:id/progress  { seconds, completed } → upsert progress.
 export async function POST(
@@ -38,5 +39,15 @@ export async function POST(
     { onConflict: "owner_id,video_id" }
   );
   if (error) return Response.json({ error: error.message }, { status: 400 });
-  return Response.json({ ok: true });
+
+  // Training-completion reward (idempotent; no-op unless everything is done).
+  let rewarded = false;
+  if (body.completed) {
+    try {
+      rewarded = await maybeGrantTrainingReward(owner);
+    } catch {
+      rewarded = false; // never fail the progress save because of the reward
+    }
+  }
+  return Response.json({ ok: true, rewarded });
 }

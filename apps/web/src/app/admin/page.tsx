@@ -81,6 +81,20 @@ export default async function AdminDashboard() {
       />
     );
   }
+  if (on("wallet")) {
+    const pendingW = await countRows("withdrawals", (q: any) => q.eq("status", "pending"));
+    cards.push(
+      <StatCard
+        key="wallet"
+        label="Withdrawals"
+        value={pendingW}
+        sub={pendingW > 0 ? "Pending payout" : "All clear"}
+        icon="💰"
+        palette={pendingW > 0 ? PALETTES.amber : PALETTES.green}
+        href="/admin/wallets?status=pending"
+      />
+    );
+  }
   if (on("banks")) {
     cards.push(
       <StatCard

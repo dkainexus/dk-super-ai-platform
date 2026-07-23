@@ -23,6 +23,7 @@ import { telegramModule } from "@/modules/telegram";
 import { aiModule } from "@/modules/ai";
 import { ownersModule } from "@/modules/owners";
 import { companiesModule } from "@/modules/companies";
+import { walletModule } from "@/modules/wallet";
 import { trainingModule } from "@/modules/training";
 import { notificationsModule } from "@/modules/notifications";
 import { examsModule } from "@/modules/exams";
@@ -74,6 +75,7 @@ export const MODULES: ModuleDef[] = [
   aiModule,
   ownersModule,
   companiesModule,
+  walletModule,
   trainingModule,
   notificationsModule,
   examsModule,

@@ -64,7 +64,7 @@ export type Me = {
   merchant: { name: string; logo_url: string | null };
   country: { name: string | null; flag: string | null; currency: string | null };
   unread_notifications: number;
-  modules: { training: boolean; notifications: boolean; exams: boolean };
+  modules: { training: boolean; notifications: boolean; exams: boolean; wallet: boolean };
 };
 
 export type VideoItem = {
@@ -139,8 +139,37 @@ export async function logout(): Promise<void> {
   await setToken(null);
 }
 
+export type WalletTx = {
+  id: string;
+  type: "reward" | "rent" | "withdrawal" | "refund" | "adjustment";
+  amount: number;
+  note: string | null;
+  created_at: string;
+};
+
+export type WithdrawalItem = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "paid" | "rejected";
+  reject_reason: string | null;
+  requested_at: string;
+};
+
+export type WalletInfo = {
+  balance: number;
+  currency: string;
+  bank: string | null;
+  bank_account_no: string | null;
+  transactions: WalletTx[];
+  withdrawals: WithdrawalItem[];
+};
+
 export const api = {
   me: () => request<Me>("/me"),
+  wallet: () => request<WalletInfo>("/wallet"),
+  withdraw: (amount: number) =>
+    request<{ ok: true }>("/wallet/withdraw", { method: "POST", body: JSON.stringify({ amount }) }),
   videos: () => request<{ videos: VideoItem[] }>("/videos"),
   videoUrl: (id: string) => request<{ url: string }>(`/videos/${id}/url`),
   reportProgress: (id: string, seconds: number, completed: boolean) =>

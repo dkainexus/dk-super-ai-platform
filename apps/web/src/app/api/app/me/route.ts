@@ -43,6 +43,7 @@ export async function GET(req: Request): Promise<Response> {
       training: on("training"),
       notifications: on("notifications"),
       exams: on("exams"),
+      wallet: on("wallet"),
     },
   });
 }

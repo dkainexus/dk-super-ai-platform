@@ -311,3 +311,50 @@ export type ExamAttempt = {
   } | null;
   created_at: string;
 };
+
+// ---------- Wallet module ----------
+
+export type Wallet = {
+  id: string;
+  owner_id: string;
+  currency: string;
+  balance: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WalletTxType = "reward" | "rent" | "withdrawal" | "refund" | "adjustment";
+
+export type WalletTransaction = {
+  id: string;
+  wallet_id: string;
+  type: WalletTxType;
+  amount: number; // signed: credit +, debit -
+  reference: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type WithdrawalStatus = "pending" | "paid" | "rejected";
+
+export type Withdrawal = {
+  id: string;
+  wallet_id: string;
+  owner_id: string;
+  amount: number;
+  currency: string;
+  bank_name: string | null;
+  bank_account_no: string | null;
+  status: WithdrawalStatus;
+  reject_reason: string | null;
+  requested_at: string;
+  processed_at: string | null;
+  processed_by: string | null;
+};
+
+export const WITHDRAWAL_STATUS_LABEL: Record<WithdrawalStatus, string> = {
+  pending: "Pending",
+  paid: "Paid",
+  rejected: "Rejected",
+};
