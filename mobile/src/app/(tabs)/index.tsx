@@ -1,9 +1,10 @@
 import { useCallback, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api, type NotificationItem, type VideoItem } from "../../lib/api";
+import { api, type NotificationItem, type VideoItem, type WalletInfo } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { Card, CoinIcon, Muted, Screen, Tag } from "../../components/ui";
 import { colors, palettes } from "../../lib/theme";
@@ -21,22 +22,27 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [notifs, setNotifs] = useState<NotificationItem[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [v, n] = await Promise.all([
+      const [v, n, w] = await Promise.all([
         me?.modules.training ? api.videos() : Promise.resolve({ videos: [] }),
         me?.modules.notifications
           ? api.notifications()
           : Promise.resolve({ notifications: [], unread: 0 }),
+        me?.modules.wallet ? api.wallet() : Promise.resolve(null),
       ]);
       setVideos(v.videos);
       setNotifs(n.notifications.slice(0, 5));
+      setUnread(n.unread);
+      setWallet(w);
     } catch {
       // keep whatever we had
     }
-  }, [me?.modules.training, me?.modules.notifications]);
+  }, [me?.modules.training, me?.modules.notifications, me?.modules.wallet]);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,7 +76,52 @@ export default function HomeScreen() {
               {me?.country.name ? ` · ${me.country.flag ?? ""} ${me.country.name}` : ""}
             </Muted>
           </View>
+          {me?.modules.notifications && (
+            <Pressable
+              onPress={() => router.push("/(tabs)/notifications")}
+              style={styles.bellBtn}
+              hitSlop={8}
+            >
+              <Ionicons name="notifications-outline" size={22} color={colors.foreground} />
+              {unread > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unread > 99 ? "99+" : unread}</Text>
+                </View>
+              )}
+            </Pressable>
+          )}
         </View>
+
+        {/* Wallet — crypto balance card with a glowing gradient border */}
+        {me?.modules.wallet && (
+          <Pressable onPress={() => router.push("/(tabs)/wallet")}>
+            <LinearGradient
+              colors={[palettes.mint.from, palettes.blue.to, palettes.violet.to]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.walletBorder}
+            >
+              <View style={styles.walletCard}>
+                <View style={styles.walletTop}>
+                  <Muted style={styles.walletLabel}>WALLET BALANCE</Muted>
+                  <CoinIcon emoji="💰" from={palettes.amber.from} to={palettes.amber.to} />
+                </View>
+                <Text style={styles.walletValue}>
+                  {(wallet?.balance ?? 0).toLocaleString()}{" "}
+                  <Text style={styles.walletCurrency}>{wallet?.currency ?? ""}</Text>
+                </Text>
+                <View style={styles.walletBottom}>
+                  <Muted style={{ fontSize: 12 }}>
+                    {wallet?.withdrawals.some((w) => w.status === "pending")
+                      ? "Withdrawal pending…"
+                      : "Tap to withdraw"}
+                  </Muted>
+                  <Ionicons name="arrow-forward-circle" size={20} color={colors.accent} />
+                </View>
+              </View>
+            </LinearGradient>
+          </Pressable>
+        )}
 
         {/* Hero: training progress */}
         <LinearGradient
@@ -103,11 +154,11 @@ export default function HomeScreen() {
               <Muted>Training videos</Muted>
             </Card>
           </Pressable>
-          <Pressable style={{ flex: 1 }} onPress={() => router.push("/(tabs)/notifications")}>
+          <Pressable style={{ flex: 1 }} onPress={() => router.push("/(tabs)/training")}>
             <Card style={styles.statCard}>
-              <CoinIcon emoji="🔔" from={palettes.pink.from} to={palettes.pink.to} />
-              <Text style={styles.statValue}>{me?.unread_notifications ?? 0}</Text>
-              <Muted>Unread alerts</Muted>
+              <CoinIcon emoji="✅" from={palettes.mint.from} to={palettes.mint.to} />
+              <Text style={styles.statValue}>{completed}</Text>
+              <Muted>Completed</Muted>
             </Card>
           </Pressable>
         </View>
@@ -147,6 +198,51 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center" },
   hello: { color: colors.foreground, fontSize: 22, fontWeight: "700" },
+  bellBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bellBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bellBadgeText: { color: colors.background, fontSize: 10, fontWeight: "800" },
+  walletBorder: { borderRadius: 18, padding: 1.5 },
+  walletCard: {
+    borderRadius: 16.5,
+    backgroundColor: colors.surface,
+    padding: 18,
+  },
+  walletTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  walletLabel: { fontSize: 11, letterSpacing: 1.5, fontWeight: "700" },
+  walletValue: {
+    color: colors.accent,
+    fontSize: 40,
+    fontWeight: "800",
+    marginTop: 6,
+    fontVariant: ["tabular-nums"],
+  },
+  walletCurrency: { color: colors.muted, fontSize: 17, fontWeight: "600" },
+  walletBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
   hero: {
     borderRadius: 16,
     borderWidth: 1,

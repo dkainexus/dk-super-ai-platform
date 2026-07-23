@@ -1,14 +1,20 @@
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { View } from "react-native";
+import { Pressable } from "react-native";
 import { useAuth } from "../../lib/auth-context";
 import { colors } from "../../lib/theme";
+
+function BackButton() {
+  return (
+    <Pressable onPress={() => router.back()} hitSlop={8} style={{ paddingHorizontal: 14 }}>
+      <Ionicons name="arrow-back" size={22} color={colors.foreground} />
+    </Pressable>
+  );
+}
 
 export default function TabsLayout() {
   const { me } = useAuth();
   if (!me) return <Redirect href="/login" />;
-
-  const unread = me.unread_notifications;
 
   return (
     <Tabs
@@ -53,40 +59,14 @@ export default function TabsLayout() {
           ),
         }}
       />
+      {/* Wallet lives on the Home card and Alerts behind the bell button — both hidden from the tab bar */}
       <Tabs.Screen
         name="wallet"
-        options={{
-          title: "Wallet",
-          href: me.modules.wallet ? undefined : null,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="wallet-outline" color={color} size={size} />
-          ),
-        }}
+        options={{ title: "Wallet", href: null, headerLeft: () => <BackButton /> }}
       />
       <Tabs.Screen
         name="notifications"
-        options={{
-          title: "Alerts",
-          href: me.modules.notifications ? undefined : null,
-          tabBarIcon: ({ color, size }) => (
-            <View>
-              <Ionicons name="notifications-outline" color={color} size={size} />
-              {unread > 0 && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -2,
-                    right: -4,
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: colors.accent,
-                  }}
-                />
-              )}
-            </View>
-          ),
-        }}
+        options={{ title: "Alerts", href: null, headerLeft: () => <BackButton /> }}
       />
       <Tabs.Screen
         name="profile"
