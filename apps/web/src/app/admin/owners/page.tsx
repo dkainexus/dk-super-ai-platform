@@ -4,6 +4,7 @@ import { db } from "@/lib/supabase";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { FilterForm } from "@/components/filter-form";
 import { FilterSelect, Table, TableToolbar } from "@/components/data-table";
+import { RowSettings } from "@/components/row-actions";
 import { requireCountryScope } from "@/modules/countries/lib";
 import type { OwnerStatus } from "@/lib/types";
 
@@ -87,21 +88,17 @@ export default async function AdminOwnersPage({
         </FilterForm>
       </TableToolbar>
 
-      <Table head={["Name", "White Label", "ID Number", "Phone", "Occupation", "Status", "Added"]}>
+      <Table head={["Name", "White Label", "ID Number", "Phone", "Occupation", "Status", "Added", ""]}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={7} className="px-4 py-6 text-sm text-muted">
+            <td colSpan={8} className="px-4 py-6 text-sm text-muted">
               No owners match these filters.
             </td>
           </tr>
         )}
         {rows.map((o) => (
           <tr key={o.id} className="transition-colors hover:bg-surface-raised">
-            <td className="px-4 py-2.5">
-              <Link href={`/admin/owners/${o.id}`} className="font-medium text-accent-strong hover:underline">
-                {o.full_name || "(no name yet)"}
-              </Link>
-            </td>
+            <td className="px-4 py-2.5 font-medium">{o.full_name || "(no name yet)"}</td>
             <td className="px-4 py-2.5 text-muted">{o.merchant?.name ?? "—"}</td>
             <td className="mono-num px-4 py-2.5 text-muted">{o.id_number || "—"}</td>
             <td className="mono-num px-4 py-2.5 text-muted">{o.phone || "—"}</td>
@@ -110,6 +107,9 @@ export default async function AdminOwnersPage({
               <OwnerStatusTag status={o.status as OwnerStatus} />
             </td>
             <td className="px-4 py-2.5 text-muted">{new Date(o.created_at).toLocaleDateString()}</td>
+            <td className="px-4 py-2.5 text-right">
+              <RowSettings href={`/admin/owners/${o.id}`} tip={`Open ${o.full_name ?? "this owner"}`} />
+            </td>
           </tr>
         ))}
       </Table>

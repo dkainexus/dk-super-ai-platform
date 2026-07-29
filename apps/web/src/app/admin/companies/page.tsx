@@ -4,6 +4,7 @@ import { db } from "@/lib/supabase";
 import { CompanyStatusTag } from "@/components/status-tag";
 import { FilterForm } from "@/components/filter-form";
 import { FilterSelect, Table, TableToolbar } from "@/components/data-table";
+import { RowSettings } from "@/components/row-actions";
 import { requireCountryScope } from "@/modules/countries/lib";
 import { COMPANY_STATUS_LABEL, type Company, type CompanyStatus } from "@/lib/types";
 
@@ -31,6 +32,13 @@ export default async function AdminCompaniesPage({
     .filter((m) => !active || m.merchant_countries.some((c) => c.country_id === active.id))
     .map((m) => ({ value: m.id, label: m.name }));
 
+  let pq = db().from("companies").select("province").not("province", "is", null);
+  if (active) pq = pq.eq("country_id", active.id);
+  const { data: provinceRows } = await pq;
+  const provinces = [
+    ...new Set(((provinceRows ?? []) as { province: string | null }[]).map((r) => r.province).filter(Boolean) as string[]),
+  ].sort();
+
   let q = db()
     .from("companies")
     .select("*, merchant:merchants(name), members:company_members(role, owner:owners(full_name))")
@@ -38,7 +46,7 @@ export default async function AdminCompaniesPage({
     .limit(500);
   if (status) q = q.eq("status", status);
   if (merchant) q = q.eq("merchant_id", merchant);
-  if (province) q = q.ilike("province", `%${province}%`);
+  if (province) q = q.eq("province", province);
   if (active) q = q.eq("country_id", active.id);
   const { data } = await q;
   const rows = (data ?? []) as unknown as Row[];
@@ -79,33 +87,26 @@ export default async function AdminCompaniesPage({
               ...Object.entries(COMPANY_STATUS_LABEL).map(([value, label]) => ({ value, label })),
             ]}
           />
-          <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Province</label>
-            <input
-              name="province"
-              defaultValue={province}
-              placeholder="e.g. Bangkok"
-              className="input w-40 py-1.5 text-xs"
-            />
-          </div>
+          <FilterSelect
+            label="State / Province"
+            name="province"
+            value={province}
+            options={[{ value: "", label: "All" }, ...provinces.map((p) => ({ value: p, label: p }))]}
+          />
         </FilterForm>
       </TableToolbar>
 
-      <Table head={["Company", "Registration No.", "Owner", "White Label", "Province", "Status", "Added"]}>
+      <Table head={["Company", "Registration No.", "Owner", "White Label", "State / Province", "Status", "Added", ""]}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={7} className="px-4 py-6 text-sm text-muted">
+            <td colSpan={8} className="px-4 py-6 text-sm text-muted">
               No companies match these filters.
             </td>
           </tr>
         )}
         {rows.map((c) => (
           <tr key={c.id} className="transition-colors hover:bg-surface-raised">
-            <td className="px-4 py-2.5">
-              <Link href={`/admin/companies/${c.id}`} className="font-medium text-accent-strong hover:underline">
-                {c.name}
-              </Link>
-            </td>
+            <td className="px-4 py-2.5 font-medium">{c.name}</td>
             <td className="mono-num px-4 py-2.5 text-muted">{c.company_id || "—"}</td>
             <td className="px-4 py-2.5 text-muted">
               {c.members?.find((m) => m.role === "owner")?.owner?.full_name ?? "—"}
@@ -116,6 +117,9 @@ export default async function AdminCompaniesPage({
               <CompanyStatusTag status={c.status as CompanyStatus} />
             </td>
             <td className="px-4 py-2.5 text-muted">{new Date(c.created_at).toLocaleDateString()}</td>
+            <td className="px-4 py-2.5 text-right">
+              <RowSettings href={`/admin/companies/${c.id}`} tip={`Open ${c.name}`} />
+            </td>
           </tr>
         ))}
       </Table>

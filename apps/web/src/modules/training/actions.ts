@@ -54,6 +54,11 @@ export async function saveTrainingVideo(input: {
     const { active } = await activeCountry(cu);
     if (!active) return { error: "No active country" };
     countryId = active.id;
+  } else {
+    // Platform uploads land in the country the back office is scoped to.
+    const { adminCountry } = await import("@/modules/countries/lib");
+    const { active } = await adminCountry();
+    countryId = active?.id ?? countryId;
   }
 
   const { count } = await db()
@@ -91,10 +96,7 @@ export async function updateTrainingVideo(formData: FormData): Promise<void> {
     published: formData.get("published") === "on",
     updated_at: new Date().toISOString(),
   };
-  if (!cu.merchant) {
-    patch.merchant_id = String(formData.get("merchant_id") ?? "") || null;
-    patch.country_id = String(formData.get("country_id") ?? "") || null;
-  }
+  if (!cu.merchant) patch.merchant_id = String(formData.get("merchant_id") ?? "") || null;
 
   let q = db().from("training_videos").update(patch).eq("id", id);
   if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id); // only their own videos
@@ -118,6 +120,22 @@ export async function deleteTrainingVideo(formData: FormData): Promise<void> {
     if (paths.length) await db().storage.from(TRAINING_BUCKET).remove(paths);
     await db().from("training_videos").delete().eq("id", id);
   }
+  revalidatePath("/admin/training");
+  revalidatePath("/m/training");
+  redirect(back);
+}
+
+
+/** Publish or unpublish a video in one click. */
+export async function toggleTrainingPublished(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("training", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? "/admin/training");
+  const publish = String(formData.get("publish") ?? "") === "1";
+  let q = db().from("training_videos").update({ published: publish, updated_at: new Date().toISOString() }).eq("id", id);
+  if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+  const { error } = await q;
+  if (error) fail(back, `Failed to update: ${error.message}`);
   revalidatePath("/admin/training");
   revalidatePath("/m/training");
   redirect(back);

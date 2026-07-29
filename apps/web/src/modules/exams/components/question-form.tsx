@@ -57,23 +57,14 @@ export function QuestionForm({
         </div>
       </div>
 
-      {!question && merchants && countries && (
-        <div className="grid gap-3 sm:grid-cols-2">
+      {!question && merchants && (
+        <div className="grid gap-3">
           <div>
             <label className="mb-1 block text-xs text-muted">White Label</label>
             <select name="merchant_id" className="input">
               <option value="">All white labels</option>
               {merchants.map((m) => (
                 <option key={m.id} value={m.id}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Country</label>
-            <select name="country_id" className="input">
-              <option value="">All countries</option>
-              {countries.map((c) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
               ))}
             </select>
           </div>

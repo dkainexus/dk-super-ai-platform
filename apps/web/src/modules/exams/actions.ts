@@ -72,7 +72,8 @@ export async function saveQuestion(formData: FormData): Promise<void> {
       row.country_id = scope.countryId;
     } else {
       row.merchant_id = String(formData.get("merchant_id") ?? "") || null;
-      row.country_id = String(formData.get("country_id") ?? "") || null;
+      const { adminCountry } = await import("@/modules/countries/lib");
+      row.country_id = (await adminCountry()).active?.id ?? null;
     }
     row.created_by = cu.user.id;
     const { error } = await db().from("exam_questions").insert(row);
@@ -115,7 +116,8 @@ export async function createExam(formData: FormData): Promise<void> {
     row.country_id = scope.countryId;
   } else {
     row.merchant_id = String(formData.get("merchant_id") ?? "") || null;
-    row.country_id = String(formData.get("country_id") ?? "") || null;
+    const { adminCountry } = await import("@/modules/countries/lib");
+    row.country_id = (await adminCountry()).active?.id ?? null;
   }
 
   const { data, error } = await db().from("exams").insert(row).select("id").single();
@@ -141,10 +143,7 @@ export async function updateExam(formData: FormData): Promise<void> {
     published: formData.get("published") === "on",
     updated_at: new Date().toISOString(),
   };
-  if (!cu.merchant) {
-    patch.merchant_id = String(formData.get("merchant_id") ?? "") || null;
-    patch.country_id = String(formData.get("country_id") ?? "") || null;
-  }
+  if (!cu.merchant) patch.merchant_id = String(formData.get("merchant_id") ?? "") || null;
 
   let q = db().from("exams").update(patch).eq("id", id);
   if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
@@ -246,7 +245,8 @@ export async function generateQuestions(formData: FormData): Promise<void> {
     countryId = scope.countryId;
   } else {
     merchantId = String(formData.get("merchant_id") ?? "") || null;
-    countryId = String(formData.get("country_id") ?? "") || null;
+    const { adminCountry } = await import("@/modules/countries/lib");
+    countryId = (await adminCountry()).active?.id ?? null;
   }
 
   const rows = list.map((q) => {

@@ -12,7 +12,7 @@ import type { NavItem, NavSection } from "@/components/sidebar-nav";
  *  - a country: the operational modules for that country
  * These module keys belong to the console and never show up inside a country.
  */
-const GLOBAL_ONLY = new Set(["countries", "telegram", "users", "roles"]);
+const GLOBAL_ONLY = new Set(["countries", "telegram"]);
 
 /** Sidebar sections for the current user: permission-, toggle- and scope-filtered. */
 export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {

@@ -8,6 +8,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton } from "@/components/action-buttons";
 import { TableToolbar } from "@/components/data-table";
+import { RowSettings } from "@/components/row-actions";
 import { requireCountryScope } from "@/modules/countries/lib";
 
 type Bank = {
@@ -62,7 +63,7 @@ export default async function BanksPage({
       ) : (
         <div className="card overflow-x-auto p-0">
           <div className="min-w-[52rem]">
-            <div className="grid grid-cols-[1.5rem_2.75rem_1fr_5rem_1.2fr_1.2fr_5rem] gap-3 border-b border-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
+            <div className="grid grid-cols-[1.5rem_2.75rem_1fr_5rem_1.2fr_1.2fr_8rem] gap-3 border-b border-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               <span />
               <span />
               <span>Bank</span>
@@ -77,7 +78,7 @@ export default async function BanksPage({
                 return (
                   <div
                     key={b.id}
-                    className="grid grid-cols-[2.75rem_1fr_5rem_1.2fr_1.2fr_5rem] items-center gap-3 px-3 py-2.5"
+                    className="grid grid-cols-[2.75rem_1fr_5rem_1.2fr_1.2fr_8rem] items-center gap-3 px-3 py-2.5"
                   >
                     <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-raised">
                       {logo ? (
@@ -87,18 +88,16 @@ export default async function BanksPage({
                         <span>🏦</span>
                       )}
                     </div>
-                    <Link
-                      href={`/admin/banks/${b.id}`}
-                      className="truncate text-sm font-medium text-accent-strong hover:underline"
-                    >
-                      {b.name}
-                    </Link>
+                    <span className="truncate text-sm font-medium">{b.name}</span>
                     <span className="mono-num text-xs text-muted">{b.code || "—"}</span>
                     <span className="truncate text-xs text-muted">
                       {(b.account_fields ?? []).map((f) => f.label).join(", ") || "—"}
                     </span>
                     <span className="truncate text-xs text-muted">{(b.channels ?? []).join(", ") || "—"}</span>
-                    <ActiveTag active={b.active} />
+                    <div className="flex items-center justify-between gap-2">
+                      <ActiveTag active={b.active} />
+                      <RowSettings href={`/admin/banks/${b.id}`} tip={`Open ${b.name}`} />
+                    </div>
                   </div>
                 );
               })}

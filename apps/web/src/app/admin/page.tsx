@@ -131,7 +131,7 @@ export default async function AdminDashboard() {
       />
     );
   }
-  if (isGlobal && can(cu, "users", "view")) {
+  if (!isGlobal && can(cu, "users", "view")) {
     const dates = await recentDates("users");
     cards.push(
       <StatCard

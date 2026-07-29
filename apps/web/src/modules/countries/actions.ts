@@ -112,7 +112,6 @@ export async function removePaymentChannel(formData: FormData): Promise<void> {
 export async function switchAdminCountry(formData: FormData): Promise<void> {
   await requirePerm("countries", "view");
   const id = String(formData.get("country_id") ?? "");
-  const path = String(formData.get("path") ?? "/admin");
   const { cookies } = await import("next/headers");
   const { ADMIN_COUNTRY_COOKIE } = await import("./lib");
   const jar = await cookies();
@@ -123,5 +122,6 @@ export async function switchAdminCountry(formData: FormData): Promise<void> {
     maxAge: 60 * 60 * 24 * 365,
   });
   revalidatePath("/", "layout");
-  redirect(path.startsWith("/admin") ? path : "/admin");
+  // Land on the dashboard: the page you were on may not exist in the new scope.
+  redirect("/admin");
 }

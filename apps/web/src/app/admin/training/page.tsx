@@ -2,10 +2,12 @@ import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { signedUrl } from "@/lib/storage";
 import { TRAINING_BUCKET } from "@/modules/training/lib";
-import { updateTrainingVideo, deleteTrainingVideo } from "@/modules/training/actions";
+import { updateTrainingVideo,
+  toggleTrainingPublished, deleteTrainingVideo } from "@/modules/training/actions";
 import { TrainingUploadForm } from "@/modules/training/components/upload-form";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
+import { PublishButton } from "@/components/publish-button";
 import { SaveButton } from "@/components/action-buttons";
 import type { Country, Merchant, TrainingVideo } from "@/lib/types";
 import { requireCountryScope } from "@/modules/countries/lib";
@@ -60,10 +62,7 @@ export default async function AdminTrainingPage({
       <ErrorBanner message={error} />
 
       {canAdd && (
-        <TrainingUploadForm
-          merchants={wls.map((m) => ({ id: m.id, label: m.name }))}
-          countries={cs.map((c) => ({ id: c.id, label: `${c.flag} ${c.name}` }))}
-        />
+        <TrainingUploadForm />
       )}
 
       <div className="space-y-3">
@@ -103,7 +102,7 @@ export default async function AdminTrainingPage({
                     <label className="mb-1 block text-xs text-muted">Description</label>
                     <input name="description" defaultValue={v.description ?? ""} className="input" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[1fr_1fr_5rem_auto_auto_auto] sm:items-end">
+                  <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[1fr_5rem_auto_auto] sm:items-end">
                     <div>
                       <label className="mb-1 block text-xs text-muted">White Label</label>
                       <select name="merchant_id" defaultValue={v.merchant_id ?? ""} className="input">
@@ -114,21 +113,10 @@ export default async function AdminTrainingPage({
                       </select>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-muted">Country</label>
-                      <select name="country_id" defaultValue={v.country_id ?? ""} className="input">
-                        <option value="">All countries</option>
-                        {cs.map((c) => (
-                          <option key={c.id} value={c.id}>{c.flag} {c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
                       <label className="mb-1 block text-xs text-muted">Sort</label>
                       <input name="sort" type="number" defaultValue={v.sort} className="input mono-num" />
                     </div>
-                    <label className="flex items-center gap-2 pb-2 text-xs text-muted">
-                      <input type="checkbox" name="published" defaultChecked={v.published} /> Published
-                    </label>
+                    <input type="hidden" name="published" value={v.published ? "on" : ""} />
                     <SaveButton tip="Save this video" />
                     {canDelete && (
                       <button
@@ -148,7 +136,16 @@ export default async function AdminTrainingPage({
                     <p className="text-sm font-medium">{v.title}</p>
                     <p className="text-xs text-muted">{v.description}</p>
                   </div>
-                  <ActiveTag active={v.published} on="Published" off="Draft" />
+                  {canEdit ? (
+                    <form action={toggleTrainingPublished}>
+                      <input type="hidden" name="id" value={v.id} />
+                      <input type="hidden" name="back" value="/admin/training" />
+                      <input type="hidden" name="publish" value={v.published ? "0" : "1"} />
+                      <PublishButton published={v.published} />
+                    </form>
+                  ) : (
+                    <ActiveTag active={v.published} on="Published" off="Draft" />
+                  )}
                 </div>
               )}
             </div>

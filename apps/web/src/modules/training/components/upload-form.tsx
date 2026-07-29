@@ -8,8 +8,6 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createTrainingUpload, saveTrainingVideo } from "../actions";
 
-type Option = { id: string; label: string };
-
 function putWithProgress(url: string, file: Blob, contentType: string, onProgress: (pct: number) => void) {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -58,14 +56,7 @@ function probeVideo(file: File): Promise<{ duration: number | null; thumb: Blob 
   });
 }
 
-export function TrainingUploadForm({
-  merchants,
-  countries,
-}: {
-  /** Platform side only — merchant users upload into their own workspace. */
-  merchants?: Option[];
-  countries?: Option[];
-}) {
+export function TrainingUploadForm() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState(false);
@@ -105,12 +96,12 @@ export function TrainingUploadForm({
       const saved = await saveTrainingVideo({
         title,
         description: String(fd.get("description") ?? ""),
-        merchantId: String(fd.get("merchant_id") ?? "") || null,
-        countryId: String(fd.get("country_id") ?? "") || null,
+        merchantId: null,
+        countryId: null,
         videoPath: upload.path,
         thumbPath,
         durationSeconds: duration,
-        published: fd.get("published") === "on",
+        published: false,
       });
       if ("error" in saved) throw new Error(saved.error);
       form.reset();
@@ -135,28 +126,6 @@ export function TrainingUploadForm({
           <label className="mb-1 block text-xs text-muted">Description</label>
           <textarea name="description" rows={2} className="input" placeholder="Optional" />
         </div>
-        {merchants && (
-          <div>
-            <label className="mb-1 block text-xs text-muted">White Label</label>
-            <select name="merchant_id" className="input">
-              <option value="">All white labels</option>
-              {merchants.map((m) => (
-                <option key={m.id} value={m.id}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        {countries && (
-          <div>
-            <label className="mb-1 block text-xs text-muted">Country</label>
-            <select name="country_id" className="input">
-              <option value="">All countries</option>
-              {countries.map((c) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
         <div className="sm:col-span-2">
           <label className="mb-1 block text-xs text-muted">Video file</label>
           <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted hover:border-accent hover:text-foreground">
@@ -170,9 +139,6 @@ export function TrainingUploadForm({
             <span>{fileName ?? "Choose a video file (mp4 recommended)…"}</span>
           </label>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="published" defaultChecked /> Publish immediately
-        </label>
       </div>
 
       {busy && (

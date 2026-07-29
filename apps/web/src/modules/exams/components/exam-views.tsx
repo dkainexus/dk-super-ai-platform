@@ -69,17 +69,6 @@ export function ExamsIndexView({
               </select>
             </div>
           )}
-          {countries && (
-            <div>
-              <label className="mb-1 block text-xs text-muted">Country</label>
-              <select name="country_id" className="input">
-                <option value="">All countries</option>
-                {countries.map((c) => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
           <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[8rem_12rem_auto] sm:items-end">
             <div>
               <label className="mb-1 block text-xs text-muted">Pass score %</label>
@@ -193,26 +182,15 @@ export function QuestionBankView({
             <div className="flex items-end">
               <GenerateButton />
             </div>
-            {merchants && countries && (
-              <div className="grid gap-3 sm:col-span-full sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs text-muted">White Label</label>
-                  <select name="merchant_id" className="input">
-                    <option value="">All white labels</option>
-                    {merchants.map((m) => (
-                      <option key={m.id} value={m.id}>{m.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted">Country</label>
-                  <select name="country_id" className="input">
-                    <option value="">All countries</option>
-                    {countries.map((c) => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
+            {merchants && (
+              <div className="sm:col-span-full">
+                <label className="mb-1 block text-xs text-muted">White Label</label>
+                <select name="merchant_id" className="input">
+                  <option value="">All white labels</option>
+                  {merchants.map((m) => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
               </div>
             )}
           </form>
@@ -348,17 +326,6 @@ export function ExamDetailView({
                 <option value="">All white labels</option>
                 {merchants.map((m) => (
                   <option key={m.id} value={m.id}>{m.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {countries && (
-            <div>
-              <label className="mb-1 block text-xs text-muted">Country</label>
-              <select name="country_id" defaultValue={exam.country_id ?? ""} className="input">
-                <option value="">All countries</option>
-                {countries.map((c) => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
               </select>
             </div>
