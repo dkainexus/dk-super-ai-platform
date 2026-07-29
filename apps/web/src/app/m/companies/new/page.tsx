@@ -21,14 +21,15 @@ export default async function MerchantNewCompanyPage({
   if (!moduleEnabledFor("companies", toggles, cu.merchant, country)) redirect("/m");
   const { error } = await searchParams;
 
-  const [owners, shareholdersEnabled, companyTypes, { data: occupations }] = country
+  const [owners, shareholdersEnabled, companyTypes, { data: provinceRows }, { data: occupations }] = country
     ? await Promise.all([
         bindableOwners(cu.merchant.id),
         shareholdersEnabledFor(country.id),
           companyTypeNames(country.id),
+        db().from("provinces").select("name").eq("country_id", country.id ?? "").eq("active", true).order("sort"),
         db().from("occupations").select("*"),
       ])
-    : [[], false, [] as string[], { data: [] }];
+    : [[], false, [] as string[], { data: [] }, { data: [] }];
   const occupationType = new Map(((occupations ?? []) as Occupation[]).map((o) => [o.id, o.company_type]));
   const typeByOwner = new Map(owners.map((o) => [o.id, o.occupation_id ? occupationType.get(o.occupation_id) ?? null : null]));
 
@@ -68,6 +69,7 @@ export default async function MerchantNewCompanyPage({
             occupationTypeByOwner={typeByOwner}
             shareholdersEnabled={shareholdersEnabled}
             companyTypes={companyTypes}
+            provinces={((provinceRows ?? []) as { name: string }[]).map((p) => p.name)}
             hidden={{ country_id: country.id }}
           />
         )}

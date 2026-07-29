@@ -20,7 +20,7 @@ export async function ownerDocuments(owner: Owner, group?: "id"): Promise<OwnerD
   add("ID Front", owner.id_front_path);
   add("ID Back", owner.id_back_path);
   if (group === "id") return docs;
-  add("Full-Body Photo", owner.photo_full_body_path);
+  add("Profile Picture", owner.photo_full_body_path);
 
   const [{ data: fields }, { data: values }] = await Promise.all([
     db()

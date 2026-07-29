@@ -5,6 +5,7 @@
 
 import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 import { PhotoInput } from "@/components/photo-input";
+import { IdPhotoInput } from "@/components/id-photo-input";
 import { saveOwner } from "@/modules/owners/actions-merchant";
 import { SaveButton } from "@/components/action-buttons";
 import type { Bank, CountryField, Occupation, Owner, OwnerFieldValue } from "@/lib/types";
@@ -30,6 +31,7 @@ export async function OwnerForm({
   occupations = [],
   provinces = [],
   agents = [],
+  merchants,
   owner,
   values,
   action = saveOwner,
@@ -43,6 +45,8 @@ export async function OwnerForm({
   provinces?: string[];
   /** Agents who can be credited with introducing this owner */
   agents?: { id: string; name: string }[];
+  /** White labels to choose from — omitted when the brand is already fixed. */
+  merchants?: { id: string; name: string }[];
   owner?: Owner;
   values?: OwnerFieldValue[];
   action?: (formData: FormData) => Promise<void>;
@@ -51,6 +55,11 @@ export async function OwnerForm({
 }) {
   const byField = new Map((values ?? []).map((v) => [v.field_id, v]));
   const locked = lockedProp ?? owner?.status === "approved";
+  const [profileUrl, idFrontUrl, idBackUrl] = await Promise.all([
+    signedUrl(DOCS_BUCKET, owner?.photo_full_body_path ?? null),
+    signedUrl(DOCS_BUCKET, owner?.id_front_path ?? null),
+    signedUrl(DOCS_BUCKET, owner?.id_back_path ?? null),
+  ]);
 
   return (
     <form action={action} className="space-y-6">
@@ -59,7 +68,47 @@ export async function OwnerForm({
         <input key={k} type="hidden" name={k} value={v} />
       ))}
 
+      <div className="space-y-4">
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-xs text-muted">Profile Picture *</p>
+          <div className="h-28 w-28 overflow-hidden rounded-full border border-border bg-surface-raised">
+            {profileUrl ? (
+              <img src={profileUrl} alt="Profile picture" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full items-center justify-center text-3xl text-muted">👤</span>
+            )}
+          </div>
+          {!locked && (
+            <div className="w-full max-w-xs">
+              <PhotoInput name="photo_full_body" accept="image/*" />
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <IdPhotoInput name="id_front" label="ID Front *" existingUrl={idFrontUrl} />
+          <IdPhotoInput name="id_back" label="ID Back *" existingUrl={idBackUrl} />
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
+        {merchants && (
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs text-muted">White Label *</label>
+            <select
+              name="merchant_id"
+              defaultValue={owner?.merchant_id ?? (merchants.length === 1 ? merchants[0].id : "")}
+              className="input"
+              required
+              disabled={locked}
+            >
+              <option value="">— Select a white label —</option>
+              {merchants.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className="mb-1 block text-xs text-muted">Full Name *</label>
           <input name="full_name" defaultValue={owner?.full_name ?? ""} className="input" required disabled={locked} />
@@ -123,21 +172,6 @@ export async function OwnerForm({
         <div>
           <label className="mb-1 block text-xs text-muted">Private Email</label>
           <input name="email" type="email" defaultValue={owner?.email ?? ""} className="input mono-num" disabled={locked} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted">ID Front Photo *</label>
-          <FilePreview path={owner?.id_front_path} />
-          {!locked && <PhotoInput name="id_front" accept="image/*,.pdf" />}
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted">ID Back Photo *</label>
-          <FilePreview path={owner?.id_back_path} />
-          {!locked && <PhotoInput name="id_back" accept="image/*,.pdf" />}
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted">Full-Body Photo *</label>
-          <FilePreview path={owner?.photo_full_body_path} />
-          {!locked && <PhotoInput name="photo_full_body" accept="image/*" />}
         </div>
       </div>
 

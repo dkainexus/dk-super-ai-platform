@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
-import { DEFAULT_APP_PASSWORD } from "./lib";
+import { DEFAULT_APP_PASSWORD, ensureAppAccess } from "./lib";
 import { slugify } from "@/lib/slug";
 import { uploadFile, fileExt } from "@/lib/storage";
 import { merchantHasCountry } from "@/modules/merchants/lib";
@@ -161,10 +161,10 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
     if (!m) fail("/admin/owners/new", "Please choose a valid white label");
     countryId = String(formData.get("country_id") ?? "");
     if (!countryId || !(await merchantHasCountry(merchantId, countryId))) {
-      fail(`/admin/owners/new?merchant=${merchantId}`, "Please choose one of this white label's countries");
+      fail("/admin/owners/new", "That white label does not operate in this country");
     }
   }
-  const back = existingId ? `/admin/owners/${existingId}/edit` : `/admin/owners/new?merchant=${merchantId}`;
+  const back = existingId ? `/admin/owners/${existingId}/edit` : "/admin/owners/new";
 
   const fullName = String(formData.get("full_name") ?? "").trim();
   const idNumber = String(formData.get("id_number") ?? "").trim();
@@ -231,6 +231,8 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
       .single();
     if (error || !data) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
     owner = data as import("@/lib/types").Owner;
+    // Every new owner can sign in to the app straight away.
+    await ensureAppAccess(owner.id);
   }
 
   // Built-in ID photos
@@ -459,45 +461,68 @@ export async function toggleCountryField(formData: FormData): Promise<void> {
  * reference number, the shared starter password, and a forced change on first
  * sign-in.
  */
+/** Reset an owner back to the starter password (they must change it again). */
 export async function generateOwnerAppAccess(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("owners", "edit");
   const id = String(formData.get("id") ?? "");
   const back = String(formData.get("back") ?? `/admin/owners/${id}`);
 
-  let q = db().from("owners").select("id, ref, full_name, merchant_id, app_username").eq("id", id);
+  let q = db().from("owners").select("id, merchant_id").eq("id", id);
   if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
   const { data: owner } = await q.maybeSingle();
   if (!owner) fail(back, "Owner not found");
 
-  // Prefer the reference (TH-OWN-BLG00001 → th-own-blg00001); fall back to the name.
-  const base =
-    (owner.ref ?? slugify(owner.full_name ?? "owner")).toLowerCase().replace(/[^a-z0-9]+/g, "") || "owner";
-  let username = owner.app_username ?? base;
-  if (!owner.app_username) {
-    for (let n = 0; n < 50; n++) {
-      const candidate = n === 0 ? base : `${base}${n}`;
-      const { data: taken } = await db()
-        .from("owners")
-        .select("id")
-        .eq("app_username", candidate)
-        .maybeSingle();
-      if (!taken) {
-        username = candidate;
-        break;
-      }
-    }
-  }
-
+  await ensureAppAccess(id);
   const { hashPassword } = await import("@/lib/password");
   const { error } = await db()
     .from("owners")
     .update({
-      app_username: username,
       app_password_hash: await hashPassword(DEFAULT_APP_PASSWORD),
       app_must_change_password: true,
     })
     .eq("id", id);
-  if (error) fail(back, `Failed to generate: ${error.message}`);
+  if (error) fail(back, `Failed to reset: ${error.message}`);
   revalidatePath(back);
   redirect(`${back}?saved=app`);
+}
+
+/** The owner's profile picture, changed straight from the profile header. */
+export async function uploadOwnerPhoto(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("owners", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/owners/${id}`);
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) fail(back, "Please choose an image");
+  if (file.size > 8 * 1024 * 1024) fail(back, "Photos must be under 8MB");
+
+  let q = db().from("owners").select("id, merchant_id").eq("id", id);
+  if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+  const { data: owner } = await q.maybeSingle();
+  if (!owner) fail(back, "Owner not found");
+
+  const path = await uploadFile("owner-docs", `owners/${id}/photo_full_body.${fileExt(file)}`, file);
+  await db()
+    .from("owners")
+    .update({ photo_full_body_path: path, updated_at: new Date().toISOString(), updated_by: cu.user.id })
+    .eq("id", id);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function removeOwnerPhoto(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("owners", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/owners/${id}`);
+
+  let q = db().from("owners").select("id, merchant_id").eq("id", id);
+  if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+  const { data: owner } = await q.maybeSingle();
+  if (!owner) fail(back, "Owner not found");
+
+  await db()
+    .from("owners")
+    .update({ photo_full_body_path: null, updated_at: new Date().toISOString(), updated_by: cu.user.id })
+    .eq("id", id);
+  revalidatePath(back);
+  redirect(back);
 }

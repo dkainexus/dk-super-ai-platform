@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-export type OwnerOption = { id: string; name: string; companyType: string | null };
+export type OwnerOption = { id: string; name: string; companyType: string | null; ref?: string | null; merchantId?: string };
 
 /** Owner binding + company type. Picking an owner suggests its occupation's
  *  company type when the type field is still empty. */
@@ -11,38 +11,52 @@ export function OwnerTypePicker({
   ownerId,
   companyType,
   types,
+  merchants,
+  merchantId: initialMerchant = "",
 }: {
   owners: OwnerOption[];
   ownerId: string;
   companyType: string;
   /** Company types configured for this country; empty = free text. */
   types: string[];
+  /** White labels to choose from — omitted when the brand is already fixed. */
+  merchants?: { id: string; name: string }[];
+  merchantId?: string;
 }) {
   const [type, setType] = useState(companyType);
+  const [merchant, setMerchant] = useState(
+    initialMerchant || (merchants?.length === 1 ? merchants[0].id : "")
+  );
+  // The owner must belong to the chosen brand, so the search pool follows it.
+  const pool = merchants ? owners.filter((o) => !merchant || o.merchantId === merchant) : owners;
 
   return (
     <>
-      <div>
-        <label className="mb-1 block text-xs text-muted">Bound Owner *</label>
-        <select
-          name="owner_id"
-          defaultValue={ownerId}
-          required
-          className="input"
-          onChange={(e) => {
-            const o = owners.find((x) => x.id === e.target.value);
-            if (o?.companyType && !type) setType(o.companyType);
-          }}
-        >
-          <option value="">— Select an owner —</option>
-          {owners.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.name}
-              {o.companyType ? ` (${o.companyType})` : ""}
-            </option>
-          ))}
-        </select>
-      </div>
+      {merchants && (
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs text-muted">White Label *</label>
+          <select
+            name="merchant_id"
+            value={merchant}
+            onChange={(e) => setMerchant(e.target.value)}
+            className="input"
+            required
+          >
+            <option value="">— Select a white label —</option>
+            {merchants.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      <OwnerSearch
+        key={merchant}
+        owners={pool}
+        ownerId={ownerId}
+        onPick={(o) => {
+          if (o?.companyType && !type) setType(o.companyType);
+        }}
+      />
       <div>
         <label className="mb-1 block text-xs text-muted">Company Type (suggested by the owner&apos;s occupation)</label>
         {types.length > 0 ? (
@@ -63,6 +77,92 @@ export function OwnerTypePicker({
         )}
       </div>
     </>
+  );
+}
+
+/** Type-to-search owner picker — the pool is far too long for a dropdown. */
+function OwnerSearch({
+  owners,
+  ownerId,
+  onPick,
+}: {
+  owners: OwnerOption[];
+  ownerId: string;
+  onPick: (owner: OwnerOption | null) => void;
+}) {
+  const [picked, setPicked] = useState<OwnerOption | null>(owners.find((o) => o.id === ownerId) ?? null);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const pool = q
+      ? owners.filter((o) => o.name.toLowerCase().includes(q) || (o.ref ?? "").toLowerCase().includes(q))
+      : owners;
+    return pool.slice(0, 30);
+  }, [owners, query]);
+
+  return (
+    <div className="relative">
+      <label className="mb-1 block text-xs text-muted">Bound Owner *</label>
+      <input type="hidden" name="owner_id" value={picked?.id ?? ""} required />
+      {picked ? (
+        <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+          <span className="flex-1 text-sm">
+            {picked.name}
+            {picked.ref && <span className="mono-num ml-2 text-xs text-muted">{picked.ref}</span>}
+          </span>
+          <button
+            type="button"
+            title="Pick a different owner"
+            onClick={() => {
+              setPicked(null);
+              onPick(null);
+              setOpen(true);
+            }}
+            className="text-xs text-muted hover:text-foreground"
+          >
+            Change
+          </button>
+        </div>
+      ) : (
+        <input
+          value={query}
+          autoComplete="off"
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search an owner by name or reference number…"
+          className="input"
+        />
+      )}
+
+      {open && !picked && (
+        <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-lg">
+          {matches.length === 0 && <p className="px-3 py-3 text-xs text-muted">No owner matches.</p>}
+          {matches.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => {
+                setPicked(o);
+                onPick(o);
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-raised"
+            >
+              <span className="flex-1">
+                {o.name}
+                {o.companyType ? <span className="ml-2 text-xs text-muted">({o.companyType})</span> : null}
+              </span>
+              {o.ref && <span className="mono-num text-[11px] text-muted">{o.ref}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -3,11 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { reviewOwner, setOwnerBanned } from "@/modules/owners/actions";
+import { reviewOwner, setOwnerBanned, uploadOwnerPhoto, removeOwnerPhoto } from "@/modules/owners/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
 import { OwnerData } from "@/modules/owners/components/owner-data";
+import { ImagePicker } from "@/components/image-picker";
 import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 import { AppAccessCard } from "@/modules/owners/components/app-access";
 import type { Country, Merchant, Owner } from "@/lib/types";
@@ -39,14 +40,19 @@ export default async function AdminOwnerDetailPage({
       <Link href="/admin/owners" className="text-xs text-muted hover:text-foreground">← Owners</Link>
 
       <section className="card flex flex-wrap items-center gap-5 p-5">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-raised">
-          {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-2xl text-muted">👤</span>
-          )}
-        </div>
+        <ImagePicker
+          url={photo}
+          canEdit={canEdit}
+          uploadAction={uploadOwnerPhoto}
+          removeAction={removeOwnerPhoto}
+          fieldName="photo"
+          hidden={{ id: o.id, back: `/admin/owners/${o.id}` }}
+          fallback="👤"
+          tip="profile picture"
+          size="h-20 w-20"
+          rounded="rounded-full"
+          fit="object-cover"
+        />
 
         <div className="min-w-48 flex-1">
           <div className="flex flex-wrap items-center gap-2">

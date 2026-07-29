@@ -15,6 +15,8 @@ export function ImagePicker({
   fallback = "🖼️",
   tip = "image",
   size = "h-11 w-11",
+  rounded = "rounded-lg",
+  fit = "object-contain",
 }: {
   url: string | null;
   canEdit: boolean;
@@ -26,14 +28,18 @@ export function ImagePicker({
   fallback?: string;
   tip?: string;
   size?: string;
+  /** Tailwind radius class — a round avatar or a square tile. */
+  rounded?: string;
+  /** object-contain keeps logos whole; object-cover fills an avatar. */
+  fit?: string;
 }) {
   const uploadRef = useRef<HTMLFormElement>(null);
 
   const frame = (
-    <div className={`flex ${size} items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-raised`}>
+    <div className={`flex ${size} items-center justify-center overflow-hidden ${rounded} border border-border bg-surface-raised`}>
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="h-full w-full object-contain" />
+        <img src={url} alt="" className={`h-full w-full ${fit}`} />
       ) : (
         <span className="text-lg">{fallback}</span>
       )}

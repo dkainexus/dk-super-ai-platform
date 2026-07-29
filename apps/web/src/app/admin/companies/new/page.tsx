@@ -7,15 +7,15 @@ import { CompanyForm } from "@/modules/companies/components/company-form";
 import { ErrorBanner } from "@/components/error-banner";
 import type { Occupation } from "@/lib/types";
 
-// Two steps: white label → company form. The country is the one you are
-// working in, so it is never asked for here.
+// One form. The country is the one you are working in, and the white label is
+// a field on the form itself.
 export default async function AdminNewCompanyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ merchant?: string; error?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   await requirePerm("companies", "add");
-  const { merchant: merchantId = "", error } = await searchParams;
+  const { error } = await searchParams;
   const { active: country } = await requireCountryScope();
   if (!country) return null;
 
@@ -29,16 +29,15 @@ export default async function AdminNewCompanyPage({
     name: string;
     merchant_countries: { country_id: string }[];
   }[]).filter((m) => m.merchant_countries.some((c) => c.country_id === country.id));
-  const selected = list.find((m) => m.id === merchantId) ?? (list.length === 1 ? list[0] : null);
-
-  const [owners, shareholdersEnabled, companyTypes, { data: occupations }] = selected
-    ? await Promise.all([
-        bindableOwners(selected.id),
-        shareholdersEnabledFor(country.id),
-        companyTypeNames(country.id),
-        db().from("occupations").select("*"),
-      ])
-    : [[], false, [] as string[], { data: [] }];
+  const [owners, shareholdersEnabled, companyTypes, { data: occupations }, { data: provinceRows }] =
+    await Promise.all([
+      bindableOwners(list.map((m) => m.id)),
+      shareholdersEnabledFor(country.id),
+      companyTypeNames(country.id),
+      db().from("occupations").select("*"),
+      db().from("provinces").select("name").eq("country_id", country.id).eq("active", true).order("sort"),
+    ]);
+  const provinces = ((provinceRows ?? []) as { name: string }[]).map((p) => p.name);
 
   const occupationType = new Map(((occupations ?? []) as Occupation[]).map((o) => [o.id, o.company_type]));
   const typeByOwner = new Map(
@@ -56,47 +55,24 @@ export default async function AdminNewCompanyPage({
       </div>
       <ErrorBanner message={error} />
 
-      <section className="card p-5">
-        <h2 className="mb-3 text-sm font-semibold">1. Choose White Label</h2>
-        <div className="flex flex-wrap gap-2">
-          {list.map((m) => (
-            <Link
-              key={m.id}
-              href={`/admin/companies/new?merchant=${m.id}`}
-              className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                selected?.id === m.id
-                  ? "border-accent bg-accent-soft text-accent-strong"
-                  : "border-border text-muted hover:border-accent hover:text-foreground"
-              }`}
-            >
-              {m.name}
-            </Link>
-          ))}
-          {list.length === 0 && (
-            <p className="text-sm text-muted">No active white label operates in {country.name} yet.</p>
-          )}
-        </div>
-      </section>
-
-      {selected && (
+      {owners.length === 0 ? (
+        <p className="card px-5 py-6 text-sm text-muted">
+          {list.length === 0
+            ? `No active white label operates in ${country.name} yet.`
+            : "No owners to bind yet — a company must be bound to an owner."}{" "}
+          <Link href="/admin/owners/new" className="text-accent-strong underline">Create an owner first →</Link>
+        </p>
+      ) : (
         <section className="card p-5">
-          <h2 className="mb-4 text-sm font-semibold">2. Company Details — {selected.name}</h2>
-          {owners.length === 0 ? (
-            <p className="text-sm text-muted">
-              This white label has no owners yet — a company must be bound to an owner.{" "}
-              <Link href={`/admin/owners/new?merchant=${selected.id}`} className="text-accent-strong underline">
-                Create an owner first →
-              </Link>
-            </p>
-          ) : (
-            <CompanyForm
-              owners={owners}
-              occupationTypeByOwner={typeByOwner}
-              shareholdersEnabled={shareholdersEnabled}
-              companyTypes={companyTypes}
-              hidden={{ merchant_id: selected.id, country_id: country.id }}
-            />
-          )}
+          <CompanyForm
+            owners={owners}
+            occupationTypeByOwner={typeByOwner}
+            shareholdersEnabled={shareholdersEnabled}
+            companyTypes={companyTypes}
+            provinces={provinces}
+            merchants={list.map((m) => ({ id: m.id, name: m.name }))}
+            hidden={{ country_id: country.id }}
+          />
         </section>
       )}
     </div>

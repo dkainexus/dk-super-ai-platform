@@ -14,6 +14,8 @@ export function CompanyForm({
   members = [],
   shareholdersEnabled,
   companyTypes = [],
+  provinces = [],
+  merchants,
   hidden = {},
 }: {
   owners: Owner[];
@@ -22,12 +24,18 @@ export function CompanyForm({
   members?: CompanyMember[];
   shareholdersEnabled: boolean;
   companyTypes?: string[];
+  /** State / province choices for the company's country */
+  provinces?: string[];
+  /** White labels to choose from — omitted when the brand is already fixed. */
+  merchants?: { id: string; name: string }[];
   hidden?: Record<string, string>;
 }) {
   const ownerOptions: OwnerOption[] = owners.map((o) => ({
     id: o.id,
     name: o.full_name || "(no name)",
     companyType: occupationTypeByOwner.get(o.id) ?? null,
+    ref: (o as Owner & { ref?: string | null }).ref ?? null,
+    merchantId: o.merchant_id,
   }));
   const boundOwner = members.find((m) => m.role === "owner");
   const defaultType = companyTypes[0] ?? "";
@@ -56,6 +64,8 @@ export function CompanyForm({
           ownerId={boundOwner?.owner_id ?? ""}
           companyType={company?.company_type ?? defaultType}
           types={companyTypes}
+          merchants={merchants}
+          merchantId={company?.merchant_id ?? ""}
         />
         <div>
           <label className="mb-1 block text-xs text-muted">Business Start Date</label>
@@ -65,6 +75,7 @@ export function CompanyForm({
             defaultValue={company?.business_start_date ?? ""}
             className="input mono-num"
           />
+          <p className="mt-1 text-[11px] text-muted">Filled in automatically the first time the status becomes Registered.</p>
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted">Status</label>
@@ -99,7 +110,16 @@ export function CompanyForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted">Province</label>
-            <input name="province" defaultValue={company?.province ?? ""} className="input" />
+            {provinces.length > 0 ? (
+              <select name="province" defaultValue={company?.province ?? ""} className="input">
+                <option value="">— Select —</option>
+                {provinces.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            ) : (
+              <input name="province" defaultValue={company?.province ?? ""} className="input" />
+            )}
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted">Postal Code</label>

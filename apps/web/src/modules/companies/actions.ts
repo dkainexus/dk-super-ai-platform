@@ -52,18 +52,25 @@ export async function saveCompany(formData: FormData): Promise<void> {
 
   // Scope guard: merchant-scoped users can only touch their own white label.
   if (scope !== "all" && merchantId !== cu.user.merchant_id) redirect(base);
-  const back = existingId ? `${base}/${existingId}` : `${base}/new${isMerchantSide ? "" : `?merchant=${merchantId}`}`;
+  const back = existingId ? `${base}/${existingId}` : `${base}/new`;
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) fail(back, "Please enter the company name");
   const status = String(formData.get("status") ?? "preparing") as CompanyStatus;
   if (!STATUSES.includes(status)) fail(back, "Invalid status");
 
+  // The business starts the day the registration comes through, so the first
+  // time a company reaches Registered we stamp the date ourselves.
+  let startDate = String(formData.get("business_start_date") ?? "") || null;
+  if (!startDate && status === "registered" && company?.status !== "registered") {
+    startDate = new Date().toISOString().slice(0, 10);
+  }
+
   const fields = {
     name,
     company_id: String(formData.get("company_id") ?? "").trim() || null,
     company_type: String(formData.get("company_type") ?? "").trim() || null,
-    business_start_date: String(formData.get("business_start_date") ?? "") || null,
+    business_start_date: startDate,
     address_no: String(formData.get("address_no") ?? "").trim() || null,
     street: String(formData.get("street") ?? "").trim() || null,
     subdistrict: String(formData.get("subdistrict") ?? "").trim() || null,

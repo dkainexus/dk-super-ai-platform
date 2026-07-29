@@ -50,7 +50,7 @@ export default async function OwnerExtraFieldsPage({
         <h1 className="text-xl font-semibold">Owner Extra Fields</h1>
         <p className="mt-1 text-sm text-muted">
           Extra questions the owner form asks in {active.name}. Already built in: name, ID number, ID photos,
-          full-body photo, bank, occupation and contact. Tick <b>Downloadable</b> on an upload field to include it in
+          profile picture, bank, occupation and contact. Tick <b>Downloadable</b> on an upload field to include it in
           the owner&apos;s one-click document download.
         </p>
       </div>

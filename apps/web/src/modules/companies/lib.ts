@@ -20,11 +20,13 @@ export async function shareholdersEnabledFor(countryId: string): Promise<boolean
 }
 
 /** Owners of a white label that can be bound to companies (not banned). */
-export async function bindableOwners(merchantId: string): Promise<Owner[]> {
+export async function bindableOwners(merchantId: string | string[]): Promise<Owner[]> {
+  const ids = Array.isArray(merchantId) ? merchantId : [merchantId];
+  if (ids.length === 0) return [];
   const { data } = await db()
     .from("owners")
     .select("*")
-    .eq("merchant_id", merchantId)
+    .in("merchant_id", ids)
     .neq("status", "banned")
     .order("full_name");
   return (data ?? []) as Owner[];

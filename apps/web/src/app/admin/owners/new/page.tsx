@@ -9,15 +9,15 @@ import { ErrorBanner } from "@/components/error-banner";
 import { OwnerForm } from "@/modules/owners/components/owner-form";
 import type { CountryField, Merchant } from "@/lib/types";
 
-// Platform-side owner creation: pick the white label, then the country
-// (from that white label's enabled countries), then fill the form.
+// Platform-side owner creation. The country is the one you are working in and
+// the white label is a field on the form itself.
 export default async function AdminNewOwnerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ merchant?: string; error?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   await requirePerm("owners", "add");
-  const { merchant: merchantId = "", error } = await searchParams;
+  const { error } = await searchParams;
   const { active } = await requireCountryScope();
 
   // Only white labels that operate in the country we are working in.
@@ -29,7 +29,6 @@ export default async function AdminNewOwnerPage({
     .map((l) => l.merchant)
     .filter((m): m is Merchant => Boolean(m) && m!.status === "active")
     .sort((a, b) => a.name.localeCompare(b.name));
-  const selected = list.find((m) => m.id === merchantId) ?? (list.length === 1 ? list[0] : null);
   const country = active;
 
   const { data: fields } = country
@@ -61,42 +60,25 @@ export default async function AdminNewOwnerPage({
           ← Owners
         </Link>
         <h1 className="mt-1 text-xl font-semibold">New Owner</h1>
+        {country && (
+          <p className="mt-1 text-sm text-muted">
+            Registered in {country.flag || "🌐"} {country.name}.
+          </p>
+        )}
       </div>
       <ErrorBanner message={error} />
 
-      <section className="card p-5">
-        <h2 className="mb-3 text-sm font-semibold">1. Choose White Label</h2>
-        <div className="flex flex-wrap gap-2">
-          {list.map((m) => (
-            <Link
-              key={m.id}
-              href={`/admin/owners/new?merchant=${m.id}`}
-              className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                merchantId === m.id
-                  ? "border-accent bg-accent-soft text-accent-strong"
-                  : "border-border text-muted hover:border-accent hover:text-foreground"
-              }`}
-            >
-              {m.name}
-            </Link>
-          ))}
-          {list.length === 0 && <p className="text-sm text-muted">No active white labels yet.</p>}
-        </div>
-      </section>
-
-      {selected && country && (
+      {country && (
         <section className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold">
-            2. Owner Details — {selected.name} · {country.name}
-          </h2>
           <OwnerForm
             provinces={provinces}
             agents={agentOptions}
+            merchants={list.map((m) => ({ id: m.id, name: m.name }))}
             fields={(fields ?? []) as CountryField[]}
             banks={banks}
             occupations={occupations}
             action={adminSaveOwner}
-            hidden={{ merchant_id: selected.id, country_id: country.id }}
+            hidden={{ country_id: country.id }}
           />
         </section>
       )}

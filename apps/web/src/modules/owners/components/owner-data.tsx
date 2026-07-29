@@ -40,24 +40,31 @@ function DownloadLink({ href, tip, label }: { href: string; tip: string; label: 
   );
 }
 
-/** A document with its preview — click the image to open, the caption to save. */
+/**
+ * A document with its preview. ID cards sit in a card-shaped frame and are shown
+ * whole (never cropped) so nothing on the card can be cut off.
+ */
 async function DocCard({
   path,
   label,
   downloadHref,
+  card = false,
 }: {
   path: string | null;
   label: string;
   downloadHref?: string;
+  /** Draw an ID-card frame at the real card ratio. */
+  card?: boolean;
 }) {
   const url = await signedUrl(DOCS_BUCKET, path);
   const isPdf = (path ?? "").toLowerCase().endsWith(".pdf");
+  const frame = card ? "aspect-[85.6/54]" : "h-36";
 
   return (
     <div className="space-y-1.5">
       <p className="text-xs text-muted">{label}</p>
       {!url ? (
-        <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted">
+        <div className={`flex ${frame} items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted`}>
           Not uploaded
         </div>
       ) : isPdf ? (
@@ -65,7 +72,7 @@ async function DocCard({
           href={url}
           target="_blank"
           rel="noreferrer"
-          className="flex h-36 items-center justify-center rounded-lg border border-border text-sm text-accent-strong underline"
+          className={`flex ${frame} items-center justify-center rounded-xl border border-border text-sm text-accent-strong underline`}
         >
           View PDF
         </a>
@@ -74,7 +81,7 @@ async function DocCard({
           <img
             src={url}
             alt={label}
-            className="h-36 w-full rounded-lg border border-border object-cover transition-opacity hover:opacity-80"
+            className={`${frame} w-full rounded-xl border border-border bg-surface-raised object-contain transition-opacity hover:opacity-80`}
           />
         </a>
       )}
@@ -164,10 +171,9 @@ export async function OwnerData({ owner, base }: { owner: Owner; base: string })
           )
         }
       >
-        <div className="grid gap-4 sm:grid-cols-3">
-          <DocCard path={owner.id_front_path} label="ID Front" />
-          <DocCard path={owner.id_back_path} label="ID Back" />
-          <DocCard path={owner.photo_full_body_path} label="Full-Body Photo" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <DocCard path={owner.id_front_path} label="ID Front" card />
+          <DocCard path={owner.id_back_path} label="ID Back" card />
         </div>
       </Section>
 

@@ -5,6 +5,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
+import { ensureAppAccess } from "./lib";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { randomToken } from "@/lib/slug";
 import { uploadFile, fileExt, DOCS_BUCKET } from "@/lib/storage";
@@ -115,6 +116,8 @@ export async function saveOwner(formData: FormData): Promise<void> {
       .select("*")
       .single();
     if (error || !data) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
+    // Every new owner can sign in to the app straight away.
+    await ensureAppAccess((data as Owner).id);
     owner = data as Owner;
   }
 

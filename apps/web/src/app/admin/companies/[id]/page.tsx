@@ -30,11 +30,12 @@ export default async function AdminCompanyPage({
   if (!data) notFound();
   const company = data as Company & { merchant: Merchant; country: { name: string; flag: string | null } };
 
-  const [members, owners, shareholdersEnabled, companyTypes, { data: occupations }] = await Promise.all([
+  const [members, owners, shareholdersEnabled, companyTypes, { data: provinceRows }, { data: occupations }] = await Promise.all([
     db().from("company_members").select("*").eq("company_id", id).then((r) => (r.data ?? []) as CompanyMember[]),
     bindableOwners(company.merchant_id),
     shareholdersEnabledFor(company.country_id),
     companyTypeNames(company.country_id),
+        db().from("provinces").select("name").eq("country_id", company.country_id ?? "").eq("active", true).order("sort"),
     db().from("occupations").select("*"),
   ]);
   const occupationType = new Map(((occupations ?? []) as Occupation[]).map((o) => [o.id, o.company_type]));
@@ -74,6 +75,7 @@ export default async function AdminCompanyPage({
             members={members}
             shareholdersEnabled={shareholdersEnabled}
             companyTypes={companyTypes}
+            provinces={((provinceRows ?? []) as { name: string }[]).map((p) => p.name)}
           />
         ) : (
           <p className="text-sm text-muted">You have view-only access to companies.</p>

@@ -1,5 +1,4 @@
 import { setOwnerAppAccess, generateOwnerAppAccess } from "../actions";
-import { ActionButton } from "@/components/action-buttons";
 import { SaveButton } from "@/components/action-buttons";
 import type { Owner } from "@/lib/types";
 
@@ -18,21 +17,10 @@ export function AppAccessCard({ owner, back }: { owner: Owner; back: string }) {
           {hasAccess ? "Enabled" : "Not set"}
         </span>
       </div>
-      {!hasAccess && (
-        <form action={generateOwnerAppAccess} className="mb-4 flex flex-wrap items-center gap-3">
-          <input type="hidden" name="id" value={owner.id} />
-          <input type="hidden" name="back" value={back} />
-          <ActionButton icon="plus" tip="Create a login from this owner's reference number" label="Generate Login" variant="primary" />
-          <p className="text-xs text-muted">
-            Username comes from the reference number, password starts as <span className="mono-num">123456</span> and
-            must be changed at first sign-in.
-          </p>
-        </form>
-      )}
       {owner.app_must_change_password && hasAccess && (
         <p className="mb-3 text-xs text-warning">Starter password still in use — the owner must change it on sign-in.</p>
       )}
-      <form action={setOwnerAppAccess} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
+      <form action={setOwnerAppAccess} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto_auto] sm:items-end">
         <input type="hidden" name="id" value={owner.id} />
         <input type="hidden" name="back" value={back} />
         <div>
@@ -49,9 +37,25 @@ export function AppAccessCard({ owner, back }: { owner: Owner; back: string }) {
           <label className="mb-1 block text-xs text-muted">
             {hasAccess ? "New password (blank = keep current)" : "Password"}
           </label>
-          <input name="app_password" type="password" className="input" autoComplete="new-password" />
+          <input
+            name="app_password"
+            type="password"
+            placeholder={hasAccess ? "••••••" : "Set a password"}
+            className="input"
+            autoComplete="new-password"
+          />
         </div>
         <SaveButton tip="Save app credentials" />
+        {hasAccess && (
+          <button
+            type="submit"
+            formAction={generateOwnerAppAccess}
+            title="Reset to the starter password 123456 — the owner must change it at the next sign-in"
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-muted transition-colors hover:border-accent hover:text-foreground"
+          >
+            Reset to 123456
+          </button>
+        )}
         {hasAccess && (
           <button
             type="submit"
@@ -65,6 +69,10 @@ export function AppAccessCard({ owner, back }: { owner: Owner; back: string }) {
         )}
       </form>
       <p className="mt-3 text-xs text-muted">
+        Created with the owner: username {owner.app_username ? <span className="mono-num">{owner.app_username}</span> : "—"},
+        starter password <span className="mono-num">123456</span>.{" "}
+      </p>
+      <p className="mt-1 text-xs text-muted">
         {owner.app_last_login_at
           ? `Last app login: ${new Date(owner.app_last_login_at).toLocaleString()}`
           : "The owner has not signed in to the app yet."}
