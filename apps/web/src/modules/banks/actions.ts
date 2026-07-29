@@ -53,26 +53,10 @@ export async function updateBank(formData: FormData): Promise<void> {
   const active = formData.get("active") === "on";
   if (!name) fail(back, "Bank name cannot be empty");
 
-  // Extra account fields are this bank's own (one label per line); payment
-  // channels are ticked from the country's list.
-  const accountFields = String(formData.get("account_fields") ?? "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((label) => ({ key: slugKey(label), label }));
+  // Payment channels are ticked from the country's list; extra fields and the
+  // logo have their own instant actions.
   const channels = formData.getAll("channels").map(String).filter(Boolean);
-
-  const patch: Record<string, unknown> = { name, code, sort, active, account_fields: accountFields, channels };
-
-  const logo = formData.get("logo");
-  if (logo instanceof File && logo.size > 0) {
-    if (!logo.type.startsWith("image/")) fail(back, "The logo must be an image");
-    try {
-      patch.logo_path = await uploadFile(ASSETS_BUCKET, `bank-logos/${id}.${fileExt(logo)}`, logo);
-    } catch (e) {
-      fail(back, e instanceof Error ? e.message : "Logo upload failed");
-    }
-  }
+  const patch: Record<string, unknown> = { name, code, sort, active, channels };
 
   const { error } = await db().from("banks").update(patch).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);
@@ -90,3 +74,67 @@ export async function deleteBank(formData: FormData): Promise<void> {
 }
 
 
+
+/** Add one extra account field to a bank (chip UI). */
+export async function addBankField(formData: FormData): Promise<void> {
+  await requirePerm("banks", "edit");
+  const id = String(formData.get("id") ?? "");
+  const countryId = String(formData.get("country_id") ?? "");
+  const back = `/admin/banks?country=${countryId}`;
+  const label = String(formData.get("label") ?? "").trim();
+  if (!label) fail(back, "Please enter the field name");
+
+  const { data: bank } = await db().from("banks").select("account_fields").eq("id", id).maybeSingle();
+  const list = (bank?.account_fields ?? []) as { key: string; label: string }[];
+  const key = slugKey(label);
+  if (list.some((f) => f.key === key)) fail(back, "This field already exists on this bank");
+  const { error } = await db().from("banks").update({ account_fields: [...list, { key, label }] }).eq("id", id);
+  if (error) fail(back, `Failed to add: ${error.message}`);
+  revalidatePath("/admin/banks");
+  redirect(back);
+}
+
+export async function removeBankField(formData: FormData): Promise<void> {
+  await requirePerm("banks", "edit");
+  const id = String(formData.get("id") ?? "");
+  const countryId = String(formData.get("country_id") ?? "");
+  const back = `/admin/banks?country=${countryId}`;
+  const key = String(formData.get("key") ?? "");
+  const { data: bank } = await db().from("banks").select("account_fields").eq("id", id).maybeSingle();
+  const list = ((bank?.account_fields ?? []) as { key: string; label: string }[]).filter((f) => f.key !== key);
+  const { error } = await db().from("banks").update({ account_fields: list }).eq("id", id);
+  if (error) fail(back, `Failed to remove: ${error.message}`);
+  revalidatePath("/admin/banks");
+  redirect(back);
+}
+
+/** Remove a bank's logo. */
+export async function removeBankLogo(formData: FormData): Promise<void> {
+  await requirePerm("banks", "edit");
+  const id = String(formData.get("id") ?? "");
+  const countryId = String(formData.get("country_id") ?? "");
+  const { data: bank } = await db().from("banks").select("logo_path").eq("id", id).maybeSingle();
+  if (bank?.logo_path) await db().storage.from(ASSETS_BUCKET).remove([bank.logo_path]);
+  await db().from("banks").update({ logo_path: null }).eq("id", id);
+  revalidatePath("/admin/banks");
+  redirect(`/admin/banks?country=${countryId}`);
+}
+
+/** Upload/replace a bank's logo on its own (fires as soon as a file is picked). */
+export async function uploadBankLogo(formData: FormData): Promise<void> {
+  await requirePerm("banks", "edit");
+  const id = String(formData.get("id") ?? "");
+  const countryId = String(formData.get("country_id") ?? "");
+  const back = `/admin/banks?country=${countryId}`;
+  const logo = formData.get("logo");
+  if (!(logo instanceof File) || logo.size === 0) fail(back, "Please choose an image");
+  if (!logo.type.startsWith("image/")) fail(back, "The logo must be an image");
+  try {
+    const path = await uploadFile(ASSETS_BUCKET, `bank-logos/${id}.${fileExt(logo)}`, logo);
+    await db().from("banks").update({ logo_path: path }).eq("id", id);
+  } catch (e) {
+    fail(back, e instanceof Error ? e.message : "Logo upload failed");
+  }
+  revalidatePath("/admin/banks");
+  redirect(back);
+}

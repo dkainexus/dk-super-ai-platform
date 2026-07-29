@@ -48,23 +48,28 @@ export async function updateCountry(formData: FormData): Promise<void> {
   const flag = String(formData.get("flag") ?? "").trim() || null;
   const timezone = String(formData.get("timezone") ?? "UTC");
   const currency = String(formData.get("currency") ?? "USD").toUpperCase();
-  const sort = parseInt(String(formData.get("sort") ?? "100"), 10) || 100;
   if (!name) fail(back, "Country name cannot be empty");
 
-  const { error } = await db().from("countries").update({ name, flag, timezone, currency, sort }).eq("id", id);
+  const { error } = await db().from("countries").update({ name, flag, timezone, currency }).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);
   revalidatePath("/admin/countries");
   redirect(back);
 }
 
-/** Per-country module opt-outs (checkboxes cm_<moduleKey>). */
-export async function saveCountryModules(formData: FormData): Promise<void> {
+/** Flip one module on/off for this country. */
+export async function toggleCountryModule(formData: FormData): Promise<void> {
   await requirePerm("countries", "edit");
   const id = String(formData.get("country_id") ?? "");
+  const key = String(formData.get("key") ?? "");
+  const on = String(formData.get("on") ?? "") === "1";
   const back = `/admin/countries/${id}`;
-  const { TOGGLABLE_MODULES } = await import("@/modules/registry");
-  const disabled = TOGGLABLE_MODULES.filter((m) => formData.get(`cm_${m.key}`) !== "on").map((m) => m.key);
-  const { error } = await db().from("countries").update({ disabled_modules: disabled }).eq("id", id);
+
+  const { data: c } = await db().from("countries").select("disabled_modules").eq("id", id).maybeSingle();
+  const disabled = new Set(((c?.disabled_modules ?? []) as string[]));
+  if (on) disabled.delete(key);
+  else disabled.add(key);
+
+  const { error } = await db().from("countries").update({ disabled_modules: [...disabled] }).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);
   revalidatePath(back);
   revalidatePath("/", "layout");

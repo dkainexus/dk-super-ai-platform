@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { globalModuleToggles } from "@/lib/settings";
-import { saveModuleToggles } from "@/app/actions/settings";
+import { toggleModule } from "@/app/actions/settings";
 import { ErrorBanner } from "@/components/error-banner";
-import { SaveButton } from "@/components/action-buttons";
 import { MODULES } from "@/modules/registry";
+import { ToggleButton } from "@/components/toggle-button";
 
 // Modules control center: switch business modules on/off globally and jump
 // into each module's own settings page.
@@ -29,7 +29,7 @@ export default async function ModulesPage({
       </div>
       <ErrorBanner message={error} />
 
-      <form action={saveModuleToggles} className="space-y-3">
+      <div className="space-y-3">
         {MODULES.map((m) => (
           <div
             key={m.key}
@@ -57,20 +57,20 @@ export default async function ModulesPage({
                 </Link>
               )}
               {!m.core && (
-                <input
-                  type="checkbox"
-                  name={`mod_${m.key}`}
-                  defaultChecked={toggles[m.key] !== false}
-                  disabled={!canEdit}
-                  title={`Switch the ${m.name} module on or off`}
-                  className="h-4 w-4"
-                />
+                canEdit ? (
+                  <form action={toggleModule}>
+                    <input type="hidden" name="key" value={m.key} />
+                    <input type="hidden" name="on" value={toggles[m.key] !== false ? "0" : "1"} />
+                    <ToggleButton on={toggles[m.key] !== false} name={m.name} />
+                  </form>
+                ) : (
+                  <ToggleButton on={toggles[m.key] !== false} name={m.name} readOnly />
+                )
               )}
             </div>
           </div>
         ))}
-        {canEdit && <SaveButton tip="Save module on/off switches" />}
-      </form>
+      </div>
     </div>
   );
 }

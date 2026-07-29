@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { createCountry, toggleCountry } from "@/modules/countries/actions";
-import { timezoneList, currencyList } from "@/modules/countries/lib";
+import { currencyList } from "@/modules/countries/lib";
 import { CountryPicker } from "@/modules/countries/components/country-picker";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
@@ -20,8 +20,7 @@ export default async function CountriesPage({
   const { data: countries } = await db()
     .from("countries")
     .select("*, merchant_countries(count), country_fields(count)")
-    .order("sort")
-    .order("created_at");
+    .order("name");
 
   return (
     <div className="space-y-8">
@@ -31,6 +30,13 @@ export default async function CountriesPage({
       </p>
       <ErrorBanner message={error} />
 
+      <section className="card p-5">
+        <h2 className="mb-4 text-sm font-semibold">Add Country</h2>
+        <form action={createCountry} className="space-y-4">
+          <CountryPicker currencies={currencyList()} />
+          <SubmitButton label="Add Country" />
+        </form>
+      </section>
       <div className="card divide-y divide-border">
         {(countries ?? []).length === 0 && (
           <p className="px-5 py-6 text-sm text-muted">No countries yet — create the first one below.</p>
@@ -68,13 +74,6 @@ export default async function CountriesPage({
         ))}
       </div>
 
-      <section className="card p-5">
-        <h2 className="mb-4 text-sm font-semibold">Add Country</h2>
-        <form action={createCountry} className="space-y-4">
-          <CountryPicker timezones={timezoneList()} currencies={currencyList()} />
-          <SubmitButton label="Add Country" />
-        </form>
-      </section>
     </div>
   );
 }

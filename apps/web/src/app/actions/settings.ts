@@ -34,6 +34,19 @@ export async function saveModuleToggles(formData: FormData): Promise<void> {
   redirect("/admin/modules");
 }
 
+
+/** Flip one module on/off (global). */
+export async function toggleModule(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("settings", "edit");
+  if (cu.merchant) redirect("/m");
+  const key = String(formData.get("key") ?? "");
+  const toggles = await globalModuleToggles();
+  toggles[key] = String(formData.get("on") ?? "") === "1";
+  await setSetting("modules", toggles);
+  revalidatePath("/", "layout");
+  redirect("/admin/modules");
+}
+
 /** Per-merchant module opt-outs, edited on the merchant detail page. */
 export async function saveMerchantModules(formData: FormData): Promise<void> {
   await requirePerm("merchants", "edit");

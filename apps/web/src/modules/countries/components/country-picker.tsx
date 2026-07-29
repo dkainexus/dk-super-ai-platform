@@ -3,22 +3,25 @@
 import { useState } from "react";
 import { COUNTRY_DATA, flagOf } from "@/modules/countries/data";
 
-// Add Country picker: choose the country from the dataset — code and flag are
-// filled automatically, timezone and currency default to the country's own
-// (both stay editable). Name is prefilled but editable (e.g. bilingual names).
-export function CountryPicker({ timezones, currencies }: { timezones: string[]; currencies: string[] }) {
+// Add Country picker: pick the country and everything else follows — name,
+// code, flag and timezone come from the dataset; only the currency is a choice.
+export function CountryPicker({ currencies }: { currencies: string[] }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [tz, setTz] = useState("UTC");
   const [currency, setCurrency] = useState("USD");
 
   return (
-    <div className="grid gap-4 sm:grid-cols-[1fr_1fr_1fr_7rem]">
+    <div className="grid gap-4 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
       <input type="hidden" name="code" value={code} />
       <input type="hidden" name="flag" value={code ? flagOf(code) : ""} />
+      <input type="hidden" name="name" value={name} />
+      <input type="hidden" name="timezone" value={tz} />
 
       <div>
-        <label className="mb-1 block text-xs text-muted">Country *</label>
+        <label className="mb-1 block text-xs text-muted">
+          Country{tz !== "UTC" ? <span className="text-muted"> · {tz}</span> : null}
+        </label>
         <select
           required
           value={code}
@@ -37,22 +40,6 @@ export function CountryPicker({ timezones, currencies }: { timezones: string[]; 
           {COUNTRY_DATA.map((c) => (
             <option key={c.code} value={c.code}>
               {flagOf(c.code)} {c.name} ({c.code})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs text-muted">Display Name (editable)</label>
-        <input name="name" value={name} onChange={(e) => setName(e.target.value)} className="input" required />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs text-muted">Timezone</label>
-        <select name="timezone" value={tz} onChange={(e) => setTz(e.target.value)} className="input">
-          {timezones.map((t) => (
-            <option key={t} value={t}>
-              {t}
             </option>
           ))}
         </select>

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
-import { createBank, updateBank, deleteBank } from "@/modules/banks/actions";
+import { createBank, updateBank, deleteBank, addBankField, removeBankField } from "@/modules/banks/actions";
+import { BankLogo } from "@/modules/banks/components/bank-logo";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
@@ -91,14 +92,12 @@ export default async function BanksPage({
                       <input type="hidden" name="id" value={b.id} />
                       <input type="hidden" name="country_id" value={selected.id} />
                       <div className="grid items-end gap-3 sm:grid-cols-[3rem_1fr_8rem_6rem_5rem_auto_auto]">
-                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-raised">
-                          {logo ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={logo} alt="" className="h-full w-full object-contain" />
-                          ) : (
-                            <span className="text-lg">🏦</span>
-                          )}
-                        </div>
+                        <BankLogo
+                          bankId={b.id}
+                          countryId={selected.id}
+                          url={logo ?? null}
+                          canEdit={Boolean(canEdit)}
+                        />
                         <div>
                           <label className="mb-1 block text-xs text-muted">Name</label>
                           <input name="name" defaultValue={b.name} className="input" />
@@ -126,22 +125,42 @@ export default async function BanksPage({
                           </button>
                         )}
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1.2fr]">
-                        <div>
-                          <label className="mb-1 block text-xs text-muted">Logo (PNG/JPG)</label>
-                          <input type="file" name="logo" accept="image/*" className="input pt-2 text-xs" />
-                        </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <label className="mb-1 block text-xs text-muted">
-                            Extra account fields — one per line (e.g. Company ID, App PIN)
+                            Extra account fields asked by this bank
                           </label>
-                          <textarea
-                            name="account_fields"
-                            rows={2}
-                            defaultValue={(b.account_fields ?? []).map((f) => f.label).join("\n")}
-                            className="input"
-                            placeholder={"Company ID\nApp PIN"}
-                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            {(b.account_fields ?? []).map((f) => (
+                              <span
+                                key={f.key}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent-soft px-3 py-1 text-xs text-accent-strong"
+                              >
+                                {f.label}
+                                <button
+                                  type="submit"
+                                  formAction={removeBankField}
+                                  name="key"
+                                  value={f.key}
+                                  title={`Remove ${f.label}`}
+                                  className="text-muted transition-colors hover:text-danger"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <input name="label" placeholder="e.g. Company ID" className="input py-1.5 text-xs" />
+                            <button
+                              type="submit"
+                              formAction={addBankField}
+                              title="Add this field to the bank"
+                              className="rounded-md border border-border px-3 py-1.5 text-xs transition-colors hover:border-accent"
+                            >
+                              + Add
+                            </button>
+                          </div>
                         </div>
                         <div>
                           <label className="mb-1 block text-xs text-muted">

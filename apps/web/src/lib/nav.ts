@@ -30,13 +30,10 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   // Entity sub-menus: the things that live inside each module, so you can jump
   // straight to the one you want instead of hunting through the list page.
   if (!isMerchant) {
-    const [countries, merchants] = await Promise.all([
-      db().from("countries").select("id, name, flag").eq("active", true).order("sort").order("name"),
-      db().from("merchants").select("id, name").eq("status", "active").order("name"),
-    ]);
-    const countryItems = ((countries.data ?? []) as { id: string; name: string; flag: string | null }[]).map((c) => ({
+    const countries = await db().from("countries").select("id, name").eq("active", true).order("name");
+    const countryItems = ((countries.data ?? []) as { id: string; name: string }[]).map((c) => ({
       id: c.id,
-      label: `${c.flag ?? ""} ${c.name}`.trim(),
+      label: c.name,
     }));
 
     const attach = (href: string, children: NavItem[]) => {
@@ -47,13 +44,7 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     attach("/admin/training", [{ href: "/admin/settings/app", label: "App Releases" }]);
     attach("/admin/countries", countryItems.map((c) => ({ href: `/admin/countries/${c.id}`, label: c.label })));
     attach("/admin/banks", countryItems.map((c) => ({ href: `/admin/banks?country=${c.id}`, label: c.label })));
-    attach(
-      "/admin/merchants",
-      ((merchants.data ?? []) as { id: string; name: string }[]).map((m) => ({
-        href: `/admin/merchants/${m.id}`,
-        label: m.name,
-      }))
-    );
+    attach("/admin/merchants", countryItems.map((c) => ({ href: `/admin/merchants?country=${c.id}`, label: c.label })));
   }
 
   const home = isMerchant ? "/m" : "/admin";

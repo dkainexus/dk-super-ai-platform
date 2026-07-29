@@ -271,23 +271,6 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
 
 // ---------- Occupations module ----------
 
-export async function createOccupation(formData: FormData): Promise<void> {
-  await requirePerm("settings", "edit");
-  const back = "/admin/settings/owners";
-  const name = String(formData.get("name") ?? "").trim();
-  const companyType = String(formData.get("company_type") ?? "").trim() || null;
-  if (!name) fail(back, "Please enter the occupation name");
-
-  const { count } = await db().from("occupations").select("id", { count: "exact", head: true });
-  const { error } = await db().from("occupations").insert({
-    name,
-    company_type: companyType,
-    sort: ((count ?? 0) + 1) * 10,
-  });
-  if (error) fail(back, error.message.includes("duplicate") ? "This occupation already exists" : `Failed to create: ${error.message}`);
-  revalidatePath(back);
-  redirect(back);
-}
 
 export async function updateOccupation(formData: FormData): Promise<void> {
   await requirePerm("settings", "edit");
@@ -295,23 +278,14 @@ export async function updateOccupation(formData: FormData): Promise<void> {
   const back = "/admin/settings/owners";
   const name = String(formData.get("name") ?? "").trim();
   const companyType = String(formData.get("company_type") ?? "").trim() || null;
-  const sort = parseInt(String(formData.get("sort") ?? "100"), 10) || 100;
-  const active = formData.get("active") === "on";
   if (!name) fail(back, "Occupation name cannot be empty");
 
-  const { error } = await db().from("occupations").update({ name, company_type: companyType, sort, active }).eq("id", id);
+  const { error } = await db().from("occupations").update({ company_type: companyType }).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);
   revalidatePath(back);
   redirect(back);
 }
 
-export async function deleteOccupation(formData: FormData): Promise<void> {
-  await requirePerm("settings", "edit");
-  const id = String(formData.get("id") ?? "");
-  await db().from("occupations").delete().eq("id", id);
-  revalidatePath("/admin/settings/owners");
-  redirect("/admin/settings/owners");
-}
 
 
 /** Ban / unban an owner. Unban returns the owner to Approved. */

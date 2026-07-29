@@ -2,9 +2,7 @@ import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import {
-  createOccupation,
   updateOccupation,
-  deleteOccupation,
   createCountryField,
   updateCountryField,
   deleteCountryField,
@@ -13,6 +11,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton, SubmitButton } from "@/components/action-buttons";
 import type { Country, CountryField, Occupation } from "@/lib/types";
+import { OCCUPATION_GROUPS } from "@/modules/owners/occupations";
 
 const FIELD_TYPE_LABEL: Record<string, string> = {
   text: "Text",
@@ -35,7 +34,7 @@ export default async function OwnersModuleSettingsPage({
 
   const [{ data: countries }, { data: occupations }] = await Promise.all([
     db().from("countries").select("*").order("sort").order("name"),
-    db().from("occupations").select("*").order("sort").order("name"),
+    db().from("occupations").select("*").order("sort"),
   ]);
   const countryList = (countries ?? []) as Country[];
   const selected = countryList.find((c) => c.id === countryParam) ?? countryList[0] ?? null;
@@ -188,78 +187,46 @@ export default async function OwnersModuleSettingsPage({
         )}
       </section>
 
-      {/* ---------- Occupations (global) ---------- */}
+      {/* ---------- Occupations (built-in catalogue) ---------- */}
       <section className="space-y-3 border-t border-border pt-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Occupations</h2>
         <p className="text-xs text-muted">
-          One global list used by all countries. <b>Company Type</b> is what that occupation maps to when deciding which
-          kind of company to register.
+          A built-in catalogue covering every industry — nothing to add or remove. Set <b>Company Type</b> to say which
+          kind of company that occupation registers.
         </p>
 
-        <div className="space-y-3">
-          {((occupations ?? []) as Occupation[]).map((o) => (
-            <div key={o.id} className="card p-4">
-              {canEdit ? (
-                <form action={updateOccupation} className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_6rem_5rem_auto_auto]">
-                  <input type="hidden" name="id" value={o.id} />
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Occupation</label>
-                    <input name="name" defaultValue={o.name} className="input" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Company Type (maps to)</label>
-                    <input name="company_type" defaultValue={o.company_type ?? ""} placeholder="e.g. Limited Company" className="input" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Sort</label>
-                    <input name="sort" type="number" defaultValue={o.sort} className="input mono-num" />
-                  </div>
-                  <label className="flex items-center gap-2 pb-2 text-xs text-muted">
-                    <input type="checkbox" name="active" defaultChecked={o.active} /> Active
-                  </label>
-                  <SaveButton tip="Save this occupation" />
-                  <button
-                    type="submit"
-                    formAction={deleteOccupation}
-                    title="Delete this occupation"
-                    className="rounded-md border border-danger/40 px-3 py-1.5 text-sm text-danger transition-colors hover:bg-danger/10"
-                  >
-                    Delete
-                  </button>
-                </form>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">
-                    {o.name}
-                    {o.company_type && (
-                      <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent-strong">
-                        → {o.company_type}
-                      </span>
+        {OCCUPATION_GROUPS.map((g) => {
+          const rows = ((occupations ?? []) as Occupation[]).filter((o) => g.names.includes(o.name));
+          if (rows.length === 0) return null;
+          return (
+            <div key={g.group} className="space-y-2">
+              <p className="pt-2 text-xs font-semibold text-muted">{g.group}</p>
+              <div className="card divide-y divide-border">
+                {rows.map((o) => (
+                  <div key={o.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <p className="flex-1 text-sm">{o.name}</p>
+                    {canEdit ? (
+                      <form action={updateOccupation} className="flex items-center gap-2">
+                        <input type="hidden" name="id" value={o.id} />
+                        <input type="hidden" name="name" value={o.name} />
+                        <input type="hidden" name="active" value="on" />
+                        <input
+                          name="company_type"
+                          defaultValue={o.company_type ?? ""}
+                          placeholder="Company type…"
+                          className="input w-56 py-1.5 text-xs"
+                        />
+                        <SaveButton tip={`Save the company type for ${o.name}`} />
+                      </form>
+                    ) : (
+                      <span className="text-xs text-muted">{o.company_type ?? "—"}</span>
                     )}
-                  </p>
-                  <ActiveTag active={o.active} />
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-
-        {canEdit && (
-          <section className="card p-5">
-            <h2 className="mb-4 text-sm font-semibold">Add Occupation</h2>
-            <form action={createOccupation} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-              <div>
-                <label className="mb-1 block text-xs text-muted">Occupation Name</label>
-                <input name="name" className="input" required />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-muted">Company Type (optional)</label>
-                <input name="company_type" placeholder="e.g. Limited Company" className="input" />
-              </div>
-              <ActionButton icon="plus" tip="Add this occupation" label="Add" variant="primary" />
-            </form>
-          </section>
-        )}
+          );
+        })}
       </section>
     </div>
   );

@@ -12,14 +12,14 @@ import type { Country, Merchant } from "@/lib/types";
 export default async function MerchantsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; country?: string }>;
 }) {
   const { cu } = await requirePerm("merchants", "view");
-  const { error } = await searchParams;
+  const { error, country = "" } = await searchParams;
 
   const [{ data: merchants }, { data: countries }, { data: mcRows }] = await Promise.all([
     db().from("merchants").select("*, users(count), owners(count), companies(count)").order("name"),
-    db().from("countries").select("*").order("sort").order("name"),
+    db().from("countries").select("*").order("name"),
     db().from("merchant_countries").select("merchant_id, country_id"),
   ]);
   const countryById = new Map(((countries ?? []) as Country[]).map((c) => [c.id, c]));
@@ -44,28 +44,88 @@ export default async function MerchantsPage({
       </div>
       <ErrorBanner message={error} />
 
-      <div className="card divide-y divide-border">
-        {(merchants ?? []).length === 0 && (
-          <p className="px-5 py-6 text-sm text-muted">No white labels yet — create the first one below.</p>
-        )}
-        {((merchants ?? []) as Row[]).map((m) => (
+      {/* Country tabs — white labels are grouped by the countries they run in */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Link
+          href="/admin/merchants"
+          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+            country === "" ? "border-accent bg-accent-soft text-accent-strong" : "border-border text-muted hover:text-foreground"
+          }`}
+        >
+          All
+        </Link>
+        {((countries ?? []) as Country[]).map((c) => (
           <Link
-            key={m.id}
-            href={`/admin/merchants/${m.id}`}
-            className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-surface-raised"
+            key={c.id}
+            href={`/admin/merchants?country=${c.id}`}
+            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+              country === c.id ? "border-accent bg-accent-soft text-accent-strong" : "border-border text-muted hover:text-foreground"
+            }`}
           >
-            <div className="min-w-0">
-              <p className="text-sm font-medium">{m.name}</p>
-              <p className="truncate text-xs text-muted">
-                {(countriesOf.get(m.id) ?? []).map((c) => `${c.flag || "🌐"} ${c.name}`).join(" · ") || "no countries"} ·{" "}
-                {m.users?.[0]?.count ?? 0} account(s) · {m.owners?.[0]?.count ?? 0} owner(s) ·{" "}
-                {m.companies?.[0]?.count ?? 0} compan(ies)
-              </p>
-            </div>
-            <ActiveTag active={m.status === "active"} on="Active" off="Suspended" />
+            {c.name}
           </Link>
         ))}
       </div>
+
+      {(country ? ((countries ?? []) as Country[]).filter((c) => c.id === country) : ((countries ?? []) as Country[])).map(
+        (c) => {
+          const mine = ((merchants ?? []) as Row[]).filter((m) =>
+            (countriesOf.get(m.id) ?? []).some((x) => x.id === c.id)
+          );
+          return (
+            <section key={c.id} className="space-y-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">{c.name}</h2>
+              <div className="card divide-y divide-border">
+                {mine.length === 0 && (
+                  <p className="px-5 py-4 text-sm text-muted">No white labels in {c.name} yet.</p>
+                )}
+                {mine.map((m) => (
+                  <Link
+                    key={m.id}
+                    href={`/admin/merchants/${m.id}`}
+                    className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-surface-raised"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{m.name}</p>
+                      <p className="truncate text-xs text-muted">
+                        {m.users?.[0]?.count ?? 0} account(s) · {m.owners?.[0]?.count ?? 0} owner(s) ·{" "}
+                        {m.companies?.[0]?.count ?? 0} compan(ies)
+                        {(countriesOf.get(m.id) ?? []).length > 1
+                          ? ` · also in ${(countriesOf.get(m.id) ?? [])
+                              .filter((x) => x.id !== c.id)
+                              .map((x) => x.name)
+                              .join(", ")}`
+                          : ""}
+                      </p>
+                    </div>
+                    <ActiveTag active={m.status === "active"} on="Active" off="Suspended" />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          );
+        }
+      )}
+
+      {((merchants ?? []) as Row[]).filter((m) => (countriesOf.get(m.id) ?? []).length === 0).length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">No country assigned</h2>
+          <div className="card divide-y divide-border">
+            {((merchants ?? []) as Row[])
+              .filter((m) => (countriesOf.get(m.id) ?? []).length === 0)
+              .map((m) => (
+                <Link
+                  key={m.id}
+                  href={`/admin/merchants/${m.id}`}
+                  className="flex items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-surface-raised"
+                >
+                  <p className="text-sm font-medium">{m.name}</p>
+                  <ActiveTag active={m.status === "active"} on="Active" off="Suspended" />
+                </Link>
+              ))}
+          </div>
+        </section>
+      )}
 
       {can(cu, "merchants", "add") && (
         <section className="card p-5">
@@ -95,7 +155,7 @@ export default async function MerchantsPage({
                 {((countries ?? []) as Country[]).map((c) => (
                   <label key={c.id} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:border-accent">
                     <input type="checkbox" name={`mcc_${c.id}`} className="h-4 w-4" />
-                    {c.flag || "🌐"} {c.name}
+                    {c.name}
                   </label>
                 ))}
               </div>
