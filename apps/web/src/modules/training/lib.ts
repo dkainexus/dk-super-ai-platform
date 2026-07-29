@@ -37,3 +37,40 @@ export async function progressForOwner(
 export async function videoPlaybackUrl(video: TrainingVideo, expiresIn = 3600): Promise<string | null> {
   return signedUrl(TRAINING_BUCKET, video.video_path, expiresIn);
 }
+
+export type VideoStats = { watching: number; completed: number };
+
+/**
+ * Per-video watch counts for the owners in scope: how many people have started
+ * a video and how many finished it.
+ */
+export async function videoStats(opts: {
+  videoIds: string[];
+  countryId?: string;
+  merchantId?: string;
+}): Promise<Map<string, VideoStats>> {
+  const stats = new Map<string, VideoStats>();
+  for (const id of opts.videoIds) stats.set(id, { watching: 0, completed: 0 });
+  if (opts.videoIds.length === 0) return stats;
+
+  let oq = db().from("owners").select("id");
+  if (opts.countryId) oq = oq.eq("country_id", opts.countryId);
+  if (opts.merchantId) oq = oq.eq("merchant_id", opts.merchantId);
+  const { data: owners } = await oq;
+  const ownerIds = ((owners ?? []) as { id: string }[]).map((o) => o.id);
+  if (ownerIds.length === 0) return stats;
+
+  const { data } = await db()
+    .from("training_progress")
+    .select("video_id, completed_at")
+    .in("video_id", opts.videoIds)
+    .in("owner_id", ownerIds);
+
+  for (const r of (data ?? []) as { video_id: string; completed_at: string | null }[]) {
+    const s = stats.get(r.video_id);
+    if (!s) continue;
+    if (r.completed_at) s.completed++;
+    else s.watching++;
+  }
+  return stats;
+}

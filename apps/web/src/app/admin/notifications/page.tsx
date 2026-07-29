@@ -1,12 +1,11 @@
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { sendNotification } from "@/modules/notifications/actions";
+import { NotificationComposer, type ComposerOwner } from "@/modules/notifications/components/composer";
 import { ErrorBanner } from "@/components/error-banner";
-import { ActionButton } from "@/components/action-buttons";
-import { type Merchant } from "@/lib/types";
 import { requireCountryScope } from "@/modules/countries/lib";
 
-// Notifications module (platform side): compose + full send history.
+// Compose an app notification: white label first, then everyone in it or a
+// hand-picked list of owners.
 export default async function AdminNotificationsPage({
   searchParams,
 }: {
@@ -14,23 +13,44 @@ export default async function AdminNotificationsPage({
 }) {
   const { cu } = await requirePerm("notifications", "view");
   const { error, sent } = await searchParams;
-
   const { active } = await requireCountryScope();
-  let ownerQuery = db().from("owners").select("id, full_name, status").neq("status", "banned").order("full_name");
+
+  let ownerQuery = db()
+    .from("owners")
+    .select("id, ref, full_name, merchant_id")
+    .neq("status", "banned")
+    .order("full_name");
   if (active) ownerQuery = ownerQuery.eq("country_id", active.id);
 
   const [{ data: merchants }, { data: owners }] = await Promise.all([
-    db().from("merchants").select("*").eq("status", "active").order("name"),
+    db().from("merchants").select("id, name, merchant_countries(country_id)").eq("status", "active").order("name"),
     ownerQuery,
   ]);
-  const canAdd = can(cu, "notifications", "add");
+
+  const merchantList = ((merchants ?? []) as unknown as {
+    id: string;
+    name: string;
+    merchant_countries: { country_id: string }[];
+  }[])
+    .filter((m) => !active || m.merchant_countries.some((c) => c.country_id === active.id))
+    .map((m) => ({ id: m.id, name: m.name }));
+
+  const ownerList: ComposerOwner[] = ((owners ?? []) as {
+    id: string; ref: string | null; full_name: string | null; merchant_id: string;
+  }[]).map((o) => ({
+    id: o.id,
+    ref: o.ref,
+    name: o.full_name || "(no name)",
+    merchantId: o.merchant_id,
+  }));
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">App Notification</h1>
         <p className="mt-1 text-sm text-muted">
-          Push a message to owners&apos; phones. Everything you send is kept below as history.
+          Push a message to owners&apos; phones{active ? ` in ${active.name}` : ""}. Everything you send is kept in
+          Notification History.
         </p>
       </div>
       <ErrorBanner message={error} />
@@ -40,42 +60,9 @@ export default async function AdminNotificationsPage({
         </p>
       )}
 
-      {canAdd && (
-        <form action={sendNotification} className="card space-y-3 p-5">
-          <input type="hidden" name="country_id" value={active?.id ?? ""} />
-          <h2 className="text-sm font-semibold">Send notification</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs text-muted">Specific owner (optional)</label>
-              <select name="owner_id" className="input">
-                <option value="">— audience below —</option>
-                {((owners ?? []) as { id: string; full_name: string | null }[]).map((o) => (
-                  <option key={o.id} value={o.id}>{o.full_name ?? "(unnamed)"}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Audience — White Label</label>
-              <select name="merchant_id" className="input">
-                <option value="">All white labels</option>
-                {((merchants ?? []) as Merchant[]).map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs text-muted">Title</label>
-              <input name="title" className="input" placeholder="e.g. Your company has been registered 🎉" />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs text-muted">Message</label>
-              <textarea name="body" rows={3} className="input" placeholder="Optional details" />
-            </div>
-          </div>
-          <ActionButton icon="send" tip="Send this notification" label="Send" variant="primary" />
-        </form>
+      {can(cu, "notifications", "add") && (
+        <NotificationComposer merchants={merchantList} owners={ownerList} countryId={active?.id ?? ""} />
       )}
-
     </div>
   );
 }

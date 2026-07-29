@@ -25,16 +25,17 @@ export async function sendNotification(formData: FormData): Promise<void> {
   const type = (TYPES.includes(typeRaw as NotificationType) ? typeRaw : "general") as NotificationType;
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim() || null;
-  const target = String(formData.get("owner_id") ?? ""); // "" = all matching owners
+  // Empty = everyone matching the white label / country below.
+  const targets = formData.getAll("owner_ids").map(String).filter(Boolean);
   if (!title) fail(back, "Please enter a title");
 
   let ownerIds: string[] = [];
-  if (target) {
-    let q = db().from("owners").select("id").eq("id", target);
+  if (targets.length > 0) {
+    let q = db().from("owners").select("id").in("id", targets);
     if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
     const { data } = await q;
     ownerIds = ((data ?? []) as { id: string }[]).map((o) => o.id);
-    if (ownerIds.length === 0) fail(back, "Owner not found");
+    if (ownerIds.length === 0) fail(back, "Those owners were not found");
   } else {
     let q = db().from("owners").select("id").neq("status", "banned");
     if (cu.merchant) {

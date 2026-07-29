@@ -12,7 +12,8 @@ import type { Exam, ExamQuestion } from "@/lib/types";
 // thin route pages (the pages fetch scope-appropriate data and render these).
 
 export type Option = { id: string; label: string };
-export type ExamRow = Exam & { question_count: number; scope_label: string };
+export type ExamStats = { attempts: number; passed: number; failed: number; pending: number };
+export type ExamRow = Exam & { question_count: number; scope_label: string; stats?: ExamStats };
 export type QuestionRow = ExamQuestion & { scope_label: string; editable: boolean };
 
 export function ExamsIndexView({
@@ -101,6 +102,19 @@ export function ExamsIndexView({
               <p className="text-xs text-muted">
                 {e.scope_label} · {e.question_count} questions · pass {e.pass_score}%
               </p>
+              {e.stats && (
+                <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-success" title="Owners who passed">
+                    {e.stats.passed} passed
+                  </span>
+                  <span className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-danger" title="Owners who failed">
+                    {e.stats.failed} failed
+                  </span>
+                  <span className="rounded-full border border-border px-2 py-0.5 text-muted" title="Attempts still being marked">
+                    {e.stats.pending} in progress
+                  </span>
+                </p>
+              )}
             </div>
             <ActiveTag active={e.published} on="Published" off="Draft" />
           </Link>

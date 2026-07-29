@@ -3,6 +3,7 @@ import { db } from "@/lib/supabase";
 import { ExamsIndexView, type ExamRow } from "@/modules/exams/components/exam-views";
 import type { Country, Exam, Merchant } from "@/lib/types";
 import { requireCountryScope } from "@/modules/countries/lib";
+import { examStats } from "@/modules/exams/lib";
 
 export default async function AdminExamsPage({
   searchParams,
@@ -26,9 +27,15 @@ export default async function AdminExamsPage({
   const wlName = new Map(wls.map((m) => [m.id, m.name]));
   const cName = new Map(cs.map((c) => [c.id, `${c.flag} ${c.name}`]));
 
+  const stats = await examStats(
+    ((exams ?? []) as { id: string }[]).map((e) => e.id),
+    active?.id
+  );
+
   const rows: ExamRow[] = ((exams ?? []) as (Exam & { items: { question_id: string }[] })[]).map((e) => ({
     ...e,
     question_count: e.items.length,
+    stats: stats.get(e.id),
     scope_label: `${e.merchant_id ? wlName.get(e.merchant_id) ?? "?" : "All white labels"} · ${
       e.country_id ? cName.get(e.country_id) ?? "?" : "All countries"
     }`,

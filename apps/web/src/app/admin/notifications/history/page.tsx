@@ -1,46 +1,64 @@
 import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { sendNotification, deleteNotification } from "@/modules/notifications/actions";
+import { deleteNotification } from "@/modules/notifications/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
-import { type AppNotification, type Merchant } from "@/lib/types";
+import { FilterForm } from "@/components/filter-form";
+import { FilterSelect, TableToolbar } from "@/components/data-table";
+import { Pagination, pageParams } from "@/components/pagination";
 import { requireCountryScope } from "@/modules/countries/lib";
+import { type AppNotification } from "@/lib/types";
 
-// Notifications module (platform side): compose + full send history.
+// Everything ever pushed to owners' phones, filterable by white label.
 export default async function NotificationHistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; sent?: string }>;
+  searchParams: Promise<{ error?: string; sent?: string; merchant?: string; page?: string; per?: string }>;
 }) {
   const { cu } = await requirePerm("notifications", "view");
-  const { error, sent } = await searchParams;
-
+  const sp = await searchParams;
+  const { error, sent, merchant = "" } = sp;
+  const { page, perPage, from, to } = pageParams(sp);
   const { active } = await requireCountryScope();
-  let ownerQuery = db().from("owners").select("id, full_name, status").neq("status", "banned").order("full_name");
-  if (active) ownerQuery = ownerQuery.eq("country_id", active.id);
 
-  const [{ data: rows }, { data: merchants }, { data: owners }] = await Promise.all([
-    db()
-      .from("notifications")
-      .select("*, owner:owners(full_name, merchant_id)")
-      .order("created_at", { ascending: false })
-      .limit(100),
-    db().from("merchants").select("*").eq("status", "active").order("name"),
+  let ownerQuery = db().from("owners").select("id, merchant_id");
+  if (active) ownerQuery = ownerQuery.eq("country_id", active.id);
+  if (merchant) ownerQuery = ownerQuery.eq("merchant_id", merchant);
+
+  const [{ data: owners }, { data: merchants }] = await Promise.all([
     ownerQuery,
+    db().from("merchants").select("id, name, merchant_countries(country_id)").order("name"),
   ]);
+  const ownerIds = ((owners ?? []) as { id: string }[]).map((o) => o.id);
+
+  const { data: rows, count } = ownerIds.length
+    ? await db()
+        .from("notifications")
+        .select("*, owner:owners(full_name, merchant_id)", { count: "exact" })
+        .in("owner_id", ownerIds)
+        .order("created_at", { ascending: false })
+        .range(from, to)
+    : { data: [], count: 0 };
   const list = (rows ?? []) as (AppNotification & { owner: { full_name: string | null } | null })[];
-  const canAdd = can(cu, "notifications", "add");
+  const total = count ?? list.length;
+
+  const merchantOptions = ((merchants ?? []) as unknown as {
+    id: string;
+    name: string;
+    merchant_countries: { country_id: string }[];
+  }[])
+    .filter((m) => !active || m.merchant_countries.some((c) => c.country_id === active.id))
+    .map((m) => ({ value: m.id, label: m.name }));
+
   const canDelete = can(cu, "notifications", "delete");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <Link href="/admin/notifications" className="text-xs text-muted hover:text-foreground">← App Notification</Link>
         <h1 className="mt-1 text-xl font-semibold">Notification History</h1>
-        <p className="mt-1 text-sm text-muted">
-          Everything sent to owners&apos; phones, newest first.
-        </p>
+        <p className="mt-1 text-sm text-muted">Everything sent to owners&apos; phones, newest first.</p>
       </div>
       <ErrorBanner message={error} />
       {sent && (
@@ -48,6 +66,17 @@ export default async function NotificationHistoryPage({
           Sent to {sent} owner{sent === "1" ? "" : "s"}.
         </p>
       )}
+
+      <TableToolbar count={total} noun="notification">
+        <FilterForm action="/admin/notifications/history">
+          <FilterSelect
+            label="White Label"
+            name="merchant"
+            value={merchant}
+            options={[{ value: "", label: "All white labels" }, ...merchantOptions]}
+          />
+        </FilterForm>
+      </TableToolbar>
 
       <div className="card divide-y divide-border">
         {list.length === 0 && <p className="px-5 py-6 text-sm text-muted">Nothing sent yet.</p>}
@@ -73,6 +102,14 @@ export default async function NotificationHistoryPage({
           </div>
         ))}
       </div>
+
+      <Pagination
+        basePath="/admin/notifications/history"
+        params={{ merchant }}
+        page={page}
+        perPage={perPage}
+        total={total}
+      />
     </div>
   );
 }

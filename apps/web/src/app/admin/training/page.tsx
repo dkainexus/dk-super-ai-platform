@@ -1,7 +1,7 @@
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { signedUrl } from "@/lib/storage";
-import { TRAINING_BUCKET } from "@/modules/training/lib";
+import { TRAINING_BUCKET, videoStats } from "@/modules/training/lib";
 import { updateTrainingVideo,
   toggleTrainingPublished,
   reorderTrainingVideos, deleteTrainingVideo } from "@/modules/training/actions";
@@ -12,6 +12,7 @@ import { PublishButton } from "@/components/publish-button";
 import { DragReorder } from "@/components/drag-reorder";
 import { MoneyInput } from "@/components/money-input";
 import { SaveButton } from "@/components/action-buttons";
+import { fmtNum } from "@/lib/format";
 import type { Country, Merchant, TrainingVideo } from "@/lib/types";
 import { requireCountryScope } from "@/modules/countries/lib";
 
@@ -43,6 +44,12 @@ export default async function AdminTrainingPage({
   const wls = (merchants ?? []) as Merchant[];
   const cs = (countries ?? []) as Country[];
 
+  const stats = await videoStats({ videoIds: list.map((v) => v.id), countryId: active?.id });
+  const totals = [...stats.values()].reduce(
+    (acc, s) => ({ watching: acc.watching + s.watching, completed: acc.completed + s.completed }),
+    { watching: 0, completed: 0 }
+  );
+
   const canAdd = can(cu, "training", "add");
   const canEdit = can(cu, "training", "edit");
   const canDelete = can(cu, "training", "delete");
@@ -63,6 +70,19 @@ export default async function AdminTrainingPage({
         </p>
       </div>
       <ErrorBanner message={error} />
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          ["Videos", list.length],
+          ["In progress", totals.watching],
+          ["Completed", totals.completed],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="card px-4 py-3">
+            <p className="text-xs text-muted">{label}</p>
+            <p className="mono-num mt-0.5 text-xl font-semibold">{fmtNum(Number(value))}</p>
+          </div>
+        ))}
+      </div>
 
       {canAdd && (
         <TrainingUploadForm />
@@ -92,6 +112,14 @@ export default async function AdminTrainingPage({
                   </span>
                 ) : null}
               </a>
+              <div className="hidden shrink-0 flex-col justify-center gap-1 sm:flex">
+                <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted" title="Owners who started this video but have not finished">
+                  {fmtNum(stats.get(v.id)?.watching ?? 0)} watching
+                </span>
+                <span className="rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[11px] text-success" title="Owners who finished this video">
+                  {fmtNum(stats.get(v.id)?.completed ?? 0)} completed
+                </span>
+              </div>
 
               {canEdit ? (
                 <form action={updateTrainingVideo} className="grid flex-1 gap-3 sm:grid-cols-2">

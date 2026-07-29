@@ -197,3 +197,36 @@ async function gradeEssays(
     overall: String(parsed.overall ?? ""),
   };
 }
+
+export type ExamStats = { attempts: number; passed: number; failed: number; pending: number };
+
+/** Pass / fail / still-being-marked counts per exam, for the owners in scope. */
+export async function examStats(
+  examIds: string[],
+  countryId?: string
+): Promise<Map<string, ExamStats>> {
+  const out = new Map<string, ExamStats>();
+  for (const id of examIds) out.set(id, { attempts: 0, passed: 0, failed: 0, pending: 0 });
+  if (examIds.length === 0) return out;
+
+  let ownerIds: string[] | null = null;
+  if (countryId) {
+    const { data: owners } = await db().from("owners").select("id").eq("country_id", countryId);
+    ownerIds = ((owners ?? []) as { id: string }[]).map((o) => o.id);
+    if (ownerIds.length === 0) return out;
+  }
+
+  let q = db().from("exam_attempts").select("exam_id, passed").in("exam_id", examIds);
+  if (ownerIds) q = q.in("owner_id", ownerIds);
+  const { data } = await q;
+
+  for (const a of (data ?? []) as { exam_id: string; passed: boolean | null }[]) {
+    const s = out.get(a.exam_id);
+    if (!s) continue;
+    s.attempts++;
+    if (a.passed === true) s.passed++;
+    else if (a.passed === false) s.failed++;
+    else s.pending++;
+  }
+  return out;
+}

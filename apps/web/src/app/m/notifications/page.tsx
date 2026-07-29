@@ -1,7 +1,8 @@
 import { requireMerchantUser, requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { activeCountry } from "@/modules/merchants/lib";
-import { sendNotification, deleteNotification } from "@/modules/notifications/actions";
+import { deleteNotification } from "@/modules/notifications/actions";
+import { NotificationComposer } from "@/modules/notifications/components/composer";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import { NOTIFICATION_TYPE_LABEL, type AppNotification, type NotificationType } from "@/lib/types";
@@ -27,7 +28,7 @@ export default async function MerchantNotificationsPage({
 
   let ownersQ = db()
     .from("owners")
-    .select("id, full_name, status")
+    .select("id, ref, full_name, status, merchant_id")
     .eq("merchant_id", cu.merchant.id)
     .neq("status", "banned")
     .order("full_name");
@@ -64,37 +65,14 @@ export default async function MerchantNotificationsPage({
       )}
 
       {canAdd && (
-        <form action={sendNotification} className="card space-y-3 p-5">
-          <h2 className="text-sm font-semibold">Send notification</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs text-muted">Type</label>
-              <select name="type" className="input">
-                {Object.entries(NOTIFICATION_TYPE_LABEL).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">To</label>
-              <select name="owner_id" className="input">
-                <option value="">All owners</option>
-                {((owners ?? []) as { id: string; full_name: string | null }[]).map((o) => (
-                  <option key={o.id} value={o.id}>{o.full_name ?? "(unnamed)"}</option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs text-muted">Title</label>
-              <input name="title" className="input" placeholder="e.g. New reward available" />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs text-muted">Message</label>
-              <textarea name="body" rows={3} className="input" placeholder="Optional details" />
-            </div>
-          </div>
-          <ActionButton icon="send" tip="Send this notification" label="Send" variant="primary" />
-        </form>
+        <NotificationComposer
+          merchants={[{ id: cu.merchant.id, name: cu.merchant.name }]}
+          lockedMerchantId={cu.merchant.id}
+          owners={((owners ?? []) as { id: string; ref: string | null; full_name: string | null; merchant_id: string }[]).map(
+            (o) => ({ id: o.id, ref: o.ref, name: o.full_name || "(no name)", merchantId: o.merchant_id })
+          )}
+          countryId={active?.id ?? ""}
+        />
       )}
 
       <div className="card divide-y divide-border">
