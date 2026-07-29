@@ -136,11 +136,7 @@ export default async function BankDetailPage({
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Payment Channels</h2>
           <p className="mt-1 text-xs text-muted">
-            Which of {active?.name ?? "the country"}&apos;s channels this bank supports —{" "}
-            <Link href={`/admin/countries/${bank.country_id}`} className="text-accent-strong hover:underline">
-              manage the list on the country page
-            </Link>
-            .
+            Which of {active?.name ?? "the country"}&apos;s channels this bank supports.
           </p>
         </div>
         <form action={updateBank} className="space-y-3">

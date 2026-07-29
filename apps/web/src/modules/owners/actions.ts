@@ -248,8 +248,10 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
           );
       }
     } else {
-      const raw = formData.get(`cf_${f.id}`);
-      if (raw === null) continue;
+      // Multi-select posts one value per ticked box; everything else posts one.
+      const picked = formData.getAll(`cf_${f.id}`).map(String);
+      if (picked.length === 0) continue;
+      const raw = f.field_type === "multiselect" ? picked.join(", ") : picked[0];
       await db()
         .from("owner_field_values")
         .upsert(
@@ -272,19 +274,6 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
 // ---------- Occupations module ----------
 
 
-export async function updateOccupation(formData: FormData): Promise<void> {
-  await requirePerm("settings", "edit");
-  const id = String(formData.get("id") ?? "");
-  const back = "/admin/settings/owners";
-  const name = String(formData.get("name") ?? "").trim();
-  const companyType = String(formData.get("company_type") ?? "").trim() || null;
-  if (!name) fail(back, "Occupation name cannot be empty");
-
-  const { error } = await db().from("occupations").update({ company_type: companyType }).eq("id", id);
-  if (error) fail(back, `Failed to save: ${error.message}`);
-  revalidatePath(back);
-  redirect(back);
-}
 
 
 
@@ -348,4 +337,81 @@ export async function setOwnerAppAccess(formData: FormData): Promise<void> {
     fail(back, error.message.includes("owners_app_username") ? "This username is already taken" : `Failed to save: ${error.message}`);
   revalidatePath(back);
   redirect(`${back}?saved=app`);
+}
+
+// ---------- Occupations & their categories ----------
+
+export async function createOccupationCategory(formData: FormData): Promise<void> {
+  await requirePerm("settings", "edit");
+  const back = "/admin/occupations/categories";
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail(back, "Please enter a category name");
+  const { error } = await db().from("occupation_categories").insert({ name });
+  if (error) fail(back, error.message.includes("duplicate") ? "That category already exists" : `Failed: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function updateOccupationCategory(formData: FormData): Promise<void> {
+  await requirePerm("settings", "edit");
+  const back = "/admin/occupations/categories";
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail(back, "Category name cannot be empty");
+  const { error } = await db().from("occupation_categories").update({ name }).eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function deleteOccupationCategory(formData: FormData): Promise<void> {
+  await requirePerm("settings", "edit");
+  const back = "/admin/occupations/categories";
+  const id = String(formData.get("id") ?? "");
+  await db().from("occupation_categories").delete().eq("id", id);
+  revalidatePath(back);
+  revalidatePath("/admin/occupations");
+  redirect(back);
+}
+
+export async function createOccupation(formData: FormData): Promise<void> {
+  await requirePerm("settings", "edit");
+  const back = "/admin/occupations";
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail(back, "Please enter the occupation");
+  const { count } = await db().from("occupations").select("id", { count: "exact", head: true });
+  const { error } = await db().from("occupations").insert({
+    name,
+    category_id: String(formData.get("category_id") ?? "") || null,
+    sort: ((count ?? 0) + 1) * 10,
+  });
+  if (error) fail(back, error.message.includes("duplicate") ? "That occupation already exists" : `Failed: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function deleteOccupation(formData: FormData): Promise<void> {
+  await requirePerm("settings", "edit");
+  const back = "/admin/occupations";
+  const id = String(formData.get("id") ?? "");
+  const { error } = await db().from("occupations").delete().eq("id", id);
+  if (error) fail(back, "This occupation is in use by an owner");
+  revalidatePath(back);
+  redirect(back);
+}
+
+/** Rename an occupation or move it to another category (auto-saves). */
+export async function setOccupation(formData: FormData): Promise<void> {
+  await requirePerm("settings", "edit");
+  const back = "/admin/occupations";
+  const id = String(formData.get("id") ?? "");
+  const patch: Record<string, unknown> = {};
+  const name = String(formData.get("name") ?? "").trim();
+  if (name) patch.name = name;
+  if (formData.has("category_id")) patch.category_id = String(formData.get("category_id") ?? "") || null;
+  if (Object.keys(patch).length === 0) redirect(back);
+  const { error } = await db().from("occupations").update(patch).eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
 }

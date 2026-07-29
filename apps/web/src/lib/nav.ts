@@ -34,6 +34,19 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     if (!isMerchant && !isGlobal && m.settingsHref && canSettings) {
       item.children = [{ href: m.settingsHref, label: "Settings" }];
     }
+    if (!isMerchant && !isGlobal && m.key === "banks") {
+      item.children = [
+        { href: "/admin/banks/channels", label: "Payment Channels" },
+        { href: "/admin/banks/fields", label: "Extra Fields" },
+      ];
+    }
+    if (!isMerchant && !isGlobal && m.key === "owners") {
+      item.children = [
+        ...(item.children ?? []),
+        { href: "/admin/occupations", label: "Occupations" },
+        { href: "/admin/occupations/categories", label: "Occupation Categories" },
+      ];
+    }
     items.push(item);
   }
 
@@ -46,6 +59,17 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   ];
   const manage = items.filter((i) => isAdminManage(i.href));
   if (manage.length) sections.push({ heading: "Access", items: manage });
+
+  if (!isMerchant && !isGlobal && canSettings) {
+    // The country you are in has its own settings and module switches.
+    sections.push({
+      heading: "This Country",
+      items: [
+        { href: "/admin/country", label: "Country Settings" },
+        { href: "/admin/country/modules", label: "Modules" },
+      ],
+    });
+  }
 
   if (isGlobal) {
     if (canSettings) {

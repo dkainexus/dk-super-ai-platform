@@ -61,7 +61,14 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
           ) : undefined
         ) : adminCtx && (adminCtx.all.length > 0 || cu.isSuper) ? (
           <AdminCountrySwitcher
-            countries={adminCtx.all.map((c) => ({ id: c.id, name: c.name, flag: c.flag }))}
+            countries={await Promise.all(
+              adminCtx.all.map(async (c) => ({
+                id: c.id,
+                name: c.name,
+                flag: c.flag,
+                iconUrl: await signedUrl(ASSETS_BUCKET, c.icon_path, 60 * 60 * 12),
+              }))
+            )}
             activeId={adminCtx.active?.id ?? null}
             isGlobal={adminCtx.mode === "global"}
             canGoGlobal={cu.isSuper}

@@ -78,7 +78,7 @@ export async function addBankField(formData: FormData): Promise<void> {
   await requirePerm("banks", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/banks/${id}`;
+  const back = String(formData.get("back") ?? `/admin/banks/${id}`);
   const label = String(formData.get("label") ?? "").trim();
   if (!label) fail(back, "Please enter the field name");
 
@@ -96,7 +96,7 @@ export async function removeBankField(formData: FormData): Promise<void> {
   await requirePerm("banks", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/banks/${id}`;
+  const back = String(formData.get("back") ?? `/admin/banks/${id}`);
   const key = String(formData.get("key") ?? "");
   const { data: bank } = await db().from("banks").select("account_fields").eq("id", id).maybeSingle();
   const list = ((bank?.account_fields ?? []) as { key: string; label: string }[]).filter((f) => f.key !== key);

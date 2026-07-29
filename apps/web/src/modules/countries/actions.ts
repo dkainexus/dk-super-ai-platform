@@ -43,7 +43,7 @@ export async function toggleCountry(formData: FormData): Promise<void> {
 export async function updateCountry(formData: FormData): Promise<void> {
   await requirePerm("countries", "edit");
   const id = String(formData.get("id") ?? "");
-  const back = `/admin/countries/${id}`;
+  const back = String(formData.get("back") ?? `/admin/countries/${id}`);
   const name = String(formData.get("name") ?? "").trim();
   const flag = String(formData.get("flag") ?? "").trim() || null;
   const timezone = String(formData.get("timezone") ?? "UTC");
@@ -62,7 +62,7 @@ export async function toggleCountryModule(formData: FormData): Promise<void> {
   const id = String(formData.get("country_id") ?? "");
   const key = String(formData.get("key") ?? "");
   const on = String(formData.get("on") ?? "") === "1";
-  const back = `/admin/countries/${id}`;
+  const back = String(formData.get("back") ?? `/admin/countries/${id}`);
 
   const { data: c } = await db().from("countries").select("disabled_modules").eq("id", id).maybeSingle();
   const disabled = new Set(((c?.disabled_modules ?? []) as string[]));
@@ -80,7 +80,7 @@ export async function toggleCountryModule(formData: FormData): Promise<void> {
 export async function addPaymentChannel(formData: FormData): Promise<void> {
   await requirePerm("countries", "edit");
   const id = String(formData.get("country_id") ?? "");
-  const back = `/admin/countries/${id}`;
+  const back = String(formData.get("back") ?? `/admin/countries/${id}`);
   const name = String(formData.get("channel") ?? "").trim();
   if (!name) fail(back, "Please enter a channel name");
 
@@ -97,7 +97,7 @@ export async function addPaymentChannel(formData: FormData): Promise<void> {
 export async function removePaymentChannel(formData: FormData): Promise<void> {
   await requirePerm("countries", "edit");
   const id = String(formData.get("country_id") ?? "");
-  const back = `/admin/countries/${id}`;
+  const back = String(formData.get("back") ?? `/admin/countries/${id}`);
   const name = String(formData.get("channel") ?? "");
   const { data: c } = await db().from("countries").select("payment_channels").eq("id", id).maybeSingle();
   const list = ((c?.payment_channels ?? []) as string[]).filter((x) => x !== name);
@@ -124,4 +124,35 @@ export async function switchAdminCountry(formData: FormData): Promise<void> {
   revalidatePath("/", "layout");
   // Land on the dashboard: the page you were on may not exist in the new scope.
   redirect("/admin");
+}
+
+/** Country icon: uploaded once, shown in the scope switcher. */
+export async function uploadCountryIcon(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/countries/${id}`);
+  const file = formData.get("icon");
+  if (!(file instanceof File) || file.size === 0) fail(back, "Please choose an image");
+  if (!file.type.startsWith("image/")) fail(back, "The icon must be an image");
+  const { ASSETS_BUCKET, fileExt, uploadFile } = await import("@/lib/storage");
+  try {
+    const path = await uploadFile(ASSETS_BUCKET, `country-icons/${id}.${fileExt(file)}`, file);
+    await db().from("countries").update({ icon_path: path }).eq("id", id);
+  } catch (e) {
+    fail(back, e instanceof Error ? e.message : "Icon upload failed");
+  }
+  revalidatePath("/", "layout");
+  redirect(back);
+}
+
+export async function removeCountryIcon(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/countries/${id}`);
+  const { ASSETS_BUCKET } = await import("@/lib/storage");
+  const { data: c } = await db().from("countries").select("icon_path").eq("id", id).maybeSingle();
+  if (c?.icon_path) await db().storage.from(ASSETS_BUCKET).remove([c.icon_path]);
+  await db().from("countries").update({ icon_path: null }).eq("id", id);
+  revalidatePath("/", "layout");
+  redirect(back);
 }

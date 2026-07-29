@@ -2,7 +2,6 @@ import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import {
-  updateOccupation,
   createCountryField,
   updateCountryField,
   deleteCountryField,
@@ -10,19 +9,19 @@ import {
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton, SubmitButton } from "@/components/action-buttons";
-import type { Country, CountryField, Occupation } from "@/lib/types";
-import { OCCUPATION_GROUPS } from "@/modules/owners/occupations";
+import type { Country, CountryField } from "@/lib/types";
 
 const FIELD_TYPE_LABEL: Record<string, string> = {
   text: "Text",
   number: "Number",
   date: "Date",
-  file: "File Upload",
-  select: "Select",
+  select: "Dropdown",
+  multiselect: "Multiple select",
+  file: "Upload",
 };
 
-// Owners module settings: per-country custom fields + the global
-// Occupations list (Company Type = which kind of company to register).
+// Owners module settings: the extra fields collected per country.
+// Text, number, date, dropdown, multiple select or upload.
 export default async function OwnersModuleSettingsPage({
   searchParams,
 }: {
@@ -32,9 +31,8 @@ export default async function OwnersModuleSettingsPage({
   const { error, country: countryParam } = await searchParams;
   const canEdit = can(cu, "settings", "edit");
 
-  const [{ data: countries }, { data: occupations }] = await Promise.all([
+  const [{ data: countries }] = await Promise.all([
     db().from("countries").select("*").order("sort").order("name"),
-    db().from("occupations").select("*").order("sort"),
   ]);
   const countryList = (countries ?? []) as Country[];
   const selected = countryList.find((c) => c.id === countryParam) ?? countryList[0] ?? null;
@@ -163,11 +161,9 @@ export default async function OwnersModuleSettingsPage({
                   <div>
                     <label className="mb-1 block text-xs text-muted">Type</label>
                     <select name="field_type" className="input">
-                      <option value="text">Text</option>
-                      <option value="number">Number</option>
-                      <option value="date">Date</option>
-                      <option value="file">File Upload</option>
-                      <option value="select">Select</option>
+                      {Object.entries(FIELD_TYPE_LABEL).map(([v, label]) => (
+                        <option key={v} value={v}>{label}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -187,47 +183,6 @@ export default async function OwnersModuleSettingsPage({
         )}
       </section>
 
-      {/* ---------- Occupations (built-in catalogue) ---------- */}
-      <section className="space-y-3 border-t border-border pt-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Occupations</h2>
-        <p className="text-xs text-muted">
-          A built-in catalogue covering every industry — nothing to add or remove. Set <b>Company Type</b> to say which
-          kind of company that occupation registers.
-        </p>
-
-        {OCCUPATION_GROUPS.map((g) => {
-          const rows = ((occupations ?? []) as Occupation[]).filter((o) => g.names.includes(o.name));
-          if (rows.length === 0) return null;
-          return (
-            <div key={g.group} className="space-y-2">
-              <p className="pt-2 text-xs font-semibold text-muted">{g.group}</p>
-              <div className="card divide-y divide-border">
-                {rows.map((o) => (
-                  <div key={o.id} className="flex items-center gap-3 px-4 py-2.5">
-                    <p className="flex-1 text-sm">{o.name}</p>
-                    {canEdit ? (
-                      <form action={updateOccupation} className="flex items-center gap-2">
-                        <input type="hidden" name="id" value={o.id} />
-                        <input type="hidden" name="name" value={o.name} />
-                        <input type="hidden" name="active" value="on" />
-                        <input
-                          name="company_type"
-                          defaultValue={o.company_type ?? ""}
-                          placeholder="Company type…"
-                          className="input w-56 py-1.5 text-xs"
-                        />
-                        <SaveButton tip={`Save the company type for ${o.name}`} />
-                      </form>
-                    ) : (
-                      <span className="text-xs text-muted">{o.company_type ?? "—"}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </section>
     </div>
   );
 }

@@ -62,6 +62,7 @@ export type Country = {
   currency: string; // ISO 4217, e.g. THB
   disabled_modules: string[];
   payment_channels: string[];
+  icon_path: string | null;
   active: boolean;
   sort: number;
   created_at: string;
@@ -91,7 +92,7 @@ export type MerchantUser = {
   created_at: string;
 };
 
-export type FieldType = "text" | "number" | "date" | "file" | "select";
+export type FieldType = "text" | "number" | "date" | "file" | "select" | "multiselect";
 
 export type CountryField = {
   id: string;

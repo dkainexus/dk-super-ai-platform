@@ -157,6 +157,25 @@ export async function OwnerForm({
                       <FilePreview path={v?.file_path} />
                       {!locked && <PhotoInput name={`cff_${f.id}`} accept="image/*,.pdf" />}
                     </>
+                  ) : f.field_type === "multiselect" ? (
+                    <div className="flex flex-wrap gap-2">
+                      {(f.options ?? []).map((opt) => (
+                        <label
+                          key={opt}
+                          className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:border-accent"
+                        >
+                          <input
+                            type="checkbox"
+                            name={`cf_${f.id}`}
+                            value={opt}
+                            defaultChecked={(v?.value_text ?? "").split(",").map((x) => x.trim()).includes(opt)}
+                            disabled={locked}
+                            className="h-4 w-4"
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
                   ) : f.field_type === "select" ? (
                     <select name={`cf_${f.id}`} defaultValue={v?.value_text ?? ""} className="input" disabled={locked}>
                       <option value="">— Select —</option>
