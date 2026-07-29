@@ -1,6 +1,5 @@
 import "server-only";
 import { can, type CurrentUser } from "./auth";
-import { db } from "./supabase";
 import { globalModuleToggles, moduleEnabledFor } from "./settings";
 import { activeCountry } from "@/modules/merchants/lib";
 import { MODULES } from "@/modules/registry";
@@ -27,24 +26,12 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     items.push(item);
   }
 
-  // Entity sub-menus: the things that live inside each module, so you can jump
-  // straight to the one you want instead of hunting through the list page.
+  // Training's release page has no home of its own — hang it off the module.
   if (!isMerchant) {
-    const countries = await db().from("countries").select("id, name").eq("active", true).order("name");
-    const countryItems = ((countries.data ?? []) as { id: string; name: string }[]).map((c) => ({
-      id: c.id,
-      label: c.name,
-    }));
-
-    const attach = (href: string, children: NavItem[]) => {
-      const item = items.find((i) => i.href === href);
-      if (item && children.length) item.children = [...(item.children ?? []), ...children];
-    };
-
-    attach("/admin/training", [{ href: "/admin/settings/app", label: "App Releases" }]);
-    attach("/admin/countries", countryItems.map((c) => ({ href: `/admin/countries/${c.id}`, label: c.label })));
-    attach("/admin/banks", countryItems.map((c) => ({ href: `/admin/banks?country=${c.id}`, label: c.label })));
-    attach("/admin/merchants", countryItems.map((c) => ({ href: `/admin/merchants?country=${c.id}`, label: c.label })));
+    const training = items.find((i) => i.href === "/admin/training");
+    if (training && canSettings) {
+      training.children = [...(training.children ?? []), { href: "/admin/settings/app", label: "App Releases" }];
+    }
   }
 
   const home = isMerchant ? "/m" : "/admin";

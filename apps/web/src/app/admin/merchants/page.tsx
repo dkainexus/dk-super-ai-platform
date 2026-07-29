@@ -93,7 +93,7 @@ export default async function MerchantsPage({
                       <p className="truncate text-xs text-muted">
                         {m.users?.[0]?.count ?? 0} account(s) · {m.owners?.[0]?.count ?? 0} owner(s) ·{" "}
                         {m.companies?.[0]?.count ?? 0} compan(ies)
-                        {(countriesOf.get(m.id) ?? []).length > 1
+                        {!scoped && (countriesOf.get(m.id) ?? []).length > 1
                           ? ` · also in ${(countriesOf.get(m.id) ?? [])
                               .filter((x) => x.id !== c.id)
                               .map((x) => x.name)
@@ -153,11 +153,13 @@ export default async function MerchantsPage({
               </div>
             </div>
             <div>
-              <p className="mb-2 text-xs text-muted">Countries (at least one — more can be added later)</p>
+              <p className="mb-2 text-xs text-muted">
+                {active ? `Country — ${active.name} (more can be added later)` : "Countries (at least one — more can be added later)"}
+              </p>
               <div className="flex flex-wrap gap-3">
-                {((countries ?? []) as Country[]).map((c) => (
+                {(active ? [active] : ((countries ?? []) as Country[])).map((c) => (
                   <label key={c.id} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:border-accent">
-                    <input type="checkbox" name={`mcc_${c.id}`} className="h-4 w-4" />
+                    <input type="checkbox" name={`mcc_${c.id}`} defaultChecked={Boolean(active)} className="h-4 w-4" />
                     {c.name}
                   </label>
                 ))}

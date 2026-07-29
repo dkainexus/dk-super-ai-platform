@@ -8,6 +8,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
 import type { Country } from "@/lib/types";
+import { adminCountry } from "@/modules/countries/lib";
 
 export default async function CountriesPage({
   searchParams,
@@ -16,11 +17,14 @@ export default async function CountriesPage({
 }) {
   await requirePerm("countries", "view");
   const { error } = await searchParams;
+  const { active } = await adminCountry();
 
-  const { data: countries } = await db()
+  let q = db()
     .from("countries")
     .select("*, merchant_countries(count), country_fields(count)")
     .order("name");
+  if (active) q = q.eq("id", active.id);
+  const { data: countries } = await q;
 
   return (
     <div className="space-y-8">
