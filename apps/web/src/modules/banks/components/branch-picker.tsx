@@ -9,15 +9,20 @@ type Suggestion = { place_id: string; name: string; address: string };
 
 export function BranchPicker({
   regionCode,
-  label = "Branch (search Google Maps)",
+  bankName,
+  defaultValue,
+  label = "Branch — search Google Maps",
   compact,
 }: {
   /** ISO-3166 alpha-2 of the bank's country, e.g. TH */
   regionCode?: string | null;
+  /** Scopes the search to this bank's branches */
+  bankName?: string | null;
+  defaultValue?: { name: string; address: string | null } | null;
   label?: string;
   compact?: boolean;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(defaultValue?.name ?? "");
   const [items, setItems] = useState<Suggestion[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +32,11 @@ export function BranchPicker({
     address: string;
     lat: number | null;
     lng: number | null;
-  } | null>(null);
+  } | null>(
+    defaultValue
+      ? { place_id: "", name: defaultValue.name, address: defaultValue.address ?? "", lat: null, lng: null }
+      : null
+  );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -40,8 +49,10 @@ export function BranchPicker({
       setBusy(true);
       setError(null);
       try {
+        // Scope the search to the chosen bank so only its branches come back
+        const scoped = bankName ? `${bankName} ${query}` : query;
         const res = await fetch(
-          `/api/places/search?q=${encodeURIComponent(query)}${regionCode ? `&region=${regionCode}` : ""}`
+          `/api/places/search?q=${encodeURIComponent(scoped)}${regionCode ? `&region=${regionCode}` : ""}`
         );
         const json = await res.json();
         if (!res.ok) throw new Error(json.error ?? "Search failed");
@@ -55,7 +66,7 @@ export function BranchPicker({
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [query, regionCode, picked]);
+  }, [query, regionCode, bankName, picked]);
 
   async function choose(s: Suggestion) {
     setBusy(true);
@@ -86,7 +97,7 @@ export function BranchPicker({
           setQuery(e.target.value);
           setPicked(null);
         }}
-        placeholder="e.g. Kasikorn Bank Siam Paragon"
+        placeholder={bankName ? `Search ${bankName} branches…` : "Search a branch…"}
         className={inputClass}
         autoComplete="off"
       />

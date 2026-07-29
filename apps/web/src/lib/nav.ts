@@ -21,19 +21,6 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     items.push({ ...nav });
   }
 
-  // Branches sub-menu under Banks — hidden until at least one bank exists,
-  // since branches belong to a bank (and the page would have nothing to show).
-  if (!isMerchant) {
-    const banksItem = items.find((i) => i.href === "/admin/banks");
-    if (banksItem) {
-      const { db } = await import("./supabase");
-      const { count } = await db().from("banks").select("id", { count: "exact", head: true }).eq("active", true);
-      if ((count ?? 0) > 0) {
-        banksItem.children = [{ href: "/admin/banks/branches", label: "Branches" }];
-      }
-    }
-  }
-
   const home = isMerchant ? "/m" : "/admin";
   const settingsIdx = items.findIndex((i) => i.href.endsWith("/settings"));
   const settingsItems = settingsIdx >= 0 ? items.splice(settingsIdx, 1) : [];

@@ -4,7 +4,7 @@ import { db } from "@/lib/supabase";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { activeCountry } from "@/modules/merchants/lib";
 import { bankAccounts } from "@/modules/bank-accounts/lib";
-import { BankAccountsView, type BranchOption } from "@/modules/bank-accounts/components/accounts-view";
+import { BankAccountsView } from "@/modules/bank-accounts/components/accounts-view";
 import type { FormBank, FormCompany } from "@/modules/bank-accounts/components/account-form";
 
 export default async function MerchantBankAccountsPage({
@@ -33,20 +33,12 @@ export default async function MerchantBankAccountsPage({
     cq,
     bq,
   ]);
-  const bankIds = ((banks ?? []) as { id: string }[]).map((b) => b.id);
-  const { data: branches } = bankIds.length
-    ? await db().from("bank_branches").select("id, bank_id, name").in("bank_id", bankIds).order("name")
-    : { data: [] };
 
   const { data: countries } = await db().from("countries").select("id, code");
   const countryCodes = Object.fromEntries(
     ((countries ?? []) as { id: string; code: string }[]).map((c) => [c.id, c.code])
   );
 
-  const branchMap: Record<string, BranchOption[]> = {};
-  for (const br of (branches ?? []) as { id: string; bank_id: string; name: string }[]) {
-    (branchMap[br.bank_id] ??= []).push({ id: br.id, name: br.name });
-  }
 
   return (
     <BankAccountsView
@@ -59,7 +51,6 @@ export default async function MerchantBankAccountsPage({
       canDelete={Boolean(can(cu, "bank_accounts", "delete"))}
       companies={(companies ?? []) as FormCompany[]}
       banks={(banks ?? []) as FormBank[]}
-      branches={branchMap}
       countryCodes={countryCodes}
     />
   );

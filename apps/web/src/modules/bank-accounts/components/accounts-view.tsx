@@ -12,7 +12,6 @@ import { fmtNum } from "@/lib/format";
 
 const FILTERS = ["", "pending", "active", "suspended", "closed", "rejected"] as const;
 
-export type BranchOption = { id: string; name: string };
 export type AccountRow = BankAccountRow;
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
@@ -35,7 +34,6 @@ export function BankAccountsView({
   canDelete,
   companies,
   banks,
-  branches,
   countryCodes,
 }: {
   base: string;
@@ -47,7 +45,6 @@ export function BankAccountsView({
   canDelete: boolean;
   companies: FormCompany[];
   banks: FormBank[];
-  branches: Record<string, BranchOption[]>;
   countryCodes: Record<string, string>;
 }) {
   const pendingCount = rows.filter((r) => r.status === "pending").length;
@@ -92,7 +89,6 @@ export function BankAccountsView({
           const enabledChannels = Object.entries(a.channels ?? {})
             .filter(([, v]) => v?.enabled)
             .map(([k, v]) => (v.value ? `${k} (${v.value})` : k));
-          const bankBranches = branches[a.bank_id] ?? [];
           return (
             <div
               key={a.id}
@@ -121,36 +117,27 @@ export function BankAccountsView({
               </div>
 
               {/* Branch */}
-              {a.branch ? (
+              {a.branch_name ? (
                 <p className="text-xs">
-                  <span className="text-muted">Branch:</span> <span className="font-medium">{a.branch.name}</span>
-                  {a.branch.address ? <span className="text-muted"> · {a.branch.address}</span> : null}
+                  <span className="text-muted">Branch:</span> <span className="font-medium">{a.branch_name}</span>
+                  {a.branch_address ? <span className="text-muted"> · {a.branch_address}</span> : null}
                 </p>
               ) : (
-                <div className="rounded-lg border border-warning/40 bg-warning/5 p-3">
-                  <p className="mb-2 text-xs font-medium text-warning">⚠ No branch set</p>
-                  {canEdit && (
-                    <form action={assignBranch} className="flex flex-wrap items-end gap-2">
-                      <input type="hidden" name="id" value={a.id} />
-                      <input type="hidden" name="back" value={back} />
-                      {bankBranches.length > 0 && (
-                        <div>
-                          <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Existing branch</label>
-                          <select name="branch_id" className="input py-1.5 text-xs" defaultValue="">
-                            <option value="">— pick —</option>
-                            {bankBranches.map((br) => (
-                              <option key={br.id} value={br.id}>{br.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                      <div className="min-w-64 flex-1">
-                        <BranchPicker regionCode={countryCodes[a.country_id ?? ""] ?? null} label="or search Google Maps" compact />
-                      </div>
-                      <ActionButton icon="check" tip="Set this branch on the account" label="Set Branch" variant="primary" />
-                    </form>
-                  )}
-                </div>
+                canEdit && (
+                  <form action={assignBranch} className="flex flex-wrap items-end gap-2 rounded-lg border border-warning/40 bg-warning/5 p-3">
+                    <input type="hidden" name="id" value={a.id} />
+                    <input type="hidden" name="back" value={back} />
+                    <div className="min-w-64 flex-1">
+                      <BranchPicker
+                        regionCode={countryCodes[a.country_id ?? ""] ?? null}
+                        bankName={a.bank?.name ?? null}
+                        label="No branch set — search Google Maps"
+                        compact
+                      />
+                    </div>
+                    <ActionButton icon="check" tip="Save this branch on the account" label="Set Branch" variant="primary" />
+                  </form>
+                )
               )}
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -189,7 +176,10 @@ export function BankAccountsView({
                     </div>
                     <div>
                       <label className="mb-1 block text-xs text-muted">Condition</label>
-                      <input name="condition" defaultValue={a.condition} className="input" />
+                      <select name="condition" defaultValue={a.condition} className="input">
+                        <option value="New">New</option>
+                        <option value="Old">Old</option>
+                      </select>
                     </div>
                     <div>
                       <label className="mb-1 block text-xs text-muted">Email</label>
@@ -206,6 +196,13 @@ export function BankAccountsView({
                     <div>
                       <label className="mb-1 block text-xs text-muted">Password</label>
                       <input name="password" defaultValue={a.password ?? ""} className="input" />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <BranchPicker
+                        regionCode={countryCodes[a.country_id ?? ""] ?? null}
+                        bankName={a.bank?.name ?? null}
+                        defaultValue={a.branch_name ? { name: a.branch_name, address: a.branch_address } : null}
+                      />
                     </div>
                     {(a.bank?.account_fields ?? []).map((f) => (
                       <div key={f.key}>
@@ -303,7 +300,7 @@ export function BankAccountsView({
           <p className="mb-4 text-xs text-muted">
             Pick the company first — banks, branches and extra fields follow the company&apos;s country.
           </p>
-          <BankAccountForm companies={companies} banks={banks} branches={branches} countryCodes={countryCodes} />
+          <BankAccountForm companies={companies} banks={banks} countryCodes={countryCodes} />
         </section>
       )}
     </div>

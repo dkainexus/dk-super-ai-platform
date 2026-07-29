@@ -10,7 +10,9 @@ export type BankAccount = {
   owner_id: string | null;
   company_id: string;
   bank_id: string;
+  branch_name: string | null;
   branch_address: string | null;
+  branch_place_id: string | null;
   account_no: string;
   account_limit: number | null;
   email: string | null;
@@ -29,17 +31,15 @@ export type BankAccount = {
 };
 
 export type BankAccountRow = BankAccount & {
-  branch_id: string | null;
   company: { name: string } | null;
   bank: { name: string; code: string | null; account_fields: { key: string; label: string }[]; channels: string[] } | null;
-  branch: { name: string; address: string | null } | null;
   owner: { full_name: string | null } | null;
   merchant: { name: string } | null;
   country: { flag: string | null; name: string } | null;
 };
 
 export const BANK_ACCOUNT_SELECT =
-  "*, company:companies(name), bank:banks(name, code, account_fields, channels), branch:bank_branches(name, address), owner:owners(full_name), merchant:merchants(name), country:countries(flag, name)";
+  "*, company:companies(name), bank:banks(name, code, account_fields, channels), owner:owners(full_name), merchant:merchants(name), country:countries(flag, name)";
 
 export async function bankAccounts(opts: {
   merchantId?: string;

@@ -28,7 +28,7 @@ export function SidebarNav({ sections }: { sections: NavSection[] }) {
               const active = isActive(l.href);
               const childActive = (l.children ?? []).some((c) => isActive(c.href));
               return (
-                <div key={l.href}>
+                <div key={l.href} className="group/nav">
                   <Link
                     href={l.href}
                     className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -44,6 +44,14 @@ export function SidebarNav({ sections }: { sections: NavSection[] }) {
                     />
                     {l.label}
                   </Link>
+                  {(l.children ?? []).length > 0 && (
+                  <div
+                    className={`overflow-hidden transition-all ${
+                      active || childActive
+                        ? "max-h-40 opacity-100"
+                        : "max-h-0 opacity-0 group-hover/nav:max-h-40 group-hover/nav:opacity-100"
+                    }`}
+                  >
                   {(l.children ?? []).map((c) => {
                     const cActive = isActive(c.href);
                     return (
@@ -60,6 +68,8 @@ export function SidebarNav({ sections }: { sections: NavSection[] }) {
                       </Link>
                     );
                   })}
+                  </div>
+                  )}
                 </div>
               );
             })}

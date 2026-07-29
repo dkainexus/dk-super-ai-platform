@@ -21,18 +21,15 @@ export type FormBank = {
 export function BankAccountForm({
   companies,
   banks,
-  branches,
   countryCodes,
 }: {
   companies: FormCompany[];
   banks: FormBank[];
-  branches: Record<string, { id: string; name: string }[]>;
   /** countryId → ISO code, so Google search is limited to the right country */
   countryCodes: Record<string, string>;
 }) {
   const [companyId, setCompanyId] = useState("");
   const [bankId, setBankId] = useState("");
-  const [branchId, setBranchId] = useState("");
 
   const company = companies.find((c) => c.id === companyId) ?? null;
   const bankOptions = useMemo(
@@ -53,7 +50,6 @@ export function BankAccountForm({
             onChange={(e) => {
               setCompanyId(e.target.value);
               setBankId("");
-              setBranchId("");
             }}
             className="input"
             required
@@ -72,10 +68,7 @@ export function BankAccountForm({
           <select
             name="bank_id"
             value={bankId}
-            onChange={(e) => {
-              setBankId(e.target.value);
-              setBranchId("");
-            }}
+            onChange={(e) => setBankId(e.target.value)}
             className="input"
             required
             disabled={!companyId}
@@ -91,21 +84,9 @@ export function BankAccountForm({
       {bank && (
         <>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs text-muted">Branch (from the directory)</label>
-              <select
-                name="branch_id"
-                value={branchId}
-                onChange={(e) => setBranchId(e.target.value)}
-                className="input"
-              >
-                <option value="">— Not listed, search Google Maps —</option>
-                {(branches[bank.id] ?? []).map((br) => (
-                  <option key={br.id} value={br.id}>{br.name}</option>
-                ))}
-              </select>
+            <div className="sm:col-span-2">
+              <BranchPicker regionCode={countryCode} bankName={bank.name} />
             </div>
-            {branchId === "" && <BranchPicker regionCode={countryCode} />}
             <div>
               <label className="mb-1 block text-xs text-muted">Account Number</label>
               <input name="account_no" className="input mono-num" required />
@@ -113,6 +94,13 @@ export function BankAccountForm({
             <div>
               <label className="mb-1 block text-xs text-muted">Account Limit</label>
               <MoneyInput name="account_limit" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Condition</label>
+              <select name="condition" className="input" defaultValue="New">
+                <option value="New">New</option>
+                <option value="Old">Old</option>
+              </select>
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Email</label>
@@ -132,7 +120,7 @@ export function BankAccountForm({
             </div>
             {bank.account_fields.map((f) => (
               <div key={f.key}>
-                <label className="mb-1 block text-xs text-muted">{f.label} ({bank.name})</label>
+                <label className="mb-1 block text-xs text-muted">{f.label}</label>
                 <input name={`extra_${f.key}`} className="input" />
               </div>
             ))}
