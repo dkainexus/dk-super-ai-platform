@@ -75,6 +75,7 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
       heading: "This Country",
       items: [
         { href: "/admin/country", label: "Country Settings" },
+        { href: "/admin/country/provinces", label: "States / Provinces" },
         { href: "/admin/country/modules", label: "Modules" },
       ],
     });

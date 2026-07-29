@@ -27,6 +27,12 @@ export async function createCountry(formData: FormData): Promise<void> {
 
   const { error } = await db().from("countries").insert({ code, name, flag, timezone, currency });
   if (error) fail("/admin/countries", `Failed to create: ${error.message}`);
+  {
+    // Give the new country its built-in province list straight away.
+    const { seedProvinces } = await import("./provinces");
+    const { data: created } = await db().from("countries").select("id, code").eq("code", code).maybeSingle();
+    if (created) await seedProvinces(created.id, created.code);
+  }
   revalidatePath("/admin/countries");
 }
 
@@ -154,5 +160,42 @@ export async function removeCountryIcon(formData: FormData): Promise<void> {
   if (c?.icon_path) await db().storage.from(ASSETS_BUCKET).remove([c.icon_path]);
   await db().from("countries").update({ icon_path: null }).eq("id", id);
   revalidatePath("/", "layout");
+  redirect(back);
+}
+
+// ---------- States / provinces ----------
+
+export async function addProvince(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const countryId = String(formData.get("country_id") ?? "");
+  const back = "/admin/country/provinces";
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail(back, "Please enter the name");
+  const { count } = await db().from("provinces").select("id", { count: "exact", head: true }).eq("country_id", countryId);
+  const { error } = await db()
+    .from("provinces")
+    .insert({ country_id: countryId, name, sort: ((count ?? 0) + 1) * 10 });
+  if (error) fail(back, error.message.includes("duplicate") ? "That one already exists" : `Failed: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function updateProvince(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const back = "/admin/country/provinces";
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail(back, "Name cannot be empty");
+  const { error } = await db().from("provinces").update({ name, active: formData.get("active") === "on" }).eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function deleteProvince(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const back = "/admin/country/provinces";
+  await db().from("provinces").delete().eq("id", String(formData.get("id") ?? ""));
+  revalidatePath(back);
   redirect(back);
 }
