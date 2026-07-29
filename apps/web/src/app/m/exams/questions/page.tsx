@@ -7,12 +7,22 @@ import type { ExamQuestion } from "@/lib/types";
 export default async function MerchantQuestionBankPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; generated?: string }>;
+  searchParams: Promise<{ error?: string; generated?: string; category?: string }>;
 }) {
   const cu = await requireMerchantUser();
   await requirePerm("exams", "view");
   const { active } = await activeCountry(cu);
-  const { error, generated } = await searchParams;
+  const { error, generated, category = "" } = await searchParams;
+
+  // Sets are defined per country by the platform; a white label works inside them.
+  const { data: cats } = await db()
+    .from("question_categories")
+    .select("id, name")
+    .eq("country_id", active?.id ?? "")
+    .order("sort")
+    .order("name");
+  const categories = ((cats ?? []) as { id: string; name: string }[]).map((c) => ({ id: c.id, label: c.name }));
+  const open = category === "none" ? { id: "none", label: "Not in a set" } : categories.find((c) => c.id === category);
 
   let q = db()
     .from("exam_questions")
@@ -20,9 +30,19 @@ export default async function MerchantQuestionBankPage({
     .or(`merchant_id.is.null,merchant_id.eq.${cu.merchant.id}`)
     .order("created_at", { ascending: false });
   if (active) q = q.or(`country_id.is.null,country_id.eq.${active.id}`);
+  if (category === "none") q = q.is("category_id", null);
+  else if (category) q = q.eq("category_id", category);
   const { data: questions } = await q;
 
-  const rows: QuestionRow[] = ((questions ?? []) as ExamQuestion[]).map((it) => ({
+  const counts: Record<string, number> = {};
+  let uncategorised = 0;
+  for (const it of (questions ?? []) as ExamQuestion[]) {
+    const cid = (it as ExamQuestion & { category_id?: string | null }).category_id;
+    if (cid) counts[cid] = (counts[cid] ?? 0) + 1;
+    else uncategorised++;
+  }
+
+  const rows: QuestionRow[] = (open ? ((questions ?? []) as ExamQuestion[]) : []).map((it) => ({
     ...it,
     editable: it.merchant_id === cu.merchant.id,
     scope_label: it.merchant_id ? "Your white label" : "Platform",
@@ -37,6 +57,10 @@ export default async function MerchantQuestionBankPage({
       canEdit={Boolean(can(cu, "exams", "edit"))}
       canDelete={Boolean(can(cu, "exams", "delete"))}
       questions={rows}
+      categories={categories}
+      category={open ?? null}
+      categoryCounts={counts}
+      uncategorised={uncategorised}
     />
   );
 }

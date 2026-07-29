@@ -8,6 +8,7 @@ import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
 import { MoneyInput } from "@/components/money-input";
 import { DragReorder } from "@/components/drag-reorder";
+import { TableToolbar } from "@/components/data-table";
 import type { Exam, ExamQuestion } from "@/lib/types";
 
 // Shared server-side views for the Exams module, used by both /admin and /m
@@ -142,6 +143,10 @@ export function QuestionBankView({
   merchants,
   countries,
   categories = [],
+  category,
+  categoryCounts = {},
+  uncategorised = 0,
+  categoryForm,
 }: {
   base: string;
   error?: string;
@@ -153,15 +158,30 @@ export function QuestionBankView({
   merchants?: Option[];
   countries?: Option[];
   categories?: CategoryOption[];
+  /** The set being looked at; absent means the list of sets. */
+  category?: { id: string; label: string } | null;
+  categoryCounts?: Record<string, number>;
+  uncategorised?: number;
+  /** Add / rename / delete controls, rendered by the page. */
+  categoryForm?: React.ReactNode;
 }) {
-  const back = `${base}/questions`;
+  const back = category ? `${base}/questions?category=${category.id}` : `${base}/questions`;
   return (
     <div className="space-y-6">
       <div>
-        <Link href={base} className="text-xs text-muted hover:text-foreground">← Exams</Link>
-        <h1 className="mt-1 text-xl font-semibold">Question Bank</h1>
+        <Link
+          href={category ? `${base}/questions` : base}
+          className="text-xs text-muted hover:text-foreground"
+        >
+          ← {category ? "Question Bank" : "Exams"}
+        </Link>
+        <h1 className="mt-1 text-xl font-semibold">
+          {category ? category.label : "Question Bank"}
+        </h1>
         <p className="mt-1 text-sm text-muted">
-          Choice questions are auto-marked; essay questions are graded by the AI examiner.
+          {category
+            ? "Choice questions are auto-marked; essay questions are graded by the AI examiner."
+            : "Questions live in sets. An exam picks one set and asks all of it — open a set to work on its questions."}
         </p>
       </div>
       <ErrorBanner message={error} />
@@ -171,13 +191,55 @@ export function QuestionBankView({
         </p>
       )}
 
+      {!category ? (
+        <>
+          {categoryForm}
+
+          <TableToolbar count={categories.length} noun="question set" />
+
+          <div className="card divide-y divide-border">
+            {categories.length === 0 && (
+              <p className="px-5 py-6 text-sm text-muted">
+                No question sets yet{canAdd ? " — create one above." : "."}
+              </p>
+            )}
+            {categories.map((c) => (
+              <Link
+                key={c.id}
+                href={`${base}/questions?category=${c.id}`}
+                className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-surface-raised"
+              >
+                <span className="text-sm font-medium">{c.label}</span>
+                <span className="mono-num text-xs text-muted">
+                  {categoryCounts[c.id] ?? 0} question{(categoryCounts[c.id] ?? 0) === 1 ? "" : "s"} →
+                </span>
+              </Link>
+            ))}
+            {uncategorised > 0 && (
+              <Link
+                href={`${base}/questions?category=none`}
+                className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-surface-raised"
+              >
+                <span className="text-sm font-medium text-muted">Not in a set</span>
+                <span className="mono-num text-xs text-muted">
+                  {uncategorised} question{uncategorised === 1 ? "" : "s"} →
+                </span>
+              </Link>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
       {canAdd && (
         <section className="card border-accent/30 p-5">
           <h2 className="mb-1 text-sm font-semibold">✨ Generate with AI</h2>
           <p className="mb-3 text-xs text-muted">
-            Describe a topic and the AI writes the questions straight into the bank (marked scope applies).
+            Describe a topic and the AI writes the questions straight into this set.
           </p>
           <form action={generateQuestions} className="grid gap-3 sm:grid-cols-[1fr_6rem_9rem_9rem_auto]">
+            {category && category.id !== "none" && (
+              <input type="hidden" name="category_id" value={category.id} />
+            )}
             <div>
               <label className="mb-1 block text-xs text-muted">Topic / source material</label>
               <input name="topic" className="input" placeholder="e.g. Bank account safety rules for new members" />
@@ -224,7 +286,13 @@ export function QuestionBankView({
       {canAdd && (
         <section className="card p-5">
           <h2 className="mb-3 text-sm font-semibold">Add question</h2>
-          <QuestionForm back={back} merchants={merchants} countries={countries} categories={categories} />
+          <QuestionForm
+            back={back}
+            merchants={merchants}
+            countries={countries}
+            categories={categories}
+            defaultCategoryId={category && category.id !== "none" ? category.id : ""}
+          />
         </section>
       )}
 
@@ -279,7 +347,9 @@ export function QuestionBankView({
             )}
           </details>
         ))}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

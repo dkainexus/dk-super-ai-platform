@@ -270,6 +270,7 @@ export async function generateQuestions(formData: FormData): Promise<void> {
     countryId = (await adminCountry()).active?.id ?? null;
   }
 
+  const categoryId = String(formData.get("category_id") ?? "") || null;
   const rows = list.map((q) => {
     const isChoice = q.type !== "essay";
     return {
@@ -280,6 +281,7 @@ export async function generateQuestions(formData: FormData): Promise<void> {
       options: isChoice ? (q.options ?? []).slice(0, 6) : [],
       correct_index: isChoice ? Math.max(0, Math.min((q.options?.length ?? 1) - 1, q.correct_index ?? 0)) : null,
       model_answer: isChoice ? null : q.model_answer?.trim() || null,
+      category_id: categoryId,
       points: 1,
       created_by: cu.user.id,
     };
@@ -287,7 +289,7 @@ export async function generateQuestions(formData: FormData): Promise<void> {
   const { error } = await db().from("exam_questions").insert(rows);
   if (error) fail(base, `Failed to save generated questions: ${error.message}`);
   revalidate();
-  redirect(`${base}?generated=${rows.length}`);
+  redirect(`${base}?generated=${rows.length}${categoryId ? `&category=${categoryId}` : ""}`);
 }
 
 // ---------- Question categories (per country) ----------
@@ -295,7 +297,7 @@ export async function generateQuestions(formData: FormData): Promise<void> {
 export async function createQuestionCategory(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("exams", "edit");
   if (cu.merchant) redirect("/m");
-  const back = "/admin/exams/categories";
+  const back = "/admin/exams/questions";
   const countryId = String(formData.get("country_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   if (!name) fail(back, "Please enter a name");
@@ -316,18 +318,18 @@ export async function renameQuestionCategory(formData: FormData): Promise<void> 
   const { cu } = await requirePerm("exams", "edit");
   if (cu.merchant) redirect("/m");
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) fail("/admin/exams/categories", "Name cannot be empty");
+  if (!name) fail("/admin/exams/questions", "Name cannot be empty");
   await db().from("question_categories").update({ name }).eq("id", String(formData.get("id") ?? ""));
-  revalidatePath("/admin/exams/categories");
-  redirect("/admin/exams/categories");
+  revalidatePath("/admin/exams/questions");
+  redirect("/admin/exams/questions");
 }
 
 export async function deleteQuestionCategory(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("exams", "delete");
   if (cu.merchant) redirect("/m");
   await db().from("question_categories").delete().eq("id", String(formData.get("id") ?? ""));
-  revalidatePath("/admin/exams/categories");
-  redirect("/admin/exams/categories");
+  revalidatePath("/admin/exams/questions");
+  redirect("/admin/exams/questions");
 }
 
 /** Drag & drop order of the exam list. */

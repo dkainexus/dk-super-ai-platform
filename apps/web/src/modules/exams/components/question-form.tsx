@@ -16,10 +16,13 @@ export function QuestionForm({
   merchants,
   countries,
   categories = [],
+  defaultCategoryId = "",
 }: {
   question?: ExamQuestion;
   back: string;
   categories?: Option[];
+  /** The set being worked in — preselected on new questions. */
+  defaultCategoryId?: string;
   /** Platform side only; merchant users are scoped server-side. */
   merchants?: Option[];
   countries?: Option[];
@@ -57,7 +60,10 @@ export function QuestionForm({
           <label className="mb-1 block text-xs text-muted">Category</label>
           <select
             name="category_id"
-            defaultValue={(question as (ExamQuestion & { category_id?: string | null }) | undefined)?.category_id ?? ""}
+            defaultValue={
+              (question as (ExamQuestion & { category_id?: string | null }) | undefined)?.category_id ??
+              defaultCategoryId
+            }
             className="input"
           >
             <option value="">No category</option>

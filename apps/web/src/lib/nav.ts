@@ -60,10 +60,7 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
       ];
     }
     if (!isMerchant && !isGlobal && m.key === "exams") {
-      item.children = [
-        { href: "/admin/exams/questions", label: "Question Bank" },
-        { href: "/admin/exams/categories", label: "Question Categories" },
-      ];
+      item.children = [{ href: "/admin/exams/questions", label: "Question Bank" }];
     }
     if (!isMerchant && !isGlobal && m.key === "owners") {
       item.children = [
