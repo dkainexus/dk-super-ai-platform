@@ -90,6 +90,7 @@ export async function updateTrainingVideo(formData: FormData): Promise<void> {
   if (!title) fail(back, "Title cannot be empty");
 
   const patch: Record<string, unknown> = {
+    updated_by: cu.user.id,
     title,
     description: String(formData.get("description") ?? "").trim() || null,
     sort: parseInt(String(formData.get("sort") ?? "100"), 10) || 100,

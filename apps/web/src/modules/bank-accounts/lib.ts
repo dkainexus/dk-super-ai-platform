@@ -62,3 +62,42 @@ export const STATUS_COLORS: Record<BankAccountStatus, string> = {
   closed: "text-muted border-border bg-surface-raised",
   rejected: "text-danger border-danger/40 bg-danger/10",
 };
+
+/** One page of accounts for the list view, plus the unfiltered status counts. */
+export async function bankAccountPage(opts: {
+  merchantId?: string;
+  countryId?: string;
+  status?: string;
+  bankId?: string;
+  from: number;
+  to: number;
+}): Promise<{ rows: BankAccountRow[]; total: number }> {
+  let q = db()
+    .from("bank_accounts")
+    .select(BANK_ACCOUNT_SELECT, { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(opts.from, opts.to);
+  if (opts.merchantId) q = q.eq("merchant_id", opts.merchantId);
+  if (opts.countryId) q = q.eq("country_id", opts.countryId);
+  if (opts.status) q = q.eq("status", opts.status);
+  if (opts.bankId) q = q.eq("bank_id", opts.bankId);
+  const { data, count } = await q;
+  const rows = (data ?? []) as unknown as BankAccountRow[];
+  return { rows, total: count ?? rows.length };
+}
+
+export async function bankAccount(id: string): Promise<BankAccountRow | null> {
+  const { data } = await db().from("bank_accounts").select(BANK_ACCOUNT_SELECT).eq("id", id).maybeSingle();
+  return (data ?? null) as unknown as BankAccountRow | null;
+}
+
+/** How many accounts sit in each status — drives the filter chips. */
+export async function bankAccountCounts(opts: { merchantId?: string; countryId?: string }): Promise<Record<string, number>> {
+  let q = db().from("bank_accounts").select("status");
+  if (opts.merchantId) q = q.eq("merchant_id", opts.merchantId);
+  if (opts.countryId) q = q.eq("country_id", opts.countryId);
+  const { data } = await q;
+  const counts: Record<string, number> = {};
+  for (const r of (data ?? []) as { status: string }[]) counts[r.status] = (counts[r.status] ?? 0) + 1;
+  return counts;
+}

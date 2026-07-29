@@ -56,7 +56,13 @@ export async function updateCountry(formData: FormData): Promise<void> {
   const currency = String(formData.get("currency") ?? "USD").toUpperCase();
   if (!name) fail(back, "Country name cannot be empty");
 
-  const { error } = await db().from("countries").update({ name, flag, timezone, currency }).eq("id", id);
+  const { error } = await db().from("countries").update({
+      name,
+      flag,
+      timezone,
+      currency,
+      new_account_reward: parseFloat(String(formData.get("new_account_reward") ?? "0")) || 0,
+    }).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);
   revalidatePath("/admin/countries");
   redirect(back);

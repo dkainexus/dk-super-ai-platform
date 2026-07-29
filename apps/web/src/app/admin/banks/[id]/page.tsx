@@ -1,3 +1,4 @@
+import { AuditLine } from "@/components/audit-line";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
@@ -135,6 +136,12 @@ export default async function BankDetailPage({
         )}
       </section>
 
+      <AuditLine
+        createdBy={(bank as { created_by?: string | null }).created_by}
+        createdAt={(bank as { created_at?: string | null }).created_at}
+        updatedBy={(bank as { updated_by?: string | null }).updated_by}
+        updatedAt={(bank as { updated_at?: string | null }).updated_at}
+      />
     </div>
   );
 }

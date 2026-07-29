@@ -1,3 +1,4 @@
+import { AuditLine } from "@/components/audit-line";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
@@ -100,6 +101,13 @@ export default async function AdminOwnerDetailPage({
           </div>
         </section>
       )}
+
+      <AuditLine
+        createdBy={(o as { created_by?: string | null }).created_by}
+        createdAt={o.created_at}
+        updatedBy={(o as { updated_by?: string | null }).updated_by}
+        updatedAt={(o as { updated_at?: string | null }).updated_at}
+      />
     </div>
   );
 }

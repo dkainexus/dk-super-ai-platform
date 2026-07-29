@@ -36,6 +36,12 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
         m.key === "owners" ? "Owner Extra Fields" : m.key === "companies" ? "Shareholder Settings" : "Settings";
       item.children = [{ href: m.settingsHref, label }];
     }
+    if (!isMerchant && !isGlobal && m.key === "companies") {
+      item.children = [
+        { href: "/admin/companies/types", label: "Company Types" },
+        ...(item.children ?? []),
+      ];
+    }
     if (!isMerchant && !isGlobal && m.key === "banks") {
       item.children = [
         { href: "/admin/banks/channels", label: "Payment Channels" },

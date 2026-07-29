@@ -241,7 +241,10 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
       patch[col] = await uploadFile("owner-docs", `owners/${owner.id}/${field}.${fileExt(file)}`, file);
     }
   }
-  if (Object.keys(patch).length > 0) await db().from("owners").update(patch).eq("id", owner.id);
+  await db()
+    .from("owners")
+    .update({ ...patch, updated_at: new Date().toISOString(), updated_by: cu.user.id })
+    .eq("id", owner.id);
 
   // Country custom fields
   const { data: fields } = await db()

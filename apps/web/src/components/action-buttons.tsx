@@ -105,6 +105,8 @@ export function ActionButton({
   variant = "outline",
   type = "submit",
   onClick,
+  name,
+  value,
 }: {
   icon: IconName;
   tip: string;
@@ -112,6 +114,9 @@ export function ActionButton({
   variant?: keyof typeof VARIANTS;
   type?: "submit" | "button";
   onClick?: () => void;
+  /** Submitted alongside the form — lets one form carry several decisions. */
+  name?: string;
+  value?: string;
 }) {
   const { pending } = useFormStatus();
   return (
@@ -119,6 +124,8 @@ export function ActionButton({
       <button
         type={type}
         onClick={onClick}
+        name={name}
+        value={value}
         disabled={type === "submit" && pending}
         aria-label={tip}
         className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-60 ${VARIANTS[variant]}`}

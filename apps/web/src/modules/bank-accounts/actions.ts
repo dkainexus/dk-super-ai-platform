@@ -64,7 +64,9 @@ function conditionOf(formData: FormData): "New" | "Old" {
 
 export async function createBankAccount(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("bank_accounts", "add");
-  const base = cu.merchant ? "/m/bank-accounts" : "/admin/bank-accounts";
+  const list = cu.merchant ? "/m/bank-accounts" : "/admin/bank-accounts";
+  // Errors go back to the form the user is standing on, not the list.
+  const base = `${list}/new`;
   const companyId = String(formData.get("company_id") ?? "");
   const bankId = String(formData.get("bank_id") ?? "");
   const accountNo = String(formData.get("account_no") ?? "").trim();
@@ -101,12 +103,14 @@ export async function createBankAccount(formData: FormData): Promise<void> {
     password: String(formData.get("password") ?? "").trim() || null,
     extra,
     channels,
-    status: "pending",
+    // Created in the back office by a human who already checked it — live now.
+    status: "active",
+    activated_at: new Date().toISOString(),
     created_by: cu.user.id,
   });
   if (error) fail(base, `Failed to create: ${error.message}`);
   revalidate();
-  redirect(base);
+  redirect(list);
 }
 
 export async function reviewBankAccount(formData: FormData): Promise<void> {
@@ -123,12 +127,14 @@ export async function reviewBankAccount(formData: FormData): Promise<void> {
   const bankName = (row.bank as { name?: string } | null)?.name ?? "bank";
 
   const now = new Date().toISOString();
-  const patch: Record<string, unknown> = { updated_at: now };
+  const patch: Record<string, unknown> = { updated_at: now, updated_by: cu.user.id };
   let notify: { title: string; body: string } | null = null;
+  let rewardOnApproval = false;
 
   if (action === "approve") {
     patch.status = "active";
     patch.activated_at = now;
+    rewardOnApproval = true;
     patch.suspended_at = null;
     patch.closed_at = null;
     patch.reject_reason = null;
@@ -156,6 +162,9 @@ export async function reviewBankAccount(formData: FormData): Promise<void> {
   if (error) fail(back, `Failed to update: ${error.message}`);
   if (notify && row.owner_id) {
     await notifyOwner(row.owner_id, "general", notify.title, notify.body).catch(() => {});
+  }
+  if (rewardOnApproval && row.owner_id) {
+    await payNewAccountReward(id, row.owner_id).catch(() => {});
   }
   revalidate();
   redirect(back);
@@ -225,4 +234,41 @@ export async function editBankAccount(formData: FormData): Promise<void> {
   if (error) fail(back, `Failed to save: ${error.message}`);
   revalidate();
   redirect(back);
+}
+
+
+/** The country's "new bank account" reward, paid once per account. */
+async function payNewAccountReward(accountId: string, ownerId: string): Promise<void> {
+  const { data: owner } = await db()
+    .from("owners")
+    .select("id, merchant_id, country_id, country:countries(currency, new_account_reward)")
+    .eq("id", ownerId)
+    .maybeSingle();
+  const country = (Array.isArray(owner?.country) ? owner?.country[0] : owner?.country) as
+    | { currency: string; new_account_reward: number }
+    | undefined;
+  const amount = Number(country?.new_account_reward ?? 0);
+  if (!owner || !country || !(amount > 0)) return;
+
+  const { walletApply } = await import("@/modules/wallet/lib");
+  try {
+    await walletApply({
+      ownerId: owner.id,
+      currency: country.currency,
+      type: "reward",
+      amount,
+      reference: `bank_account_${accountId}`,
+      note: "New bank account reward",
+      merchantId: owner.merchant_id,
+    });
+    await notifyOwner(
+      owner.id,
+      "reward",
+      "Reward credited 🎉",
+      `${amount.toLocaleString()} ${country.currency} for adding a new bank account.`
+    );
+  } catch (e) {
+    // duplicate reference = already paid
+    if (!(e instanceof Error && /duplicate|unique/i.test(e.message))) throw e;
+  }
 }

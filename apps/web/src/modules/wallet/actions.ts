@@ -66,25 +66,31 @@ export async function manualCredit(formData: FormData): Promise<void> {
   redirect(back);
 }
 
-/** Mark a withdrawal paid (after the manual bank transfer) or reject it (refund). */
-export async function processWithdrawal(formData: FormData): Promise<void> {
-  const { cu, scope } = await requirePerm("wallet", "edit");
-  const id = String(formData.get("id") ?? "");
-  const decision = String(formData.get("decision") ?? "");
-  const back = String(formData.get("back") ?? (cu.merchant ? "/m/wallets" : "/admin/wallets"));
+type Actor = { user: { id: string; merchant_id: string | null } };
 
+/**
+ * Pay or reject one pending withdrawal. Returns an error string instead of
+ * throwing so the bulk action can skip a bad row and keep going.
+ */
+async function processOne(
+  id: string,
+  decision: string,
+  reason: string | null,
+  cu: Actor,
+  scope: string
+): Promise<string | null> {
   const { data } = await db().from("withdrawals").select("*").eq("id", id).maybeSingle();
-  if (!data) fail(back, "Withdrawal not found");
+  if (!data) return "Withdrawal not found";
   const w = data as Withdrawal;
-  if (w.status !== "pending") fail(back, "This withdrawal was already processed");
+  if (w.status !== "pending") return "This withdrawal was already processed";
 
   const { data: owner } = await db()
     .from("owners")
     .select("id, merchant_id")
     .eq("id", w.owner_id)
     .maybeSingle();
-  if (!owner) fail(back, "Owner not found");
-  if (scope !== "all" && owner.merchant_id !== cu.user.merchant_id) redirect(back);
+  if (!owner) return "Owner not found";
+  if (scope !== "all" && owner.merchant_id !== cu.user.merchant_id) return "Out of scope";
 
   if (decision === "paid") {
     await db()
@@ -99,7 +105,6 @@ export async function processWithdrawal(formData: FormData): Promise<void> {
       cu.user.id
     );
   } else if (decision === "reject") {
-    const reason = String(formData.get("reason") ?? "").trim() || null;
     // Refund the held amount back into the wallet.
     await walletApply({
       ownerId: w.owner_id,
@@ -127,11 +132,46 @@ export async function processWithdrawal(formData: FormData): Promise<void> {
       cu.user.id
     );
   } else {
-    fail(back, "Invalid decision");
+    return "Invalid decision";
   }
+  return null;
+}
 
+/** Mark a withdrawal paid (after the manual bank transfer) or reject it (refund). */
+export async function processWithdrawal(formData: FormData): Promise<void> {
+  const { cu, scope } = await requirePerm("wallet", "edit");
+  const back = String(formData.get("back") ?? (cu.merchant ? "/m/wallets" : "/admin/wallets/withdrawals"));
+  const err = await processOne(
+    String(formData.get("id") ?? ""),
+    String(formData.get("decision") ?? ""),
+    String(formData.get("reason") ?? "").trim() || null,
+    cu,
+    scope
+  );
+  if (err) fail(back, err);
   revalidatePath(back);
   redirect(back);
+}
+
+/** Same decision applied to every ticked row in the queue. */
+export async function bulkProcessWithdrawals(formData: FormData): Promise<void> {
+  const { cu, scope } = await requirePerm("wallet", "edit");
+  const back = String(formData.get("back") ?? (cu.merchant ? "/m/wallets" : "/admin/wallets/withdrawals"));
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  const decision = String(formData.get("decision") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim() || null;
+  if (ids.length === 0) fail(back, "Tick at least one withdrawal first");
+
+  let done = 0;
+  let firstError: string | null = null;
+  for (const id of ids) {
+    const err = await processOne(id, decision, reason, cu, scope);
+    if (err) firstError ??= err;
+    else done++;
+  }
+  if (done === 0) fail(back, firstError ?? "Nothing was processed");
+  revalidatePath(back);
+  redirect(`${back}${back.includes("?") ? "&" : "?"}done=${done}`);
 }
 
 /** Wallet module settings: training-completion reward amount per country. */

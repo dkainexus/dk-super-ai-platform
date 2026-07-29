@@ -77,7 +77,7 @@ export async function saveCompany(formData: FormData): Promise<void> {
   if (company) {
     const { error } = await db()
       .from("companies")
-      .update({ ...fields, updated_at: new Date().toISOString() })
+      .update({ ...fields, updated_at: new Date().toISOString(), updated_by: cu.user.id })
       .eq("id", company.id);
     if (error) fail(back, `Failed to save: ${error.message}`);
   } else {
@@ -145,16 +145,79 @@ export async function deleteCompany(formData: FormData): Promise<void> {
   redirect(base);
 }
 
-/** Companies module settings: which countries use shareholders. */
-export async function saveCompaniesSettings(formData: FormData): Promise<void> {
+/** Turn the shareholders section on or off for one country. */
+export async function toggleShareholders(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("settings", "edit");
   if (cu.merchant) redirect("/m");
+  const countryId = String(formData.get("country_id") ?? "");
+  const on = formData.get("on") === "1";
+  const back = String(formData.get("back") ?? "/admin/settings/companies");
+  if (!countryId) fail(back, "No country selected");
+
   const current = await companiesSettings();
-  const { data: countries } = await db().from("countries").select("id");
-  current.shareholder_countries = ((countries ?? []) as { id: string }[])
-    .map((c) => c.id)
-    .filter((id) => formData.get(`sh_${id}`) === "on");
+  const set = new Set(current.shareholder_countries);
+  if (on) set.add(countryId);
+  else set.delete(countryId);
+  current.shareholder_countries = [...set];
   await setSetting("companies", current);
-  revalidatePath("/admin/settings/companies");
-  redirect("/admin/settings/companies?saved=1");
+  revalidatePath(back);
+  redirect(back);
+}
+
+// ---------- Company types (per country) ----------
+
+export async function createCompanyType(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("companies", "edit");
+  if (cu.merchant) redirect("/m");
+  const back = "/admin/companies/types";
+  const countryId = String(formData.get("country_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!countryId) fail(back, "No country selected");
+  if (!name) fail(back, "Please enter a name");
+
+  const { count } = await db()
+    .from("company_types")
+    .select("id", { count: "exact", head: true })
+    .eq("country_id", countryId);
+  const { error } = await db()
+    .from("company_types")
+    .insert({ country_id: countryId, name, sort: ((count ?? 0) + 1) * 10, is_default: (count ?? 0) === 0 });
+  if (error)
+    fail(back, error.message.includes("duplicate") ? "That type already exists here" : `Failed to add: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function renameCompanyType(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("companies", "edit");
+  if (cu.merchant) redirect("/m");
+  const back = "/admin/companies/types";
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail(back, "Name cannot be empty");
+  await db().from("company_types").update({ name }).eq("id", id);
+  revalidatePath(back);
+  redirect(back);
+}
+
+/** Exactly one default per country — the one the company form preselects. */
+export async function setDefaultCompanyType(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("companies", "edit");
+  if (cu.merchant) redirect("/m");
+  const back = "/admin/companies/types";
+  const id = String(formData.get("id") ?? "");
+  const countryId = String(formData.get("country_id") ?? "");
+  await db().from("company_types").update({ is_default: false }).eq("country_id", countryId);
+  await db().from("company_types").update({ is_default: true }).eq("id", id);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function deleteCompanyType(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("companies", "delete");
+  if (cu.merchant) redirect("/m");
+  const back = "/admin/companies/types";
+  await db().from("company_types").delete().eq("id", String(formData.get("id") ?? ""));
+  revalidatePath(back);
+  redirect(back);
 }

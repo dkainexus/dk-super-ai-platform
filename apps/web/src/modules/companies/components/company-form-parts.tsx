@@ -10,10 +10,13 @@ export function OwnerTypePicker({
   owners,
   ownerId,
   companyType,
+  types,
 }: {
   owners: OwnerOption[];
   ownerId: string;
   companyType: string;
+  /** Company types configured for this country; empty = free text. */
+  types: string[];
 }) {
   const [type, setType] = useState(companyType);
 
@@ -42,13 +45,22 @@ export function OwnerTypePicker({
       </div>
       <div>
         <label className="mb-1 block text-xs text-muted">Company Type (suggested by the owner&apos;s occupation)</label>
-        <input
-          name="company_type"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          placeholder="e.g. Limited Company"
-          className="input"
-        />
+        {types.length > 0 ? (
+          <select name="company_type" value={type} onChange={(e) => setType(e.target.value)} className="input">
+            <option value="">— Select a type —</option>
+            {(types.includes(type) || !type ? types : [type, ...types]).map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            name="company_type"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            placeholder="e.g. Limited Company — add types under Companies → Company Types"
+            className="input"
+          />
+        )}
       </div>
     </>
   );

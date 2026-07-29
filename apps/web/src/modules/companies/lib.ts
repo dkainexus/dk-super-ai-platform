@@ -29,3 +29,16 @@ export async function bindableOwners(merchantId: string): Promise<Owner[]> {
     .order("full_name");
   return (data ?? []) as Owner[];
 }
+
+/** Company type names for a country, the default one first. */
+export async function companyTypeNames(countryId: string | null | undefined): Promise<string[]> {
+  if (!countryId) return [];
+  const { data } = await db()
+    .from("company_types")
+    .select("name, is_default")
+    .eq("country_id", countryId)
+    .order("is_default", { ascending: false })
+    .order("sort")
+    .order("name");
+  return ((data ?? []) as { name: string }[]).map((t) => t.name);
+}

@@ -1,8 +1,9 @@
+import { AuditLine } from "@/components/audit-line";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { bindableOwners, shareholdersEnabledFor } from "@/modules/companies/lib";
+import { bindableOwners, shareholdersEnabledFor, companyTypeNames } from "@/modules/companies/lib";
 import { CompanyForm } from "@/modules/companies/components/company-form";
 import { deleteCompany } from "@/modules/companies/actions";
 import { ErrorBanner } from "@/components/error-banner";
@@ -29,10 +30,11 @@ export default async function AdminCompanyPage({
   if (!data) notFound();
   const company = data as Company & { merchant: Merchant; country: { name: string; flag: string | null } };
 
-  const [members, owners, shareholdersEnabled, { data: occupations }] = await Promise.all([
+  const [members, owners, shareholdersEnabled, companyTypes, { data: occupations }] = await Promise.all([
     db().from("company_members").select("*").eq("company_id", id).then((r) => (r.data ?? []) as CompanyMember[]),
     bindableOwners(company.merchant_id),
     shareholdersEnabledFor(company.country_id),
+    companyTypeNames(company.country_id),
     db().from("occupations").select("*"),
   ]);
   const occupationType = new Map(((occupations ?? []) as Occupation[]).map((o) => [o.id, o.company_type]));
@@ -71,11 +73,19 @@ export default async function AdminCompanyPage({
             company={company}
             members={members}
             shareholdersEnabled={shareholdersEnabled}
+            companyTypes={companyTypes}
           />
         ) : (
           <p className="text-sm text-muted">You have view-only access to companies.</p>
         )}
       </div>
+
+      <AuditLine
+        createdBy={(company as { created_by?: string | null }).created_by}
+        createdAt={company.created_at}
+        updatedBy={(company as { updated_by?: string | null }).updated_by}
+        updatedAt={(company as { updated_at?: string | null }).updated_at}
+      />
     </div>
   );
 }

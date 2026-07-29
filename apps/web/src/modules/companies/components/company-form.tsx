@@ -13,6 +13,7 @@ export function CompanyForm({
   company,
   members = [],
   shareholdersEnabled,
+  companyTypes = [],
   hidden = {},
 }: {
   owners: Owner[];
@@ -20,6 +21,7 @@ export function CompanyForm({
   company?: Company;
   members?: CompanyMember[];
   shareholdersEnabled: boolean;
+  companyTypes?: string[];
   hidden?: Record<string, string>;
 }) {
   const ownerOptions: OwnerOption[] = owners.map((o) => ({
@@ -28,6 +30,7 @@ export function CompanyForm({
     companyType: occupationTypeByOwner.get(o.id) ?? null,
   }));
   const boundOwner = members.find((m) => m.role === "owner");
+  const defaultType = companyTypes[0] ?? "";
   const shareholders = members
     .filter((m) => m.role === "shareholder")
     .map((m) => ({ ownerId: m.owner_id, percent: String(m.share_percent ?? "") }));
@@ -51,7 +54,8 @@ export function CompanyForm({
         <OwnerTypePicker
           owners={ownerOptions}
           ownerId={boundOwner?.owner_id ?? ""}
-          companyType={company?.company_type ?? ""}
+          companyType={company?.company_type ?? defaultType}
+          types={companyTypes}
         />
         <div>
           <label className="mb-1 block text-xs text-muted">Business Start Date</label>

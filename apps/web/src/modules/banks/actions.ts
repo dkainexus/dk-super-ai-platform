@@ -22,7 +22,7 @@ function fail(path: string, message: string): never {
 // ---------- Banks module ----------
 
 export async function createBank(formData: FormData): Promise<void> {
-  await requirePerm("banks", "add");
+  const { cu } = await requirePerm("banks", "add");
   const countryId = String(formData.get("country_id") ?? "");
   const back = "/admin/banks";
   const name = String(formData.get("name") ?? "").trim();
@@ -36,6 +36,7 @@ export async function createBank(formData: FormData): Promise<void> {
     name,
     code,
     sort: ((count ?? 0) + 1) * 10,
+    created_by: cu.user.id,
   });
   if (error) fail(back, error.message.includes("duplicate") ? "This bank already exists in this country" : `Failed to create: ${error.message}`);
   revalidatePath("/admin/banks");
@@ -43,7 +44,7 @@ export async function createBank(formData: FormData): Promise<void> {
 }
 
 export async function updateBank(formData: FormData): Promise<void> {
-  await requirePerm("banks", "edit");
+  const { cu } = await requirePerm("banks", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
   const back = `/admin/banks/${id}`;
@@ -54,7 +55,7 @@ export async function updateBank(formData: FormData): Promise<void> {
 
   // Payment channels are country-wide, so there is nothing per-bank to save
   // here; extra fields and the logo have their own instant actions.
-  const patch: Record<string, unknown> = { name, code, active };
+  const patch: Record<string, unknown> = { name, code, active, updated_at: new Date().toISOString(), updated_by: cu.user.id };
 
   const { error } = await db().from("banks").update(patch).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);

@@ -134,6 +134,7 @@ export async function updateExam(formData: FormData): Promise<void> {
   if (!title) fail(back, "Title cannot be empty");
 
   const patch: Record<string, unknown> = {
+    updated_by: cu.user.id,
     title,
     description: String(formData.get("description") ?? "").trim() || null,
     pass_score: Math.min(100, Math.max(0, parseInt(String(formData.get("pass_score") ?? "70"), 10) || 70)),

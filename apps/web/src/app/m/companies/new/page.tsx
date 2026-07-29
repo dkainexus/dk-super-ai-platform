@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
-import { bindableOwners, shareholdersEnabledFor } from "@/modules/companies/lib";
+import { bindableOwners, shareholdersEnabledFor, companyTypeNames } from "@/modules/companies/lib";
 import { activeCountry } from "@/modules/merchants/lib";
 import { CompanyForm } from "@/modules/companies/components/company-form";
 import { ErrorBanner } from "@/components/error-banner";
@@ -21,13 +21,14 @@ export default async function MerchantNewCompanyPage({
   if (!moduleEnabledFor("companies", toggles, cu.merchant, country)) redirect("/m");
   const { error } = await searchParams;
 
-  const [owners, shareholdersEnabled, { data: occupations }] = country
+  const [owners, shareholdersEnabled, companyTypes, { data: occupations }] = country
     ? await Promise.all([
         bindableOwners(cu.merchant.id),
         shareholdersEnabledFor(country.id),
+          companyTypeNames(country.id),
         db().from("occupations").select("*"),
       ])
-    : [[], false, { data: [] }];
+    : [[], false, [] as string[], { data: [] }];
   const occupationType = new Map(((occupations ?? []) as Occupation[]).map((o) => [o.id, o.company_type]));
   const typeByOwner = new Map(owners.map((o) => [o.id, o.occupation_id ? occupationType.get(o.occupation_id) ?? null : null]));
 
@@ -66,6 +67,7 @@ export default async function MerchantNewCompanyPage({
             owners={owners}
             occupationTypeByOwner={typeByOwner}
             shareholdersEnabled={shareholdersEnabled}
+            companyTypes={companyTypes}
             hidden={{ country_id: country.id }}
           />
         )}

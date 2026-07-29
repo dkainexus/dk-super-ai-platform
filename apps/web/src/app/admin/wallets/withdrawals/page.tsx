@@ -11,14 +11,12 @@ import { requireCountryScope } from "@/modules/countries/lib";
 export default async function WithdrawalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; status?: string; merchant?: string }>;
+  searchParams: Promise<{ error?: string; status?: string; merchant?: string; done?: string }>;
 }) {
   const { cu } = await requirePerm("wallet", "view");
-  const { error, status = "", merchant = "" } = await searchParams;
+  const { error, status = "", merchant = "", done } = await searchParams;
   const canEdit = Boolean(can(cu, "wallet", "edit"));
 
-  let wq = db().from("withdrawals").select("*").order("requested_at", { ascending: false }).limit(100);
-  if (status) wq = wq.eq("status", status);
   const { active } = await requireCountryScope();
   let ownerQuery = db()
     .from("owners")
@@ -26,10 +24,18 @@ export default async function WithdrawalsPage({
   if (active) ownerQuery = ownerQuery.eq("country_id", active.id);
   if (merchant) ownerQuery = ownerQuery.eq("merchant_id", merchant);
 
-  const [{ data: withdrawals }, { data: owners }] = await Promise.all([
-    wq,
-    ownerQuery,
-  ]);
+  const { data: owners } = await ownerQuery;
+
+  // Withdrawals belong to owners, so the country/white-label scope is applied
+  // by only asking for the owners in scope.
+  let wq = db()
+    .from("withdrawals")
+    .select("*")
+    .in("owner_id", ((owners ?? []) as { id: string }[]).map((o) => o.id))
+    .order("requested_at", { ascending: false })
+    .limit(200);
+  if (status) wq = wq.eq("status", status);
+  const { data: withdrawals } = await wq;
 
   const ownerById = new Map(
     ((owners ?? []) as unknown as (Owner & { merchant: { name: string } | null })[]).map((o) => [o.id, o])
@@ -49,6 +55,11 @@ export default async function WithdrawalsPage({
         </p>
       </div>
       <ErrorBanner message={error} />
+      {done && (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
+          {done} withdrawal{done === "1" ? "" : "s"} processed.
+        </p>
+      )}
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -59,7 +70,7 @@ export default async function WithdrawalsPage({
             {[["", "All"], ["pending", "Pending"], ["paid", "Paid"], ["rejected", "Rejected"]].map(([v, label]) => (
               <a
                 key={v}
-                href={`/admin/wallets${v ? `?status=${v}` : ""}`}
+                href={`/admin/wallets/withdrawals${v ? `?status=${v}` : ""}`}
                 className={`rounded-full border px-3 py-1 text-xs transition-colors ${
                   status === v
                     ? "border-accent bg-accent-soft text-accent-strong"
@@ -75,7 +86,8 @@ export default async function WithdrawalsPage({
           withdrawals={(withdrawals ?? []) as Withdrawal[]}
           ownerNames={ownerNames}
           canProcess={canEdit}
-          back="/admin/wallets"
+          back={`/admin/wallets/withdrawals${status ? `?status=${status}` : ""}`}
+          exportHref={`/admin/wallets/withdrawals/export${status ? `?status=${status}` : ""}`}
         />
       </section>
 

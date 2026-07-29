@@ -1,60 +1,43 @@
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { bankAccounts } from "@/modules/bank-accounts/lib";
-import { BankAccountsView } from "@/modules/bank-accounts/components/accounts-view";
-import type { FormBank, FormCompany } from "@/modules/bank-accounts/components/account-form";
+import { bankAccountPage, bankAccountCounts } from "@/modules/bank-accounts/lib";
+import { BankAccountsList } from "@/modules/bank-accounts/components/accounts-list";
+import { pageParams } from "@/components/pagination";
 import { requireCountryScope } from "@/modules/countries/lib";
 
 export default async function AdminBankAccountsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; status?: string }>;
+  searchParams: Promise<{ error?: string; status?: string; bank?: string; page?: string; per?: string }>;
 }) {
   const { cu } = await requirePerm("bank_accounts", "view");
-  const { error, status = "" } = await searchParams;
+  const sp = await searchParams;
+  const { error, status = "", bank = "" } = sp;
+  const { page, perPage, from, to } = pageParams(sp);
   const { active } = await requireCountryScope();
 
-  let companyQuery = db().from("companies").select("id, name, country_id, merchant_id, merchant:merchants(name)").neq("status", "banned").order("name");
-  let bankQuery = db().from("banks").select("id, name, code, country_id, account_fields, channels").eq("active", true).order("sort");
-  if (active) {
-    companyQuery = companyQuery.eq("country_id", active.id);
-    bankQuery = bankQuery.eq("country_id", active.id);
-  }
+  let bankQuery = db().from("banks").select("id, name, code").eq("active", true).order("sort");
+  if (active) bankQuery = bankQuery.eq("country_id", active.id);
 
-  const [rows, { data: companies }, { data: banks }] = await Promise.all([
-    bankAccounts({ countryId: active?.id }),
-    companyQuery,
+  const [{ rows, total }, counts, { data: banks }] = await Promise.all([
+    bankAccountPage({ countryId: active?.id, status, bankId: bank, from, to }),
+    bankAccountCounts({ countryId: active?.id }),
     bankQuery,
   ]);
-  const { data: countries } = await db().from("countries").select("id, code");
-  const countryCodes = Object.fromEntries(
-    ((countries ?? []) as { id: string; code: string }[]).map((c) => [c.id, c.code])
-  );
-
-  const formCompanies: FormCompany[] = ((companies ?? []) as unknown as {
-    id: string; name: string; country_id: string | null; merchant_id: string; merchant: { name: string } | null;
-  }[]).map((c) => ({
-    id: c.id,
-    name: c.name,
-    country_id: c.country_id,
-    merchant_id: c.merchant_id,
-    merchant_name: c.merchant?.name,
-  }));
-
 
   return (
-    <BankAccountsView
+    <BankAccountsList
       base="/admin/bank-accounts"
       error={error}
       status={status}
+      bank={bank}
+      banks={(banks ?? []) as { id: string; name: string; code: string | null }[]}
       rows={rows}
+      total={total}
+      counts={counts}
+      page={page}
+      perPage={perPage}
       canAdd={Boolean(can(cu, "bank_accounts", "add"))}
-      canEdit={Boolean(can(cu, "bank_accounts", "edit"))}
-      canDelete={Boolean(can(cu, "bank_accounts", "delete"))}
-      companies={formCompanies}
-      banks={(banks ?? []) as FormBank[]}
-      countryCodes={countryCodes}
-      channels={(active?.payment_channels ?? []) as string[]}
     />
   );
 }

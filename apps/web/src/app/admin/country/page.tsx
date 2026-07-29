@@ -4,6 +4,7 @@ import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { updateCountry, uploadCountryIcon, removeCountryIcon } from "@/modules/countries/actions";
 import { timezoneList, currencyList, requireCountryScope } from "@/modules/countries/lib";
 import { ImagePicker } from "@/components/image-picker";
+import { MoneyInput } from "@/components/money-input";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton } from "@/components/action-buttons";
 
@@ -53,7 +54,7 @@ export default async function CountrySettingsPage({
           </div>
         </div>
 
-        <form action={updateCountry} className="grid items-end gap-4 sm:grid-cols-[1fr_5rem_1fr_7rem_auto]">
+        <form action={updateCountry} className="grid items-end gap-4 sm:grid-cols-[1fr_5rem_1fr_7rem_8rem_auto]">
           <input type="hidden" name="id" value={c.id} />
           <input type="hidden" name="back" value="/admin/country" />
           <div>
@@ -79,6 +80,10 @@ export default async function CountrySettingsPage({
                 <option key={cur} value={cur}>{cur}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">New bank account reward</label>
+            <MoneyInput name="new_account_reward" defaultValue={(c as { new_account_reward?: number }).new_account_reward ?? 0} />
           </div>
           {canEdit && <SaveButton tip="Save country settings" />}
         </form>

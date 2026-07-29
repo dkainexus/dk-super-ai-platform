@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
-import { bindableOwners, shareholdersEnabledFor } from "@/modules/companies/lib";
+import { bindableOwners, shareholdersEnabledFor, companyTypeNames } from "@/modules/companies/lib";
 import { allowedCountries } from "@/modules/merchants/lib";
 import { CompanyForm } from "@/modules/companies/components/company-form";
 import { deleteCompany } from "@/modules/companies/actions";
@@ -36,10 +36,11 @@ export default async function MerchantCompanyPage({
   if (!moduleEnabledFor("companies", toggles, cu.merchant, recordCountry)) redirect("/m");
   if (scope === "own" && company.created_by !== cu.user.id) notFound();
 
-  const [members, owners, shareholdersEnabled, { data: occupations }] = await Promise.all([
+  const [members, owners, shareholdersEnabled, companyTypes, { data: occupations }] = await Promise.all([
     db().from("company_members").select("*").eq("company_id", id).then((r) => (r.data ?? []) as CompanyMember[]),
     bindableOwners(cu.merchant.id),
     shareholdersEnabledFor(company.country_id),
+    companyTypeNames(company.country_id),
     db().from("occupations").select("*"),
   ]);
   const occupationType = new Map(((occupations ?? []) as Occupation[]).map((o) => [o.id, o.company_type]));
@@ -75,6 +76,7 @@ export default async function MerchantCompanyPage({
             company={company}
             members={members}
             shareholdersEnabled={shareholdersEnabled}
+            companyTypes={companyTypes}
           />
         ) : (
           <p className="text-sm text-muted">You have view-only access to companies.</p>
