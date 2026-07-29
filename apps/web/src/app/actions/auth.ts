@@ -33,7 +33,10 @@ export async function loginAction(_prev: AuthState, formData: FormData): Promise
   if (!ok) return { error: "Invalid username or password" };
 
   await createSession(u.id, u.merchant_id ? "merchant" : "staff");
-  redirect(u.must_change_password ? "/change-password" : u.merchant_id ? "/m" : "/admin");
+  if (u.must_change_password) redirect("/change-password");
+  // A customer sign-in goes to the portal, not the back office.
+  const { data: customerLink } = await db().from("customers").select("id").eq("user_id", u.id).maybeSingle();
+  redirect(customerLink ? "/portal" : u.merchant_id ? "/m" : "/admin");
 }
 
 export async function changePasswordAction(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -61,7 +64,8 @@ export async function changePasswordAction(_prev: AuthState, formData: FormData)
   if (error) return { error: `Failed to save: ${error.message}` };
 
   console.log(`[auth] change-password ${cu.user.username}: OK`);
-  redirect(homePath(cu));
+  const { data: customerLink } = await db().from("customers").select("id").eq("user_id", cu.user.id).maybeSingle();
+  redirect(customerLink ? "/portal" : homePath(cu));
 }
 
 // ---------- Profile ----------
