@@ -2,12 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { updateCountry, saveCountryModules } from "@/modules/countries/actions";
+import { updateCountry, saveCountryModules, addPaymentChannel, removePaymentChannel } from "@/modules/countries/actions";
 import { timezoneList, currencyList } from "@/modules/countries/lib";
 import { TOGGLABLE_MODULES } from "@/modules/registry";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
-import { SaveButton, SubmitButton } from "@/components/action-buttons";
+import { ActionButton, SaveButton, SubmitButton } from "@/components/action-buttons";
 import type { Country, Merchant } from "@/lib/types";
 
 export default async function CountryDetailPage({
@@ -85,6 +85,43 @@ export default async function CountryDetailPage({
               <input name="sort" type="number" defaultValue={c.sort} className="input mono-num" />
             </div>
             <SaveButton tip="Save country settings" />
+          </form>
+        </div>
+      </section>
+
+      {/* ---------- Payment channels ---------- */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Payment Channels</h2>
+        <div className="card p-5">
+          <p className="mb-4 text-xs text-muted">
+            Channels available in {c.name} (e.g. PromptPay, MoMo, QR Pay). Banks in this country tick the ones they
+            support, and account submissions only offer the ticked channels.
+          </p>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {(c.payment_channels ?? []).length === 0 && (
+              <p className="text-sm text-muted">No channels yet.</p>
+            )}
+            {(c.payment_channels ?? []).map((ch) => (
+              <form key={ch} action={removePaymentChannel} className="inline-flex">
+                <input type="hidden" name="country_id" value={c.id} />
+                <input type="hidden" name="channel" value={ch} />
+                <button
+                  type="submit"
+                  title={`Remove ${ch} from this country`}
+                  className="group inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent-soft px-3 py-1 text-xs text-accent-strong transition-colors hover:border-danger/60 hover:text-danger"
+                >
+                  {ch} <span className="text-muted group-hover:text-danger">✕</span>
+                </button>
+              </form>
+            ))}
+          </div>
+          <form action={addPaymentChannel} className="flex max-w-sm items-end gap-3">
+            <input type="hidden" name="country_id" value={c.id} />
+            <div className="flex-1">
+              <label className="mb-1 block text-xs text-muted">New Channel</label>
+              <input name="channel" placeholder="e.g. PromptPay" className="input" required />
+            </div>
+            <ActionButton icon="plus" tip="Add this payment channel" label="Add" variant="primary" />
           </form>
         </div>
       </section>

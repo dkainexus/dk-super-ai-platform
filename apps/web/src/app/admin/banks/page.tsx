@@ -126,7 +126,7 @@ export default async function BanksPage({
                           </button>
                         )}
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1.2fr]">
                         <div>
                           <label className="mb-1 block text-xs text-muted">Logo (PNG/JPG)</label>
                           <input type="file" name="logo" accept="image/*" className="input pt-2 text-xs" />
@@ -145,15 +145,35 @@ export default async function BanksPage({
                         </div>
                         <div>
                           <label className="mb-1 block text-xs text-muted">
-                            Payment channels — comma separated (e.g. PromptPay, QR Pay)
+                            Payment channels supported by this bank
                           </label>
-                          <textarea
-                            name="channels"
-                            rows={2}
-                            defaultValue={(b.channels ?? []).join(", ")}
-                            className="input"
-                            placeholder="PromptPay, QR Pay"
-                          />
+                          {(selected.payment_channels ?? []).length === 0 ? (
+                            <p className="text-xs text-muted">
+                              No channels defined for {selected.name} yet —{" "}
+                              <Link href={`/admin/countries/${selected.id}`} className="text-accent hover:underline">
+                                add them on the country page
+                              </Link>
+                              .
+                            </p>
+                          ) : (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {(selected.payment_channels ?? []).map((ch) => (
+                                <label
+                                  key={ch}
+                                  className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:border-accent"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    name="channels"
+                                    value={ch}
+                                    defaultChecked={(b.channels ?? []).includes(ch)}
+                                    className="h-4 w-4"
+                                  />
+                                  {ch}
+                                </label>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </form>

@@ -61,6 +61,7 @@ export type Country = {
   timezone: string; // IANA, e.g. Asia/Bangkok
   currency: string; // ISO 4217, e.g. THB
   disabled_modules: string[];
+  payment_channels: string[];
   active: boolean;
   sort: number;
   created_at: string;

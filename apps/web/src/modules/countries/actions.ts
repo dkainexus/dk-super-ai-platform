@@ -70,3 +70,34 @@ export async function saveCountryModules(formData: FormData): Promise<void> {
   revalidatePath("/", "layout");
   redirect(back);
 }
+
+/** Add a payment channel to this country (banks tick them per bank). */
+export async function addPaymentChannel(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const id = String(formData.get("country_id") ?? "");
+  const back = `/admin/countries/${id}`;
+  const name = String(formData.get("channel") ?? "").trim();
+  if (!name) fail(back, "Please enter a channel name");
+
+  const { data: c } = await db().from("countries").select("payment_channels").eq("id", id).maybeSingle();
+  const list = ((c?.payment_channels ?? []) as string[]).filter(Boolean);
+  if (list.some((x) => x.toLowerCase() === name.toLowerCase())) fail(back, "This channel already exists");
+  const { error } = await db().from("countries").update({ payment_channels: [...list, name] }).eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+/** Remove a payment channel from this country (banks keep historical data). */
+export async function removePaymentChannel(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const id = String(formData.get("country_id") ?? "");
+  const back = `/admin/countries/${id}`;
+  const name = String(formData.get("channel") ?? "");
+  const { data: c } = await db().from("countries").select("payment_channels").eq("id", id).maybeSingle();
+  const list = ((c?.payment_channels ?? []) as string[]).filter((x) => x !== name);
+  const { error } = await db().from("countries").update({ payment_channels: list }).eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}

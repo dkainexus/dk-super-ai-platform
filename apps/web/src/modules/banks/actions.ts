@@ -58,10 +58,7 @@ export async function updateBank(formData: FormData): Promise<void> {
     .map((l) => l.trim())
     .filter(Boolean)
     .map((label) => ({ key: slugKey(label), label }));
-  const channels = String(formData.get("channels") ?? "")
-    .split(",")
-    .map((c) => c.trim())
-    .filter(Boolean);
+  const channels = formData.getAll("channels").map(String).filter(Boolean);
 
   const patch: Record<string, unknown> = { name, code, sort, active, account_fields: accountFields, channels };
 
