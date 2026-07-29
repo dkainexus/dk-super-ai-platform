@@ -3,7 +3,8 @@ import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { createBank } from "@/modules/banks/actions";
-import { BankReorder } from "@/modules/banks/components/bank-reorder";
+import { DragReorder } from "@/components/drag-reorder";
+import { reorderBanks } from "@/modules/banks/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton } from "@/components/action-buttons";
@@ -71,7 +72,12 @@ export default async function BanksPage({
               <span>Extra Fields</span>
               <span>Status</span>
             </div>
-            <BankReorder ids={rows.map((b) => b.id)} countryId={active!.id} canEdit={Boolean(canEdit)} dense>
+            <DragReorder
+              ids={rows.map((b) => b.id)}
+              onReorder={reorderBanks.bind(null, active!.id)}
+              canEdit={Boolean(canEdit)}
+              dense
+            >
               {rows.map((b) => {
                 const logo = logos.get(b.id);
                 return (
@@ -99,7 +105,7 @@ export default async function BanksPage({
                   </div>
                 );
               })}
-            </BankReorder>
+            </DragReorder>
           </div>
         </div>
       )}

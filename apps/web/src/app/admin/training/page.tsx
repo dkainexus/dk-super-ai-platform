@@ -3,11 +3,13 @@ import { db } from "@/lib/supabase";
 import { signedUrl } from "@/lib/storage";
 import { TRAINING_BUCKET } from "@/modules/training/lib";
 import { updateTrainingVideo,
-  toggleTrainingPublished, deleteTrainingVideo } from "@/modules/training/actions";
+  toggleTrainingPublished,
+  reorderTrainingVideos, deleteTrainingVideo } from "@/modules/training/actions";
 import { TrainingUploadForm } from "@/modules/training/components/upload-form";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { PublishButton } from "@/components/publish-button";
+import { DragReorder } from "@/components/drag-reorder";
 import { MoneyInput } from "@/components/money-input";
 import { SaveButton } from "@/components/action-buttons";
 import type { Country, Merchant, TrainingVideo } from "@/lib/types";
@@ -66,8 +68,8 @@ export default async function AdminTrainingPage({
         <TrainingUploadForm />
       )}
 
-      <div className="space-y-3">
-        {list.length === 0 && <p className="card px-5 py-6 text-sm text-muted">No training videos yet.</p>}
+      {list.length === 0 && <p className="card px-5 py-6 text-sm text-muted">No training videos yet.</p>}
+      <DragReorder ids={list.map((v) => v.id)} onReorder={reorderTrainingVideos} canEdit={Boolean(canEdit)}>
         {list.map((v) => (
           <div key={v.id} className="card p-4">
             <div className="flex gap-4">
@@ -103,7 +105,7 @@ export default async function AdminTrainingPage({
                     <label className="mb-1 block text-xs text-muted">Description</label>
                     <input name="description" defaultValue={v.description ?? ""} className="input" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[1fr_5rem_7rem_auto_auto_auto] sm:items-end">
+                  <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[1fr_7rem_auto_auto_auto] sm:items-end">
                     <div>
                       <label className="mb-1 block text-xs text-muted">White Label</label>
                       <select name="merchant_id" defaultValue={v.merchant_id ?? ""} className="input">
@@ -114,10 +116,6 @@ export default async function AdminTrainingPage({
                       </select>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-muted">Sort</label>
-                      <input name="sort" type="number" defaultValue={v.sort} className="input mono-num" />
-                    </div>
-                    <div>
                       <label className="mb-1 block text-xs text-muted">Reward on finish</label>
                       <MoneyInput name="reward_amount" defaultValue={v.reward_amount} />
                     </div>
@@ -125,6 +123,7 @@ export default async function AdminTrainingPage({
                       <input type="checkbox" name="auto_notify" defaultChecked={v.auto_notify} /> Notify
                     </label>
                     <input type="hidden" name="published" value={v.published ? "on" : ""} />
+                    <input type="hidden" name="sort" value={v.sort} />
                     <SaveButton tip="Save this video" />
                     {canDelete && (
                       <button
@@ -159,7 +158,7 @@ export default async function AdminTrainingPage({
             </div>
           </div>
         ))}
-      </div>
+      </DragReorder>
     </div>
   );
 }

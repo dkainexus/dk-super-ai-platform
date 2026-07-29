@@ -1,21 +1,22 @@
 "use client";
 
-// Drag-to-reorder wrapper for the bank list. Rows stay server-rendered and are
-// passed through as children; the list reflows live while dragging and the new
-// order is saved once on drop.
+// Drag-to-reorder wrapper. Rows stay server-rendered and are passed through as
+// children; the list reflows live while dragging and the new order is saved
+// once on drop.
 
 import { useRef, useState, useTransition, type ReactNode } from "react";
-import { reorderBanks } from "../actions";
 
-export function BankReorder({
+
+export function DragReorder({
   ids,
-  countryId,
+  onReorder,
   canEdit,
   dense,
   children,
 }: {
   ids: string[];
-  countryId: string;
+  /** Server action that persists the new order */
+  onReorder: (ids: string[]) => Promise<void>;
   canEdit: boolean;
   /** Table rows instead of cards: tighter spacing, divider lines */
   dense?: boolean;
@@ -50,7 +51,7 @@ export function BankReorder({
     if (nextIds.join(",") === saved.current) return;
     saved.current = nextIds.join(",");
     startTransition(() => {
-      reorderBanks(countryId, nextIds);
+      onReorder(nextIds);
     });
   }
 

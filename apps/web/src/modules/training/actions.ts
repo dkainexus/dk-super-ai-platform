@@ -144,3 +144,17 @@ export async function toggleTrainingPublished(formData: FormData): Promise<void>
   revalidatePath("/m/training");
   redirect(back);
 }
+
+/** Persist a drag-and-drop ordering of training videos. */
+export async function reorderTrainingVideos(ids: string[]): Promise<void> {
+  const { cu } = await requirePerm("training", "edit");
+  await Promise.all(
+    ids.map((id, i) => {
+      let q = db().from("training_videos").update({ sort: (i + 1) * 10 }).eq("id", id);
+      if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+      return q;
+    })
+  );
+  revalidatePath("/admin/training");
+  revalidatePath("/m/training");
+}

@@ -42,6 +42,10 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
         { href: "/admin/banks/fields", label: "Bank Account Extra Fields" },
       ];
     }
+    if (!isMerchant && !isGlobal && m.key === "notifications") {
+      item.label = "App Notification";
+      item.children = [{ href: "/admin/notifications/history", label: "Notification History" }];
+    }
     if (!isMerchant && !isGlobal && m.key === "wallet") {
       item.children = [
         { href: "/admin/wallets/transactions", label: "Transactions" },
