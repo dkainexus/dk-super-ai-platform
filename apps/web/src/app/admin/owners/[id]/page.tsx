@@ -8,6 +8,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
 import { OwnerData } from "@/modules/owners/components/owner-data";
+import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 import { AppAccessCard } from "@/modules/owners/components/app-access";
 import type { Country, Merchant, Owner } from "@/lib/types";
 
@@ -30,28 +31,70 @@ export default async function AdminOwnerDetailPage({
   if (!data) notFound();
   const o = data as Owner & { merchant: Merchant; country: Country };
 
+  const photo = await signedUrl(DOCS_BUCKET, o.photo_full_body_path, 60 * 30);
+  const canEdit = Boolean(can(cu, "owners", "edit"));
+
   return (
-    <div className="space-y-6">
-      <div>
-        <Link href="/admin/owners" className="text-xs text-muted hover:text-foreground">
-          ← Owners
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold">{o.full_name || "(no name yet)"}</h1>
-          <OwnerStatusTag status={o.status} />
-          {can(cu, "owners", "edit") && (
-            <Link href={`/admin/owners/${o.id}/edit`} className="rounded-md border border-border px-3 py-1 text-xs text-foreground transition-colors hover:border-accent">
+    <div className="space-y-5">
+      <Link href="/admin/owners" className="text-xs text-muted hover:text-foreground">← Owners</Link>
+
+      <section className="card flex flex-wrap items-center gap-5 p-5">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-raised">
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photo} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-2xl text-muted">👤</span>
+          )}
+        </div>
+
+        <div className="min-w-48 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold">{o.full_name || "(no name yet)"}</h1>
+            <OwnerStatusTag status={o.status} />
+            {(o as { ref?: string | null }).ref && (
+              <span className="mono-num rounded bg-surface-raised px-1.5 py-0.5 text-[11px] text-muted">
+                {(o as { ref?: string | null }).ref}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-sm text-muted">
+            {o.country?.flag} {o.country?.name} ·{" "}
+            <Link href={`/admin/merchants/${o.merchant_id}`} className="text-accent-strong hover:underline">
+              {o.merchant?.name}
+            </Link>
+            {o.phone ? <span className="mono-num"> · {o.phone}</span> : null}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`/admin/owners/${o.id}/documents`}
+            title="Download this owner's documents as one zip"
+            className="rounded-md border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:border-accent hover:text-foreground"
+          >
+            ↓ Documents
+          </a>
+          {canEdit && (
+            <Link
+              href={`/admin/owners/${o.id}/edit`}
+              className="rounded-md border border-border px-3 py-1.5 text-xs transition-colors hover:border-accent"
+            >
               Edit ✎
             </Link>
           )}
-          {can(cu, "owners", "edit") && (
+          {canEdit && (
             <form action={setOwnerBanned}>
               <input type="hidden" name="id" value={o.id} />
               <input type="hidden" name="banned" value={String(o.status !== "banned")} />
               <button
                 type="submit"
-                title={o.status === "banned" ? "Lift the ban (owner returns to Approved)" : "Ban this owner — banned owners cannot be bound to companies"}
-                className={`rounded-md border px-3 py-1 text-xs transition-colors ${
+                title={
+                  o.status === "banned"
+                    ? "Lift the ban (owner returns to Approved)"
+                    : "Ban this owner — banned owners cannot be bound to companies"
+                }
+                className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
                   o.status === "banned"
                     ? "border-border text-muted hover:border-accent hover:text-foreground"
                     : "border-danger/40 text-danger hover:bg-danger/10"
@@ -62,13 +105,8 @@ export default async function AdminOwnerDetailPage({
             </form>
           )}
         </div>
-        <p className="mt-1 text-sm text-muted">
-          {o.country?.flag} {o.country?.name} · White Label: 
-          <Link href={`/admin/merchants/${o.merchant_id}`} className="text-accent-strong hover:underline">
-            {o.merchant?.name}
-          </Link>
-        </p>
-      </div>
+      </section>
+
       <ErrorBanner message={error} />
 
       {o.status === "rejected" && o.reject_reason && (
@@ -77,9 +115,7 @@ export default async function AdminOwnerDetailPage({
         </div>
       )}
 
-      <section className="card p-5">
-        <OwnerData owner={o} />
-      </section>
+      <OwnerData owner={o} base="/admin/owners" />
 
       {can(cu, "owners", "edit") && <AppAccessCard owner={o} back={`/admin/owners/${o.id}`} />}
 

@@ -46,8 +46,10 @@ export default async function AdminOwnersPage({
   const { page, perPage, from, to } = pageParams(sp);
   const { active } = await requireCountryScope();
 
-  let mq = db().from("merchants").select("id, name, merchant_countries(country_id)").order("name");
-  const { data: merchantRows } = await mq;
+  const { data: merchantRows } = await db()
+    .from("merchants")
+    .select("id, name, merchant_countries(country_id)")
+    .order("name");
   const merchants = ((merchantRows ?? []) as { id: string; name: string; merchant_countries: { country_id: string }[] }[])
     .filter((m) => !active || m.merchant_countries.some((c) => c.country_id === active.id))
     .map((m) => ({ value: m.id, label: m.name }));

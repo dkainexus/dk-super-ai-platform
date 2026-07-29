@@ -50,7 +50,8 @@ export default async function OwnerExtraFieldsPage({
         <h1 className="text-xl font-semibold">Owner Extra Fields</h1>
         <p className="mt-1 text-sm text-muted">
           Extra questions the owner form asks in {active.name}. Already built in: name, ID number, ID photos,
-          full-body photo, bank, occupation and contact.
+          full-body photo, bank, occupation and contact. Tick <b>Downloadable</b> on an upload field to include it in
+          the owner&apos;s one-click document download.
         </p>
       </div>
       <ErrorBanner message={error} />
@@ -114,6 +115,19 @@ export default async function OwnerExtraFieldsPage({
                   <label className="flex items-center gap-2 text-xs text-muted">
                     <input type="checkbox" name="required" defaultChecked={f.required} /> Required
                   </label>
+                  {f.field_type === "file" && (
+                    <label
+                      className="flex items-center gap-2 text-xs text-muted"
+                      title="Include this upload in the owner's one-click document download"
+                    >
+                      <input
+                        type="checkbox"
+                        name="downloadable"
+                        defaultChecked={(f as CountryField & { downloadable?: boolean }).downloadable}
+                      />{" "}
+                      Downloadable
+                    </label>
+                  )}
                   <SaveButton tip={`Save ${f.label}`} />
                 </form>
                 <form action={toggleCountryField}>

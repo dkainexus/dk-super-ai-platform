@@ -73,7 +73,10 @@ export async function updateCountryField(formData: FormData): Promise<void> {
   if (!label) fail(back, "Field label cannot be empty");
 
   const options = optionsRaw.split(/[,，\n]/).map((x) => x.trim()).filter(Boolean);
-  await db().from("country_fields").update({ label, required, sort, active, options }).eq("id", id);
+  await db()
+    .from("country_fields")
+    .update({ label, required, sort, active, options, downloadable: formData.get("downloadable") === "on" })
+    .eq("id", id);
   revalidatePath("/admin/settings/owners");
 }
 
