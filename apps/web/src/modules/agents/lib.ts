@@ -24,8 +24,10 @@ export type AgentRow = Agent & {
   owners: { count: number }[];
 };
 
+// agents has two foreign keys into users (user_id and created_by), so the
+// sign-in embed must name the constraint or PostgREST refuses the query.
 export const AGENT_SELECT =
-  "*, merchant:merchants(name), country:countries(name, flag), user:users(username), owners(count)";
+  "*, merchant:merchants(name), country:countries(name, flag), user:users!agents_user_id_fkey(username), owners(count)";
 
 export async function agents(opts: { merchantId?: string; countryId?: string }): Promise<AgentRow[]> {
   let q = db().from("agents").select(AGENT_SELECT).order("created_at", { ascending: false });
