@@ -5,6 +5,7 @@ import { OwnerStatusTag } from "@/components/status-tag";
 import { FilterForm } from "@/components/filter-form";
 import { FilterSelect, Table, TableToolbar } from "@/components/data-table";
 import { RowSettings } from "@/components/row-actions";
+import { Pagination, pageParams } from "@/components/pagination";
 import { requireCountryScope } from "@/modules/countries/lib";
 import type { OwnerStatus } from "@/lib/types";
 
@@ -19,6 +20,7 @@ const STATUSES = [
 
 type Row = {
   id: string;
+  ref: string | null;
   full_name: string | null;
   id_number: string | null;
   phone: string | null;
@@ -34,10 +36,12 @@ type Row = {
 export default async function AdminOwnersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; merchant?: string }>;
+  searchParams: Promise<{ status?: string; merchant?: string; page?: string; per?: string }>;
 }) {
   const { cu } = await requirePerm("owners", "view");
-  const { status = "", merchant = "" } = await searchParams;
+  const sp = await searchParams;
+  const { status = "", merchant = "" } = sp;
+  const { page, perPage, from, to } = pageParams(sp);
   const { active } = await requireCountryScope();
 
   let mq = db().from("merchants").select("id, name, merchant_countries(country_id)").order("name");
@@ -48,14 +52,15 @@ export default async function AdminOwnersPage({
 
   let q = db()
     .from("owners")
-    .select("id, full_name, id_number, phone, status, created_at, merchant_id, merchant:merchants(name), occupation:occupations(name)")
+    .select("id, ref, full_name, id_number, phone, status, created_at, merchant_id, merchant:merchants(name), occupation:occupations(name)", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(500);
+    .range(from, to);
   if (status) q = q.eq("status", status);
   if (merchant) q = q.eq("merchant_id", merchant);
   if (active) q = q.eq("country_id", active.id);
-  const { data } = await q;
+  const { data, count } = await q;
   const rows = (data ?? []) as unknown as Row[];
+  const total = count ?? rows.length;
 
   return (
     <div className="space-y-5">
@@ -76,7 +81,7 @@ export default async function AdminOwnersPage({
         )}
       </div>
 
-      <TableToolbar count={rows.length} noun="owner">
+      <TableToolbar count={total} noun="owner">
         <FilterForm action="/admin/owners">
           <FilterSelect
             label="White Label"
@@ -88,16 +93,17 @@ export default async function AdminOwnersPage({
         </FilterForm>
       </TableToolbar>
 
-      <Table head={["Name", "White Label", "ID Number", "Phone", "Occupation", "Status", "Added", ""]}>
+      <Table head={["ID", "Name", "White Label", "ID Number", "Phone", "Occupation", "Status", "Added", ""]}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={8} className="px-4 py-6 text-sm text-muted">
+            <td colSpan={9} className="px-4 py-6 text-sm text-muted">
               No owners match these filters.
             </td>
           </tr>
         )}
         {rows.map((o) => (
           <tr key={o.id} className="transition-colors hover:bg-surface-raised">
+            <td className="mono-num px-4 py-2.5 text-xs text-muted">{o.ref ?? "—"}</td>
             <td className="px-4 py-2.5 font-medium">{o.full_name || "(no name yet)"}</td>
             <td className="px-4 py-2.5 text-muted">{o.merchant?.name ?? "—"}</td>
             <td className="mono-num px-4 py-2.5 text-muted">{o.id_number || "—"}</td>
@@ -113,6 +119,14 @@ export default async function AdminOwnersPage({
           </tr>
         ))}
       </Table>
+
+      <Pagination
+        basePath="/admin/owners"
+        params={{ status, merchant }}
+        page={page}
+        perPage={perPage}
+        total={total}
+      />
     </div>
   );
 }

@@ -96,9 +96,10 @@ export function BankAccountsView({
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                    {a.ref && <span className="mono-num rounded bg-surface-raised px-1.5 py-0.5 text-[10px] font-normal text-muted">{a.ref}</span>}
                     {a.bank?.name ?? "?"}{" "}
-                    <span className="mono-num text-xs text-muted">{a.account_no}</span>
+                    <span className="mono-num text-xs font-normal text-muted">{a.account_no}</span>
                   </p>
                   <p className="text-xs text-muted">
                     {a.company?.name ?? "?"} · {a.merchant?.name ?? "—"}

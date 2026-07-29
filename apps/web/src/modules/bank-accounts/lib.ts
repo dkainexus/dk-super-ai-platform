@@ -5,6 +5,7 @@ export type BankAccountStatus = "pending" | "active" | "suspended" | "closed" | 
 
 export type BankAccount = {
   id: string;
+  ref: string | null;
   merchant_id: string;
   country_id: string | null;
   owner_id: string | null;
