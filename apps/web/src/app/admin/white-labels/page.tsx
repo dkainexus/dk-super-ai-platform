@@ -32,22 +32,23 @@ export default async function WhiteLabelRegistryPage({
       <div>
         <h1 className="text-xl font-semibold">White Labels</h1>
         <p className="mt-1 text-sm text-muted">
-          Every brand on the platform. Create it here, then add it to the countries it operates in.
+          Every brand on the platform. The code is what shows up in reference numbers — TH-CMP-<b>BL</b>00001.
         </p>
       </div>
       <ErrorBanner message={error} />
 
       <TableToolbar count={rows.length} noun="white label" />
 
-      <Table head={["White Label", "Domain", "Countries", "Status", ""]}>
+      <Table head={["White Label", "Code", "Domain", "Countries", "Status", ""]}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={5} className="px-4 py-6 text-sm text-muted">No white labels yet.</td>
+            <td colSpan={6} className="px-4 py-6 text-sm text-muted">No white labels yet.</td>
           </tr>
         )}
         {rows.map((m) => (
           <tr key={m.id} className="transition-colors hover:bg-surface-raised">
             <td className="px-4 py-2.5 font-medium">{m.name}</td>
+            <td className="mono-num px-4 py-2.5">{m.code ?? "—"}</td>
             <td className="mono-num px-4 py-2.5 text-muted">{m.subdomain ?? "—"}</td>
             <td className="px-4 py-2.5 text-muted">
               {m.merchant_countries.map((c) => c.country?.name).filter(Boolean).join(", ") || "none"}

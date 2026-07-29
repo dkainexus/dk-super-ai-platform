@@ -78,6 +78,7 @@ export type Merchant = {
   custom_domain: string | null;
   status: MerchantStatus;
   disabled_modules: string[];
+  code: string | null;
   app_name: string | null;
   app_icon_path: string | null;
   app_package_id: string | null;

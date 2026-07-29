@@ -430,3 +430,15 @@ export async function setOccupation(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(back);
 }
+
+/** Flip an extra field on or off in one click. */
+export async function toggleCountryField(formData: FormData): Promise<void> {
+  await requirePerm("settings", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? "/admin/settings/owners");
+  const on = String(formData.get("on") ?? "") === "1";
+  const { error } = await db().from("country_fields").update({ active: on }).eq("id", id);
+  if (error) fail(back, `Failed to update: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}

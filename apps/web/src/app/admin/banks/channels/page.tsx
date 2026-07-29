@@ -18,12 +18,12 @@ export default async function PaymentChannelsPage({
   const { active } = await requireCountryScope();
   if (!active) return null;
 
-  const [{ data: country }, { data: banks }] = await Promise.all([
-    db().from("countries").select("payment_channels").eq("id", active.id).maybeSingle(),
-    db().from("banks").select("id, name, channels").eq("country_id", active.id).eq("active", true).order("sort"),
-  ]);
+  const { data: country } = await db()
+    .from("countries")
+    .select("payment_channels")
+    .eq("id", active.id)
+    .maybeSingle();
   const channels = ((country?.payment_channels ?? []) as string[]) ?? [];
-  const bankRows = (banks ?? []) as { id: string; name: string; channels: string[] }[];
   const canEdit = Boolean(can(cu, "banks", "edit"));
   const back = "/admin/banks/channels";
 
@@ -33,8 +33,8 @@ export default async function PaymentChannelsPage({
         <Link href="/admin/banks" className="text-xs text-muted hover:text-foreground">← Banks</Link>
         <h1 className="mt-1 text-xl font-semibold">Payment Channels</h1>
         <p className="mt-1 text-sm text-muted">
-          Channels available in {active.name}. Each bank ticks the ones it supports, and account submissions only
-          offer the ticked ones.
+          Channels available in {active.name} — every bank here offers them, and account submissions ask which
+          ones the account has.
         </p>
       </div>
       <ErrorBanner message={error} />
@@ -71,18 +71,6 @@ export default async function PaymentChannelsPage({
         )}
       </section>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Who supports what</h2>
-        <div className="card divide-y divide-border">
-          {bankRows.length === 0 && <p className="px-5 py-4 text-sm text-muted">No active banks yet.</p>}
-          {bankRows.map((b) => (
-            <div key={b.id} className="flex items-center justify-between gap-4 px-5 py-3">
-              <p className="text-sm">{b.name}</p>
-              <p className="text-xs text-muted">{(b.channels ?? []).join(", ") || "none"}</p>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

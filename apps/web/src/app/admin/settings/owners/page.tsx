@@ -1,10 +1,16 @@
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { createCountryField, updateCountryField, deleteCountryField } from "@/modules/owners/actions";
+import {
+  createCountryField,
+  updateCountryField,
+  deleteCountryField,
+  toggleCountryField,
+} from "@/modules/owners/actions";
 import { requireCountryScope } from "@/modules/countries/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
-import { Table, TableToolbar } from "@/components/data-table";
+import { TableToolbar } from "@/components/data-table";
+import { ToggleButton } from "@/components/toggle-button";
 import type { CountryField } from "@/lib/types";
 
 const FIELD_TYPES = [
@@ -81,87 +87,54 @@ export default async function OwnerExtraFieldsPage({
 
       <TableToolbar count={fields.length} noun="field" />
 
-      <Table head={["Field", "Type", "Choices", "Required", "Active", ""]}>
+      <div className="card divide-y divide-border">
         {fields.length === 0 && (
-          <tr>
-            <td colSpan={6} className="px-4 py-6 text-sm text-muted">No extra fields in {active.name} yet.</td>
-          </tr>
+          <p className="px-5 py-6 text-sm text-muted">No extra fields in {active.name} yet.</p>
         )}
         {fields.map((f) => (
-          <tr key={f.id} className="transition-colors hover:bg-surface-raised">
-            <td className="px-4 py-2">
-              {canEdit ? (
-                <>
-                  <form action={updateCountryField} id={`f-${f.id}`}>
-                    <input type="hidden" name="id" value={f.id} />
-                    <input type="hidden" name="country_id" value={active.id} />
-                    <input type="hidden" name="back" value={back} />
-                    <input type="hidden" name="sort" value={f.sort} />
-                  </form>
+          <div key={f.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+            {canEdit ? (
+              <>
+                <form action={updateCountryField} className="flex min-w-64 flex-1 flex-wrap items-center gap-3">
+                  <input type="hidden" name="id" value={f.id} />
+                  <input type="hidden" name="country_id" value={active.id} />
+                  <input type="hidden" name="back" value={back} />
+                  <input type="hidden" name="sort" value={f.sort} />
+                  <input type="hidden" name="active" value={f.active ? "on" : ""} />
+                  <input name="label" defaultValue={f.label} className="input min-w-40 flex-1 py-1.5 text-sm" />
+                  <span className="rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted">
+                    {FIELD_TYPES.find((t) => t.value === f.field_type)?.label ?? f.field_type}
+                  </span>
                   <input
-                    form={`f-${f.id}`}
-                    name="label"
-                    defaultValue={f.label}
-                    className="input w-full max-w-xs py-1.5 text-sm"
+                    name="options"
+                    defaultValue={(f.options ?? []).join(", ")}
+                    placeholder="choices"
+                    className="input min-w-32 flex-1 py-1.5 text-sm"
                   />
-                </>
-              ) : (
-                f.label
-              )}
-            </td>
-            <td className="px-4 py-2 text-muted">
-              {FIELD_TYPES.find((t) => t.value === f.field_type)?.label ?? f.field_type}
-            </td>
-            <td className="px-4 py-2">
-              {canEdit ? (
-                <input
-                  form={`f-${f.id}`}
-                  name="options"
-                  defaultValue={(f.options ?? []).join(", ")}
-                  placeholder="—"
-                  className="input w-full max-w-xs py-1.5 text-sm"
-                />
-              ) : (
-                (f.options ?? []).join(", ") || "—"
-              )}
-            </td>
-            <td className="px-4 py-2">
-              {canEdit ? (
-                <input form={`f-${f.id}`} type="checkbox" name="required" defaultChecked={f.required} />
-              ) : (
-                f.required ? "Yes" : "No"
-              )}
-            </td>
-            <td className="px-4 py-2">
-              {canEdit ? (
-                <input form={`f-${f.id}`} type="checkbox" name="active" defaultChecked={f.active} />
-              ) : (
-                f.active ? "Yes" : "No"
-              )}
-            </td>
-            <td className="px-4 py-2">
-              {canEdit && (
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    type="submit"
-                    form={`f-${f.id}`}
-                    title={`Save ${f.label}`}
-                    className="rounded-md border border-border px-3 py-1.5 text-xs transition-colors hover:border-accent"
-                  >
-                    Save
-                  </button>
-                  <form action={deleteCountryField}>
-                    <input type="hidden" name="id" value={f.id} />
-                    <input type="hidden" name="country_id" value={active.id} />
-                    <input type="hidden" name="back" value={back} />
-                    <ActionButton icon="trash" tip={`Delete ${f.label}`} variant="danger" />
-                  </form>
-                </div>
-              )}
-            </td>
-          </tr>
+                  <label className="flex items-center gap-2 text-xs text-muted">
+                    <input type="checkbox" name="required" defaultChecked={f.required} /> Required
+                  </label>
+                  <SaveButton tip={`Save ${f.label}`} />
+                </form>
+                <form action={toggleCountryField}>
+                  <input type="hidden" name="id" value={f.id} />
+                  <input type="hidden" name="back" value={back} />
+                  <input type="hidden" name="on" value={f.active ? "0" : "1"} />
+                  <ToggleButton on={f.active} name={f.label} />
+                </form>
+                <form action={deleteCountryField}>
+                  <input type="hidden" name="id" value={f.id} />
+                  <input type="hidden" name="country_id" value={active.id} />
+                  <input type="hidden" name="back" value={back} />
+                  <ActionButton icon="trash" tip={`Delete ${f.label}`} variant="danger" />
+                </form>
+              </>
+            ) : (
+              <span className="text-sm">{f.label}</span>
+            )}
+          </div>
         ))}
-      </Table>
+      </div>
     </div>
   );
 }
