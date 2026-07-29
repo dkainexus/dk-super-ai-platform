@@ -258,20 +258,39 @@ export type InterviewTurn = {
 };
 
 /**
- * One turn of the AI interview: the examiner plays the part described in the
- * exam's brief and, when it has heard enough, returns a pass or fail.
+ * How many exchanges an interview may run before the examiner has to decide.
+ * It is a safety valve, not a target: without it a trainee who keeps giving
+ * vague answers could keep the conversation — and the API bill — going forever.
+ */
+export const INTERVIEW_MAX_TURNS = 20;
+
+/**
+ * One turn of the AI interview. The examiner plays the part described in the
+ * exam's reference and decides for itself when it has heard enough — there is
+ * no question count, and no score, only a pass or a fail with its reasoning.
  */
 export async function interviewTurn(exam: Exam, messages: InterviewMessage[]): Promise<InterviewTurn> {
   const brief = (exam as Exam & { ai_brief?: string | null }).ai_brief?.trim();
+  const asked = messages.filter((m) => m.role === "assistant").length;
+  const mustDecide = asked >= INTERVIEW_MAX_TURNS;
+
   const system = [
     "You are running a spoken role-play assessment for a company training program.",
     "Stay in character and ask one question at a time — never list several at once.",
     "This is pass or fail, not a score: judge whether the trainee handled the situation well enough.",
-    "Ask at least four questions before deciding, and decide as soon as the outcome is clear.",
-    `The brief you must follow: ${brief || "Play a bank officer interviewing the trainee about their company account."}`,
+    "Ask as many or as few questions as you need — decide as soon as the outcome is clear.",
+    "Reply in the language the trainee is using; open in English until they answer.",
+    `The reference you must follow: ${
+      brief || "Play a bank officer interviewing the trainee about their company account."
+    }`,
     'Respond with ONLY minified JSON: {"reply":"what you say next","done":false,"passed":null,"reason":""}.',
-    'When you have decided, set done to true, passed to true or false, and reason to a short explanation for the trainee.',
-  ].join(" ");
+    "When you have decided, set done to true, passed to true or false, and reason to a short explanation for the trainee.",
+    mustDecide
+      ? "You have asked enough questions. Set done to true now and give your verdict on what you have heard so far."
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const raw = await aiComplete(
     system,
@@ -283,14 +302,21 @@ export async function interviewTurn(exam: Exam, messages: InterviewMessage[]): P
 
   try {
     const parsed = JSON.parse(cleaned) as Partial<InterviewTurn>;
+    const done = parsed.done === true || mustDecide;
     return {
       reply: String(parsed.reply ?? "").trim(),
-      done: parsed.done === true,
-      passed: parsed.done === true ? parsed.passed === true : null,
+      done,
+      passed: done ? parsed.passed === true : null,
       reason: String(parsed.reason ?? "").trim(),
     };
   } catch {
-    // The model broke format — treat its text as the next line and keep going.
-    return { reply: cleaned.trim(), done: false, passed: null, reason: "" };
+    // The model broke format — treat its text as the next line and keep going,
+    // unless we are out of turns, in which case no verdict means no pass.
+    return {
+      reply: cleaned.trim(),
+      done: mustDecide,
+      passed: mustDecide ? false : null,
+      reason: mustDecide ? "The interview ran its full length without a clear answer." : "",
+    };
   }
 }

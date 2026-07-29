@@ -40,6 +40,8 @@ export async function POST(
       answers: [],
       score: null,
       passed: turn.passed === true,
+      // Kept separately so a later human override still shows what the AI said.
+      ai_passed: turn.passed === true,
       feedback: { overall: turn.reason, per_question: [] },
       transcript,
     })

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { InterviewRehearsal } from "./interview-rehearsal";
 
 export type CategoryOption = { id: string; label: string };
 
@@ -14,6 +15,7 @@ export function ExamModePicker({
   aiBrief = "",
   categories,
   children,
+  examId,
 }: {
   mode?: string;
   categoryId?: string;
@@ -21,6 +23,8 @@ export function ExamModePicker({
   categories: CategoryOption[];
   /** Settings that only apply to a marked exam — hidden for the interview. */
   children?: React.ReactNode;
+  /** Set once the exam exists, which is when it can be rehearsed. */
+  examId?: string;
 }) {
   const [mode, setMode] = useState(initial === "ai_interview" ? "ai_interview" : "bank");
 
@@ -75,20 +79,33 @@ export function ExamModePicker({
         </div>
       ) : (
         <div>
-          <label className="mb-1 block text-xs text-muted">Interview brief for the AI examiner</label>
+          <label className="mb-1 block text-xs text-muted">Reference</label>
+          <p className="mb-1.5 text-xs text-muted">
+            Tell the examiner three things: <b>who it is</b>, <b>what it must find out</b>, and{" "}
+            <b>what counts as a pass</b>.
+          </p>
           <textarea
             name="ai_brief"
             defaultValue={aiBrief}
-            rows={5}
+            rows={7}
             className="input"
             placeholder={
-              "Play a bank officer opening a business account. Ask about the company, the source of funds and the expected monthly turnover. Pass the trainee only if every answer is consistent and confident."
+              "You are a teller at a Thai bank doing due diligence on someone opening a company account.\n\n" +
+              "Find out what the company actually does, where its money comes from, and the monthly turnover " +
+              "they expect.\n\n" +
+              "Fail them if their answers contradict each other, if they cannot explain the source of funds, " +
+              "or if they are clearly reciting a script."
             }
           />
           <p className="mt-1 text-xs text-muted">
-            The AI follows this brief, plays the part, and returns a pass or fail with its reasoning — there is no
-            score and no question bank involved.
+            There are no questions to write — the examiner decides what to ask, how long to keep going, and whether
+            the trainee passed. It answers in whatever language the trainee uses.
           </p>
+          {examId && (
+            <div className="mt-3">
+              <InterviewRehearsal examId={examId} />
+            </div>
+          )}
         </div>
       )}
     </div>

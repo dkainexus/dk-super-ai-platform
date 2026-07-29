@@ -389,6 +389,7 @@ export function ExamDetailView({
             categoryId={e.category_id ?? ""}
             aiBrief={e.ai_brief ?? ""}
             categories={categories}
+            examId={exam.id}
           >
             <div>
               <label className="mb-1 block text-xs text-muted">Pass %</label>
@@ -477,16 +478,22 @@ export function ExamDetailView({
         <div className="card divide-y divide-border">
           {attempts.length === 0 && <p className="px-5 py-6 text-sm text-muted">No attempts yet.</p>}
           {attempts.map((a) => (
-            <div key={a.id} className="flex items-center justify-between px-5 py-3">
+            <Link
+              key={a.id}
+              href={`${base}/${exam.id}/attempts/${a.id}`}
+              title={`Open ${a.owner_name}'s attempt`}
+              className="flex items-center justify-between px-5 py-3 transition-colors hover:bg-surface-raised"
+            >
               <div>
                 <p className="text-sm font-medium">{a.owner_name}</p>
                 <p className="text-xs text-muted">{new Date(a.created_at).toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="mono-num text-sm">{a.score != null ? `${a.score}%` : "—"}</span>
+                {!isInterview && <span className="mono-num text-sm">{a.score != null ? `${a.score}%` : "—"}</span>}
                 <ActiveTag active={Boolean(a.passed)} on="Passed" off="Failed" />
+                <span className="text-xs text-muted">→</span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>

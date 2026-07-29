@@ -8,6 +8,8 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
 import { aiComplete } from "@/modules/ai/lib";
+import { interviewTurn, type InterviewMessage, type InterviewTurn } from "./lib";
+import type { Exam } from "@/lib/types";
 import { activeCountry } from "@/modules/merchants/lib";
 
 function fail(path: string, message: string): never {
@@ -380,4 +382,91 @@ export async function reorderExams(ids: string[]): Promise<void> {
     })
   );
   revalidate();
+}
+
+/**
+ * Rehearse an interview in the back office. Same examiner the trainees get, but
+ * nothing is recorded — it exists so a reference can be fixed before anyone
+ * sits the real thing.
+ */
+export async function rehearseInterview(
+  examId: string,
+  reference: string,
+  messages: InterviewMessage[]
+): Promise<InterviewTurn | { error: string }> {
+  const { cu } = await requirePerm("exams", "edit");
+
+  let q = db().from("exams").select("*").eq("id", examId);
+  if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+  const { data } = await q.maybeSingle();
+  if (!data) return { error: "Exam not found" };
+
+  try {
+    // The unsaved reference is used, so edits can be tried before saving.
+    return await interviewTurn({ ...(data as Exam), ai_brief: reference } as Exam, messages.slice(-40));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "The AI could not be reached" };
+  }
+}
+
+/** Overturn an AI verdict after reading the transcript. Both are kept on record. */
+export async function overrideAttempt(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("exams", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? "/admin/exams");
+  const passed = formData.get("passed") === "true";
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!reason) fail(back, "Please say why you are changing the verdict");
+
+  const { data } = await db()
+    .from("exam_attempts")
+    .select("id, exam_id, owner_id, passed, ai_passed")
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) fail(back, "Attempt not found");
+  const row = data as { exam_id: string; owner_id: string; passed: boolean | null; ai_passed: boolean | null };
+
+  const { error } = await db()
+    .from("exam_attempts")
+    .update({
+      passed,
+      // Remember what the AI said the first time a human steps in.
+      ai_passed: row.ai_passed ?? row.passed,
+      overridden_by: cu.user.id,
+      overridden_at: new Date().toISOString(),
+      override_reason: reason,
+    })
+    .eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+
+  // Turning a fail into a pass earns the reward the trainee missed.
+  if (passed && row.passed !== true) {
+    const { data: exam } = await db().from("exams").select("*").eq("id", row.exam_id).maybeSingle();
+    const { data: owner } = await db()
+      .from("owners")
+      .select("id, merchant_id, country:countries(currency)")
+      .eq("id", row.owner_id)
+      .maybeSingle();
+    if (exam && owner) {
+      const { grantReward } = await import("@/modules/wallet/lib");
+      const country = Array.isArray(owner.country) ? owner.country[0] : owner.country;
+      try {
+        await grantReward(
+          { id: owner.id, merchant_id: owner.merchant_id, country: country as { currency: string } },
+          {
+            kind: "exam",
+            id: row.exam_id,
+            title: (exam as Exam).title,
+            reward_amount: (exam as { reward_amount?: number | null }).reward_amount ?? null,
+            auto_notify: (exam as { auto_notify?: boolean }).auto_notify ?? true,
+          }
+        );
+      } catch {
+        // an unpaid reward must never block the override
+      }
+    }
+  }
+
+  revalidate();
+  redirect(`${back}?saved=verdict`);
 }
