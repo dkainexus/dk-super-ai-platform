@@ -62,6 +62,7 @@ export type Country = {
   currency: string; // ISO 4217, e.g. THB
   disabled_modules: string[];
   payment_channels: string[];
+  account_fields: { key: string; label: string }[];
   active: boolean;
   sort: number;
   created_at: string;

@@ -10,7 +10,7 @@ export async function GET(req: Request): Promise<Response> {
 
   const { data } = await db()
     .from("bank_accounts")
-    .select("id, account_no, status, condition, reject_reason, activated_at, created_at, bank:banks(name, code), company:companies(name)")
+    .select("id, account_no, status, condition, reject_reason, activated_at, created_at, bank:banks(name, code), company:companies(name), branch:bank_branches(name)")
     .eq("owner_id", owner.id)
     .order("created_at", { ascending: false });
 
@@ -19,9 +19,11 @@ export async function GET(req: Request): Promise<Response> {
       id: string; account_no: string; status: string; condition: string; reject_reason: string | null;
       activated_at: string | null; created_at: string;
       bank: { name: string; code: string | null } | null; company: { name: string } | null;
+      branch: { name: string } | null;
     }[]).map((a) => ({
       id: a.id,
       bank: a.bank?.name ?? "?",
+      branch: a.branch?.name ?? null,
       company: a.company?.name ?? "?",
       account_no: a.account_no,
       status: a.status,
@@ -40,7 +42,12 @@ export async function POST(req: Request): Promise<Response> {
   let body: {
     company_id?: string;
     bank_id?: string;
+    branch_id?: string;
+    branch_place_id?: string;
+    branch_name?: string;
     branch_address?: string;
+    branch_lat?: number;
+    branch_lng?: number;
     account_no?: string;
     account_limit?: number;
     email?: string;
@@ -66,6 +73,42 @@ export async function POST(req: Request): Promise<Response> {
   if (!company) return Response.json({ error: "Company not found" }, { status: 400 });
   if (!bank) return Response.json({ error: "Bank not found" }, { status: 400 });
 
+  // Branch: an existing directory entry, or a fresh Google Places pick that
+  // joins the directory (deduped by place_id).
+  let branchId: string | null = null;
+  if (body.branch_id) {
+    const { data: branch } = await db()
+      .from("bank_branches").select("id").eq("id", body.branch_id).eq("bank_id", bank.id).maybeSingle();
+    if (!branch) return Response.json({ error: "Branch not found" }, { status: 400 });
+    branchId = branch.id;
+  } else if (body.branch_place_id && body.branch_name?.trim()) {
+    const { data: existing } = await db()
+      .from("bank_branches")
+      .select("id")
+      .eq("bank_id", bank.id)
+      .eq("place_id", body.branch_place_id)
+      .maybeSingle();
+    if (existing) {
+      branchId = existing.id;
+    } else {
+      const { data: created, error: brErr } = await db()
+        .from("bank_branches")
+        .insert({
+          bank_id: bank.id,
+          name: body.branch_name.trim().slice(0, 200),
+          address: body.branch_address?.trim().slice(0, 300) || null,
+          place_id: body.branch_place_id,
+          lat: Number.isFinite(body.branch_lat) ? body.branch_lat : null,
+          lng: Number.isFinite(body.branch_lng) ? body.branch_lng : null,
+        })
+        .select("id")
+        .single();
+      if (brErr) return Response.json({ error: brErr.message }, { status: 500 });
+      branchId = created.id;
+    }
+  }
+  if (!branchId) return Response.json({ error: "Please pick your branch" }, { status: 400 });
+
   // Keep only extras/channels the bank actually defines.
   const allowedFields = new Set(((bank.account_fields ?? []) as { key: string }[]).map((f) => f.key));
   const extra: Record<string, string> = {};
@@ -85,7 +128,7 @@ export async function POST(req: Request): Promise<Response> {
     owner_id: owner.id,
     company_id: company.id,
     bank_id: bank.id,
-    branch_address: body.branch_address?.trim() || null,
+    branch_id: branchId,
     account_no: body.account_no.trim(),
     account_limit: Number.isFinite(body.account_limit) ? body.account_limit : null,
     email: body.email?.trim() || null,

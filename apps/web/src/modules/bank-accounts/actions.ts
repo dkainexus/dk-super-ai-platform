@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
 import { notifyOwner } from "@/modules/notifications/lib";
+import { resolveBranch } from "@/modules/banks/lib";
 
 function fail(path: string, message: string): never {
   const sep = path.includes("?") ? "&" : "?";
@@ -61,12 +62,24 @@ export async function createBankAccount(formData: FormData): Promise<void> {
   const { extra, channels } = await parseBankExtras(bankId, formData);
   const limitRaw = String(formData.get("account_limit") ?? "").trim();
 
+  // Branch: an existing directory entry, or a fresh Google Places pick.
+  let branchId = String(formData.get("branch_id") ?? "") || null;
+  if (!branchId) {
+    try {
+      const branch = await resolveBranch(bankId, formData, cu.user.id);
+      branchId = branch?.id ?? null;
+    } catch (e) {
+      fail(base, e instanceof Error ? `Failed to save branch: ${e.message}` : "Failed to save branch");
+    }
+  }
+  if (!branchId) fail(base, "Please pick the branch (search it on Google Maps)");
+
   const { error } = await db().from("bank_accounts").insert({
     merchant_id: company.merchant_id,
     country_id: company.country_id,
     company_id: companyId,
     bank_id: bankId,
-    branch_address: String(formData.get("branch_address") ?? "").trim() || null,
+    branch_id: branchId,
     account_no: accountNo,
     account_limit: limitRaw ? parseFloat(limitRaw) || null : null,
     email: String(formData.get("email") ?? "").trim() || null,
@@ -145,4 +158,72 @@ export async function deleteBankAccount(formData: FormData): Promise<void> {
   await q;
   revalidate();
   redirect(base);
+}
+
+/** Change the branch on an account (pick an existing one or search Google). */
+export async function assignBranch(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("bank_accounts", "edit");
+  const base = cu.merchant ? "/m/bank-accounts" : "/admin/bank-accounts";
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? base);
+
+  let q = db().from("bank_accounts").select("id, bank_id").eq("id", id);
+  if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+  const { data: row } = await q.maybeSingle();
+  if (!row) fail(back, "Account not found");
+
+  let branchId = String(formData.get("branch_id") ?? "");
+  if (!branchId) {
+    try {
+      const branch = await resolveBranch(row.bank_id, formData, cu.user.id);
+      branchId = branch?.id ?? "";
+    } catch (e) {
+      fail(back, e instanceof Error ? `Failed to save branch: ${e.message}` : "Failed to save branch");
+    }
+  }
+  if (!branchId) fail(back, "Pick an existing branch or search for it on Google Maps");
+
+  const { error } = await db()
+    .from("bank_accounts")
+    .update({ branch_id: branchId, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) fail(back, `Failed to assign: ${error.message}`);
+  revalidate();
+  redirect(back);
+}
+
+/** Edit an account's details (standard fields + the bank's extra fields). */
+export async function editBankAccount(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("bank_accounts", "edit");
+  const base = cu.merchant ? "/m/bank-accounts" : "/admin/bank-accounts";
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? base);
+  const accountNo = String(formData.get("account_no") ?? "").trim();
+  if (!accountNo) fail(back, "Account number cannot be empty");
+
+  let q = db().from("bank_accounts").select("id, bank_id").eq("id", id);
+  if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+  const { data: row } = await q.maybeSingle();
+  if (!row) fail(back, "Account not found");
+
+  const { extra, channels } = await parseBankExtras(row.bank_id, formData);
+  const limitRaw = String(formData.get("account_limit") ?? "").trim();
+  const { error } = await db()
+    .from("bank_accounts")
+    .update({
+      account_no: accountNo,
+      account_limit: limitRaw ? parseFloat(limitRaw) || null : null,
+      email: String(formData.get("email") ?? "").trim() || null,
+      sim_number: String(formData.get("sim_number") ?? "").trim() || null,
+      login_id: String(formData.get("login_id") ?? "").trim() || null,
+      password: String(formData.get("password") ?? "").trim() || null,
+      condition: String(formData.get("condition") ?? "").trim() || "New",
+      extra,
+      channels,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidate();
+  redirect(back);
 }

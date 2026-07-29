@@ -101,3 +101,38 @@ export async function removePaymentChannel(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(back);
 }
+
+function fieldKey(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "field";
+}
+
+/** Add an extra account field to this country's pool (banks tick them). */
+export async function addAccountField(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const id = String(formData.get("country_id") ?? "");
+  const back = `/admin/countries/${id}`;
+  const label = String(formData.get("field") ?? "").trim();
+  if (!label) fail(back, "Please enter a field name");
+
+  const { data: c } = await db().from("countries").select("account_fields").eq("id", id).maybeSingle();
+  const list = (c?.account_fields ?? []) as { key: string; label: string }[];
+  const key = fieldKey(label);
+  if (list.some((f) => f.key === key)) fail(back, "This field already exists");
+  const { error } = await db().from("countries").update({ account_fields: [...list, { key, label }] }).eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function removeAccountField(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const id = String(formData.get("country_id") ?? "");
+  const back = `/admin/countries/${id}`;
+  const key = String(formData.get("field_key") ?? "");
+  const { data: c } = await db().from("countries").select("account_fields").eq("id", id).maybeSingle();
+  const list = ((c?.account_fields ?? []) as { key: string; label: string }[]).filter((f) => f.key !== key);
+  const { error } = await db().from("countries").update({ account_fields: list }).eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}

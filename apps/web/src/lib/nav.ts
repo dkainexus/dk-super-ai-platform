@@ -21,6 +21,26 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     items.push({ ...nav });
   }
 
+  // Branches sub-menu under Banks — only shown once there is something in it
+  // (existing branches or app submissions waiting for branch processing).
+  if (!isMerchant) {
+    const banksItem = items.find((i) => i.href === "/admin/banks");
+    if (banksItem) {
+      const { db } = await import("./supabase");
+      const [{ count: branches }, { count: unprocessed }] = await Promise.all([
+        db().from("bank_branches").select("id", { count: "exact", head: true }),
+        db()
+          .from("bank_accounts")
+          .select("id", { count: "exact", head: true })
+          .is("branch_id", null)
+          .not("branch_map_path", "is", null),
+      ]);
+      if ((branches ?? 0) > 0 || (unprocessed ?? 0) > 0) {
+        banksItem.children = [{ href: "/admin/banks/branches", label: "Branches" }];
+      }
+    }
+  }
+
   const home = isMerchant ? "/m" : "/admin";
   const settingsIdx = items.findIndex((i) => i.href.endsWith("/settings"));
   const settingsItems = settingsIdx >= 0 ? items.splice(settingsIdx, 1) : [];

@@ -6,6 +6,8 @@
 import { useMemo, useState } from "react";
 import { createBankAccount } from "../actions";
 import { SaveButton } from "@/components/action-buttons";
+import { BranchPicker } from "@/modules/banks/components/branch-picker";
+import { MoneyInput } from "@/components/money-input";
 
 export type FormCompany = { id: string; name: string; country_id: string | null; merchant_name?: string };
 export type FormBank = {
@@ -16,9 +18,21 @@ export type FormBank = {
   channels: string[];
 };
 
-export function BankAccountForm({ companies, banks }: { companies: FormCompany[]; banks: FormBank[] }) {
+export function BankAccountForm({
+  companies,
+  banks,
+  branches,
+  countryCodes,
+}: {
+  companies: FormCompany[];
+  banks: FormBank[];
+  branches: Record<string, { id: string; name: string }[]>;
+  /** countryId → ISO code, so Google search is limited to the right country */
+  countryCodes: Record<string, string>;
+}) {
   const [companyId, setCompanyId] = useState("");
   const [bankId, setBankId] = useState("");
+  const [branchId, setBranchId] = useState("");
 
   const company = companies.find((c) => c.id === companyId) ?? null;
   const bankOptions = useMemo(
@@ -26,6 +40,7 @@ export function BankAccountForm({ companies, banks }: { companies: FormCompany[]
     [banks, company?.country_id]
   );
   const bank = bankOptions.find((b) => b.id === bankId) ?? null;
+  const countryCode = bank ? countryCodes[bank.country_id] ?? null : null;
 
   return (
     <form action={createBankAccount} className="space-y-4">
@@ -38,6 +53,7 @@ export function BankAccountForm({ companies, banks }: { companies: FormCompany[]
             onChange={(e) => {
               setCompanyId(e.target.value);
               setBankId("");
+              setBranchId("");
             }}
             className="input"
             required
@@ -56,7 +72,10 @@ export function BankAccountForm({ companies, banks }: { companies: FormCompany[]
           <select
             name="bank_id"
             value={bankId}
-            onChange={(e) => setBankId(e.target.value)}
+            onChange={(e) => {
+              setBankId(e.target.value);
+              setBranchId("");
+            }}
             className="input"
             required
             disabled={!companyId}
@@ -72,17 +91,28 @@ export function BankAccountForm({ companies, banks }: { companies: FormCompany[]
       {bank && (
         <>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs text-muted">Branch Address</label>
-              <input name="branch_address" className="input" />
+            <div>
+              <label className="mb-1 block text-xs text-muted">Branch (from the directory)</label>
+              <select
+                name="branch_id"
+                value={branchId}
+                onChange={(e) => setBranchId(e.target.value)}
+                className="input"
+              >
+                <option value="">— Not listed, search Google Maps —</option>
+                {(branches[bank.id] ?? []).map((br) => (
+                  <option key={br.id} value={br.id}>{br.name}</option>
+                ))}
+              </select>
             </div>
+            {branchId === "" && <BranchPicker regionCode={countryCode} />}
             <div>
               <label className="mb-1 block text-xs text-muted">Account Number</label>
               <input name="account_no" className="input mono-num" required />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Account Limit</label>
-              <input name="account_limit" type="number" step="0.01" className="input mono-num" />
+              <MoneyInput name="account_limit" />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Email</label>

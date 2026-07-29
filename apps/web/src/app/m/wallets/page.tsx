@@ -8,6 +8,7 @@ import { WithdrawalsQueue } from "@/modules/wallet/components/withdrawals-queue"
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import type { Owner, Wallet, Withdrawal } from "@/lib/types";
+import { MoneyInput } from "@/components/money-input";
 
 // White label wallet view: their owners' balances and withdrawal requests,
 // scoped to the active country.
@@ -103,7 +104,7 @@ export default async function MerchantWalletsPage({
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Amount</label>
-              <input name="amount" type="number" step="0.01" className="input mono-num" required />
+              <MoneyInput name="amount" required />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Note (optional)</label>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { updateCountry, saveCountryModules, addPaymentChannel, removePaymentChannel } from "@/modules/countries/actions";
+import { updateCountry, saveCountryModules, addPaymentChannel, removePaymentChannel, addAccountField, removeAccountField } from "@/modules/countries/actions";
 import { timezoneList, currencyList } from "@/modules/countries/lib";
 import { TOGGLABLE_MODULES } from "@/modules/registry";
 import { ErrorBanner } from "@/components/error-banner";
@@ -122,6 +122,41 @@ export default async function CountryDetailPage({
               <input name="channel" placeholder="e.g. PromptPay" className="input" required />
             </div>
             <ActionButton icon="plus" tip="Add this payment channel" label="Add" variant="primary" />
+          </form>
+        </div>
+      </section>
+
+      {/* ---------- Extra account fields ---------- */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Bank Account Extra Fields</h2>
+        <div className="card p-5">
+          <p className="mb-4 text-xs text-muted">
+            Extra fields available in {c.name} (e.g. Company ID, App PIN). Banks tick the ones they need — the
+            account form then asks for them.
+          </p>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {(c.account_fields ?? []).length === 0 && <p className="text-sm text-muted">No extra fields yet.</p>}
+            {(c.account_fields ?? []).map((f) => (
+              <form key={f.key} action={removeAccountField} className="inline-flex">
+                <input type="hidden" name="country_id" value={c.id} />
+                <input type="hidden" name="field_key" value={f.key} />
+                <button
+                  type="submit"
+                  title={`Remove ${f.label} from this country`}
+                  className="group inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent-soft px-3 py-1 text-xs text-accent-strong transition-colors hover:border-danger/60 hover:text-danger"
+                >
+                  {f.label} <span className="text-muted group-hover:text-danger">✕</span>
+                </button>
+              </form>
+            ))}
+          </div>
+          <form action={addAccountField} className="flex max-w-sm items-end gap-3">
+            <input type="hidden" name="country_id" value={c.id} />
+            <div className="flex-1">
+              <label className="mb-1 block text-xs text-muted">New Field</label>
+              <input name="field" placeholder="e.g. Company ID" className="input" required />
+            </div>
+            <ActionButton icon="plus" tip="Add this extra field" label="Add" variant="primary" />
           </form>
         </div>
       </section>

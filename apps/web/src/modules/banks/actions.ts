@@ -7,11 +7,8 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
 import { ASSETS_BUCKET, fileExt, uploadFile } from "@/lib/storage";
+import { resolveBranch } from "./lib";
 
-/** "App PIN" → "app_pin" — stable keys for per-bank extra account fields. */
-function slugKey(label: string): string {
-  return label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "field";
-}
 
 function fail(path: string, message: string): never {
   const sep = path.includes("?") ? "&" : "?";
@@ -52,12 +49,15 @@ export async function updateBank(formData: FormData): Promise<void> {
   const active = formData.get("active") === "on";
   if (!name) fail(back, "Bank name cannot be empty");
 
-  // Per-bank extra account fields (one label per line) + payment channels (comma separated)
-  const accountFields = String(formData.get("account_fields") ?? "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((label) => ({ key: slugKey(label), label }));
+  // Ticked subsets of the country's pools (extra account fields + payment channels)
+  const { data: country } = await db()
+    .from("countries")
+    .select("account_fields")
+    .eq("id", countryId)
+    .maybeSingle();
+  const pool = (country?.account_fields ?? []) as { key: string; label: string }[];
+  const ticked = new Set(formData.getAll("account_fields").map(String));
+  const accountFields = pool.filter((f) => ticked.has(f.key));
   const channels = formData.getAll("channels").map(String).filter(Boolean);
 
   const patch: Record<string, unknown> = { name, code, sort, active, account_fields: accountFields, channels };
@@ -87,3 +87,46 @@ export async function deleteBank(formData: FormData): Promise<void> {
   redirect(countryId ? `/admin/banks?country=${countryId}` : "/admin/banks");
 }
 
+
+// ---------- Branches (sub-menu of Banks) ----------
+
+export async function addBranch(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("banks", "add");
+  const bankId = String(formData.get("bank_id") ?? "");
+  const back = String(formData.get("back") ?? "/admin/banks/branches");
+  try {
+    const branch = await resolveBranch(bankId, formData, cu.user.id);
+    if (!branch) fail(back, "Search and pick the branch on Google Maps first");
+  } catch (e) {
+    fail(back, e instanceof Error ? `Failed to add: ${e.message}` : "Failed to add branch");
+  }
+  revalidatePath("/admin/banks/branches");
+  revalidatePath("/", "layout");
+  redirect(back);
+}
+
+export async function updateBranch(formData: FormData): Promise<void> {
+  await requirePerm("banks", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? "/admin/banks/branches");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail(back, "Branch name cannot be empty");
+  const { error } = await db()
+    .from("bank_branches")
+    .update({ name, address: String(formData.get("address") ?? "").trim() || null })
+    .eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath("/admin/banks/branches");
+  redirect(back);
+}
+
+export async function deleteBranch(formData: FormData): Promise<void> {
+  await requirePerm("banks", "delete");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? "/admin/banks/branches");
+  const { error } = await db().from("bank_branches").delete().eq("id", id);
+  if (error) fail(back, error.message.includes("foreign") ? "This branch is used by bank accounts" : `Failed to delete: ${error.message}`);
+  revalidatePath("/admin/banks/branches");
+  revalidatePath("/", "layout");
+  redirect(back);
+}

@@ -33,8 +33,17 @@ export async function GET(req: Request): Promise<Response> {
       .order("sort")
       .order("name"),
   ]);
+  const bankIds = ((banks ?? []) as { id: string }[]).map((b) => b.id);
+  const { data: branches } = bankIds.length
+    ? await db().from("bank_branches").select("id, bank_id, name").in("bank_id", bankIds).order("name")
+    : { data: [] };
+  const branchesByBank: Record<string, { id: string; name: string }[]> = {};
+  for (const br of (branches ?? []) as { id: string; bank_id: string; name: string }[]) {
+    (branchesByBank[br.bank_id] ??= []).push({ id: br.id, name: br.name });
+  }
 
   return Response.json({
+    branches: branchesByBank,
     companies: (companies ?? []) as { id: string; name: string }[],
     banks: ((banks ?? []) as {
       id: string; name: string; code: string | null;

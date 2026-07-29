@@ -1,13 +1,19 @@
 import Link from "next/link";
-import { reviewBankAccount, deleteBankAccount } from "../actions";
+import { reviewBankAccount, deleteBankAccount, assignBranch, editBankAccount } from "../actions";
 import { BankAccountForm, type FormBank, type FormCompany } from "./account-form";
 import { STATUS_COLORS, type BankAccountRow } from "../lib";
 import { ErrorBanner } from "@/components/error-banner";
-import { ActionButton } from "@/components/action-buttons";
+import { ActionButton, SaveButton } from "@/components/action-buttons";
+import { MoneyInput } from "@/components/money-input";
+import { BranchPicker } from "@/modules/banks/components/branch-picker";
+import { fmtNum } from "@/lib/format";
 
 // Shared view for /admin/bank-accounts and /m/bank-accounts.
 
 const FILTERS = ["", "pending", "active", "suspended", "closed", "rejected"] as const;
+
+export type BranchOption = { id: string; name: string };
+export type AccountRow = BankAccountRow;
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
@@ -29,16 +35,20 @@ export function BankAccountsView({
   canDelete,
   companies,
   banks,
+  branches,
+  countryCodes,
 }: {
   base: string;
   error?: string;
   status: string;
-  rows: BankAccountRow[];
+  rows: AccountRow[];
   canAdd: boolean;
   canEdit: boolean;
   canDelete: boolean;
   companies: FormCompany[];
   banks: FormBank[];
+  branches: Record<string, BranchOption[]>;
+  countryCodes: Record<string, string>;
 }) {
   const pendingCount = rows.filter((r) => r.status === "pending").length;
   const shown = status ? rows.filter((r) => r.status === status) : rows;
@@ -82,6 +92,7 @@ export function BankAccountsView({
           const enabledChannels = Object.entries(a.channels ?? {})
             .filter(([, v]) => v?.enabled)
             .map(([k, v]) => (v.value ? `${k} (${v.value})` : k));
+          const bankBranches = branches[a.bank_id] ?? [];
           return (
             <div
               key={a.id}
@@ -109,15 +120,47 @@ export function BankAccountsView({
                 </div>
               </div>
 
+              {/* Branch */}
+              {a.branch ? (
+                <p className="text-xs">
+                  <span className="text-muted">Branch:</span> <span className="font-medium">{a.branch.name}</span>
+                  {a.branch.address ? <span className="text-muted"> · {a.branch.address}</span> : null}
+                </p>
+              ) : (
+                <div className="rounded-lg border border-warning/40 bg-warning/5 p-3">
+                  <p className="mb-2 text-xs font-medium text-warning">⚠ No branch set</p>
+                  {canEdit && (
+                    <form action={assignBranch} className="flex flex-wrap items-end gap-2">
+                      <input type="hidden" name="id" value={a.id} />
+                      <input type="hidden" name="back" value={back} />
+                      {bankBranches.length > 0 && (
+                        <div>
+                          <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Existing branch</label>
+                          <select name="branch_id" className="input py-1.5 text-xs" defaultValue="">
+                            <option value="">— pick —</option>
+                            {bankBranches.map((br) => (
+                              <option key={br.id} value={br.id}>{br.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <div className="min-w-64 flex-1">
+                        <BranchPicker regionCode={countryCodes[a.country_id ?? ""] ?? null} label="or search Google Maps" compact />
+                      </div>
+                      <ActionButton icon="check" tip="Set this branch on the account" label="Set Branch" variant="primary" />
+                    </form>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Field label="Branch" value={a.branch_address} />
-                <Field label="Limit" value={a.account_limit != null ? Number(a.account_limit).toLocaleString() : null} />
+                <Field label="Limit" value={a.account_limit != null ? fmtNum(a.account_limit) : null} />
                 <Field label="Email" value={a.email} />
                 <Field label="SIM" value={a.sim_number} />
                 <Field label="Login / User ID" value={a.login_id} />
                 <Field label="Password" value={a.password} />
-                {Object.entries(a.extra ?? {}).map(([k, v]) => (
-                  <Field key={k} label={k.replaceAll("_", " ")} value={v} />
+                {(a.bank?.account_fields ?? []).map((f) => (
+                  <Field key={f.key} label={f.label} value={a.extra?.[f.key]} />
                 ))}
                 {enabledChannels.length > 0 && <Field label="Channels" value={enabledChannels.join(", ")} />}
                 <Field label="Activated" value={a.activated_at ? new Date(a.activated_at).toLocaleDateString() : null} />
@@ -126,6 +169,68 @@ export function BankAccountsView({
               </div>
               {a.status === "rejected" && a.reject_reason && (
                 <p className="text-xs text-danger">Rejected: {a.reject_reason}</p>
+              )}
+
+              {canEdit && (
+                <details className="rounded-lg border border-border">
+                  <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted hover:text-foreground">
+                    ✎ Edit details
+                  </summary>
+                  <form action={editBankAccount} className="grid gap-3 border-t border-border p-4 sm:grid-cols-3">
+                    <input type="hidden" name="id" value={a.id} />
+                    <input type="hidden" name="back" value={back} />
+                    <div>
+                      <label className="mb-1 block text-xs text-muted">Account Number</label>
+                      <input name="account_no" defaultValue={a.account_no} className="input mono-num" required />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted">Account Limit</label>
+                      <MoneyInput name="account_limit" defaultValue={a.account_limit} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted">Condition</label>
+                      <input name="condition" defaultValue={a.condition} className="input" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted">Email</label>
+                      <input name="email" type="email" defaultValue={a.email ?? ""} className="input" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted">SIM Card Number</label>
+                      <input name="sim_number" defaultValue={a.sim_number ?? ""} className="input mono-num" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted">Login / User ID</label>
+                      <input name="login_id" defaultValue={a.login_id ?? ""} className="input" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted">Password</label>
+                      <input name="password" defaultValue={a.password ?? ""} className="input" />
+                    </div>
+                    {(a.bank?.account_fields ?? []).map((f) => (
+                      <div key={f.key}>
+                        <label className="mb-1 block text-xs text-muted">{f.label}</label>
+                        <input name={`extra_${f.key}`} defaultValue={a.extra?.[f.key] ?? ""} className="input" />
+                      </div>
+                    ))}
+                    {(a.bank?.channels ?? []).map((c) => (
+                      <div key={c} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+                        <label className="flex items-center gap-2 text-xs">
+                          <input type="checkbox" name={`channel_${c}`} defaultChecked={a.channels?.[c]?.enabled} /> {c}
+                        </label>
+                        <input
+                          name={`channel_${c}_value`}
+                          defaultValue={a.channels?.[c]?.value ?? ""}
+                          placeholder="Linked number / ID"
+                          className="input flex-1 py-1 text-xs"
+                        />
+                      </div>
+                    ))}
+                    <div className="sm:col-span-3">
+                      <SaveButton tip="Save the edited details" />
+                    </div>
+                  </form>
+                </details>
               )}
 
               {canEdit && (
@@ -196,9 +301,9 @@ export function BankAccountsView({
         <section className="card p-5">
           <h2 className="mb-1 text-sm font-semibold">New Bank Account</h2>
           <p className="mb-4 text-xs text-muted">
-            Pick the company first — banks and their extra fields follow the company&apos;s country.
+            Pick the company first — banks, branches and extra fields follow the company&apos;s country.
           </p>
-          <BankAccountForm companies={companies} banks={banks} />
+          <BankAccountForm companies={companies} banks={banks} branches={branches} countryCodes={countryCodes} />
         </section>
       )}
     </div>

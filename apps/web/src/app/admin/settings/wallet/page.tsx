@@ -6,6 +6,7 @@ import { saveWalletSettings } from "@/modules/wallet/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton } from "@/components/action-buttons";
 import type { Country } from "@/lib/types";
+import { MoneyInput } from "@/components/money-input";
 
 // Wallet module settings: the training-completion reward per country
 // (in that country's currency; empty = no automatic reward).
@@ -49,11 +50,8 @@ export default async function WalletSettingsPage({
               {c.flag || "🌐"} {c.name}
             </span>
             <div className="flex items-center gap-2">
-              <input
+              <MoneyInput
                 name={`tr_${c.id}`}
-                type="number"
-                step="0.01"
-                min="0"
                 defaultValue={settings.training_rewards[c.id] ?? ""}
                 placeholder="off"
                 disabled={!canEdit}
