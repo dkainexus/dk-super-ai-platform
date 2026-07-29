@@ -53,6 +53,11 @@ export async function saveOwner(formData: FormData): Promise<void> {
   const bankId = String(formData.get("bank_id") ?? "") || null;
   const bankAccountNo = String(formData.get("bank_account_no") ?? "").trim() || null;
   const occupationId = String(formData.get("occupation_id") ?? "") || null;
+  // An agent entering an owner is always credited themselves; anyone else
+  // picks the introducing agent on the form.
+  const { agentForUser } = await import("@/modules/agents/lib");
+  const self = await agentForUser(cu.user.id);
+  const agentId = self ? self.id : String(formData.get("agent_id") ?? "") || null;
   const gender = String(formData.get("gender") ?? "") || null;
   const maritalStatus = String(formData.get("marital_status") ?? "") || null;
   const phone = String(formData.get("phone") ?? "").trim() || null;
@@ -72,6 +77,7 @@ export async function saveOwner(formData: FormData): Promise<void> {
         bank_id: bankId,
         bank_account_no: bankAccountNo,
         occupation_id: occupationId,
+        agent_id: agentId,
         gender,
         marital_status: maritalStatus,
         phone,
@@ -99,6 +105,7 @@ export async function saveOwner(formData: FormData): Promise<void> {
         bank_id: bankId,
         bank_account_no: bankAccountNo,
         occupation_id: occupationId,
+        agent_id: agentId,
         gender,
         marital_status: maritalStatus,
         phone,

@@ -29,6 +29,7 @@ export async function OwnerForm({
   banks = [],
   occupations = [],
   provinces = [],
+  agents = [],
   owner,
   values,
   action = saveOwner,
@@ -40,6 +41,8 @@ export async function OwnerForm({
   occupations?: Occupation[];
   /** State / province choices for the owner's country */
   provinces?: string[];
+  /** Agents who can be credited with introducing this owner */
+  agents?: { id: string; name: string }[];
   owner?: Owner;
   values?: OwnerFieldValue[];
   action?: (formData: FormData) => Promise<void>;
@@ -84,6 +87,22 @@ export async function OwnerForm({
             <option value="widowed">Widowed</option>
           </select>
         </div>
+        {agents.length > 0 && (
+          <div>
+            <label className="mb-1 block text-xs text-muted">Introduced by (agent)</label>
+            <select
+              name="agent_id"
+              defaultValue={(owner as (Owner & { agent_id?: string | null }) | undefined)?.agent_id ?? ""}
+              className="input"
+              disabled={locked}
+            >
+              <option value="">Nobody / walk-in</option>
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {occupations.length > 0 && (
           <div>
             <label className="mb-1 block text-xs text-muted">Occupation</label>

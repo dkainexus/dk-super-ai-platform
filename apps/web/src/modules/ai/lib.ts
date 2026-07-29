@@ -63,7 +63,19 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
   const toggles = await globalModuleToggles();
   const on = (key: string) => moduleEnabledFor(key, toggles, cu.merchant);
   const ctx: Record<string, unknown> = {};
-  const allowedIds = cu.merchant ? (await allowedCountries(cu)).map((c) => c.id) : null;
+  // The assistant sees exactly one country's data — whichever the user is
+  // working in. On the platform side that is the country switcher; in Global
+  // scope there is no operational data at all, only platform settings.
+  const { adminScope } = await import("@/modules/countries/lib");
+  let allowedIds: string[] | null = null;
+  let globalOnly = false;
+  if (cu.merchant) {
+    allowedIds = (await allowedCountries(cu)).map((c) => c.id);
+  } else {
+    const scope = await adminScope(cu);
+    if (scope.mode === "global" || !scope.active) globalOnly = true;
+    else allowedIds = [scope.active.id];
+  }
 
   // Lookup maps used to translate ids into names in several datasets.
   const [{ data: countryRows }, { data: merchantRows }, { data: mcRows }] = await Promise.all([
@@ -97,7 +109,7 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
 
   // Owners — scope-filtered.
   const ownerScope = can(cu, "owners", "view");
-  if (ownerScope && on("owners")) {
+  if (ownerScope && on("owners") && !globalOnly) {
     let q = db()
       .from("owners")
       .select(
@@ -130,7 +142,7 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
   }
 
   const companyScope = can(cu, "companies", "view");
-  if (companyScope && on("companies")) {
+  if (companyScope && on("companies") && !globalOnly) {
     let q = db()
       .from("companies")
       .select(
@@ -162,8 +174,10 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
     }));
   }
 
-  if (can(cu, "banks", "view") && on("banks")) {
-    const { data: banks } = await db().from("banks").select("country_id, name, code, active").order("sort");
+  if (can(cu, "banks", "view") && on("banks") && !globalOnly) {
+    let bankQuery = db().from("banks").select("country_id, name, code, active").order("sort");
+    if (allowedIds) bankQuery = bankQuery.in("country_id", allowedIds);
+    const { data: banks } = await bankQuery;
     ctx.banks = ((banks ?? []) as Row[]).map((b) => ({
       country: countryName.get(b.country_id as string) ?? null,
       name: b.name,
@@ -175,13 +189,14 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
   }
 
   const trainingScope = can(cu, "training", "view");
-  if (trainingScope && on("training")) {
+  if (trainingScope && on("training") && !globalOnly) {
     let q = db()
       .from("training_videos")
       .select("title, description, duration_seconds, published, merchant_id, country_id, created_at")
       .order("sort")
       .limit(LIMIT);
     if (cu.merchant) q = q.or(`merchant_id.is.null,merchant_id.eq.${cu.merchant.id}`);
+    if (allowedIds) q = q.or(`country_id.is.null,country_id.in.(${allowedIds.join(",")})`);
     const { data: vids } = await q;
     ctx.training_videos = ((vids ?? []) as Row[]).map((v) => ({
       title: v.title,
@@ -195,13 +210,14 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
   }
 
   const notifScope = can(cu, "notifications", "view");
-  if (notifScope && on("notifications")) {
+  if (notifScope && on("notifications") && !globalOnly) {
     let q = db()
       .from("notifications")
       .select("type, title, body, read_at, created_at, owner:owners!inner(full_name, merchant_id)")
       .order("created_at", { ascending: false })
       .limit(LIMIT);
     if (cu.merchant) q = q.eq("owner.merchant_id", cu.merchant.id);
+    if (allowedIds) q = q.in("owner.country_id", allowedIds);
     const { data: notifs } = await q;
     ctx.notifications = ((notifs ?? []) as Row[]).map((n) => ({
       type: n.type,
@@ -214,13 +230,14 @@ export async function buildAiContext(cu: CurrentUser): Promise<string> {
   }
 
   const examScope = can(cu, "exams", "view");
-  if (examScope && on("exams")) {
+  if (examScope && on("exams") && !globalOnly) {
     let q = db()
       .from("exams")
       .select("title, pass_score, published, merchant_id, country_id, attempts:exam_attempts(score, passed, owner:owners(full_name, merchant_id))")
       .order("sort")
       .limit(50);
     if (cu.merchant) q = q.or(`merchant_id.is.null,merchant_id.eq.${cu.merchant.id}`);
+    if (allowedIds) q = q.or(`country_id.is.null,country_id.in.(${allowedIds.join(",")})`);
     const { data: examRows } = await q;
     ctx.exams = ((examRows ?? []) as Row[]).map((e) => ({
       title: e.title,
@@ -335,6 +352,8 @@ export async function answerWithAi(cu: CurrentUser, messages: ChatMessage[]): Pr
   }
 
   const [platform, context] = await Promise.all([platformSettings(), buildAiContext(cu)]);
+  const { adminCountry } = await import("@/modules/countries/lib");
+  const where = cu.merchant ? null : (await adminCountry()).active;
   const who = cu.merchant
     ? `${cu.user.name || cu.user.username} — merchant user of "${cu.merchant.name}" (role: ${cu.role?.name ?? "none"})`
     : `${cu.user.name || cu.user.username} — platform user (role: ${cu.isSuper ? "Superadmin" : cu.role?.name ?? "none"})`;
@@ -344,11 +363,17 @@ export async function answerWithAi(cu: CurrentUser, messages: ChatMessage[]): Pr
     `You answer questions about the platform's data for the signed-in user.`,
     ``,
     `Signed-in user: ${who}`,
+    where
+      ? `They are working in ${where.name}. Everything below is ${where.name} data only.`
+      : cu.merchant
+        ? ``
+        : `They are in Global scope, which holds platform settings only — no country data.`,
     ``,
     `Rules:`,
     `- Answer ONLY from the JSON data below. It is already filtered to exactly what this user's role is allowed to see.`,
     `- If the data does not contain the answer, say so plainly — never invent records, numbers or names.`,
     `- Never mention data, merchants or records that are not present in the JSON, even if asked directly.`,
+    `- The data covers one country only. If asked about another country, say they need to switch country first.`,
     `- Be concise and practical: short sentences, simple lists or small tables. Counts and totals must be computed from the JSON accurately.`,
     `- Reply in the same language the user writes in.`,
     ``,

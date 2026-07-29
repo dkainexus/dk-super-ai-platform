@@ -179,8 +179,8 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
     district: String(formData.get("district") ?? "").trim() || null,
     province: String(formData.get("province") ?? "").trim() || null,
     postal_code: String(formData.get("postal_code") ?? "").trim() || null,
-    agent_id: String(formData.get("agent_id") ?? "") || null,
   };
+  const agentId = String(formData.get("agent_id") ?? "") || null;
 
   const gender = String(formData.get("gender") ?? "") || null;
   const maritalStatus = String(formData.get("marital_status") ?? "") || null;
@@ -198,6 +198,7 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
         bank_id: bankId,
         bank_account_no: bankAccountNo,
         occupation_id: occupationId,
+        agent_id: agentId,
         ...address,
         gender,
         marital_status: maritalStatus,
@@ -218,6 +219,7 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
         bank_id: bankId,
         bank_account_no: bankAccountNo,
         occupation_id: occupationId,
+        agent_id: agentId,
         ...address,
         gender,
         marital_status: maritalStatus,

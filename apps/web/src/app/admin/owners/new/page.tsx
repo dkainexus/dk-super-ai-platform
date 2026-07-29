@@ -43,6 +43,15 @@ export default async function AdminNewOwnerPage({
     .eq("active", true)
     .order("sort");
   const provinces = ((provinceRows ?? []) as { name: string }[]).map((p) => p.name);
+  const { data: agentRows } = await db()
+    .from("agents")
+    .select("id, full_name")
+    .eq("status", "active")
+    .order("full_name");
+  const agentOptions = ((agentRows ?? []) as { id: string; full_name: string }[]).map((a) => ({
+    id: a.id,
+    name: a.full_name,
+  }));
   const occupations = country ? await occupationsList() : [];
 
   return (
@@ -82,6 +91,7 @@ export default async function AdminNewOwnerPage({
           </h2>
           <OwnerForm
             provinces={provinces}
+            agents={agentOptions}
             fields={(fields ?? []) as CountryField[]}
             banks={banks}
             occupations={occupations}
