@@ -20,16 +20,19 @@ function fail(path: string, message: string): never {
 
 export async function createMerchant(formData: FormData): Promise<void> {
   await requirePerm("merchants", "add");
-  const back = "/admin/merchants";
+  const back = String(formData.get("back") ?? "/admin/white-labels");
   const name = String(formData.get("name") ?? "").trim();
   const subdomain = slugify(String(formData.get("subdomain") ?? "").trim()).replace(/_/g, "-") || null;
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
   const { data: allCountries } = await db().from("countries").select("id");
-  const countryIds = ((allCountries ?? []) as { id: string }[])
-    .map((c) => c.id)
-    .filter((id) => formData.get(`mcc_${id}`) === "on");
+  const firstCountry = String(formData.get("first_country") ?? "");
+  const countryIds = firstCountry
+    ? [firstCountry]
+    : ((allCountries ?? []) as { id: string }[])
+        .map((c) => c.id)
+        .filter((id) => formData.get(`mcc_${id}`) === "on");
 
   if (!name) fail(back, "Please enter a white label name");
   if (countryIds.length === 0) fail(back, "Please choose at least one country");
@@ -223,5 +226,40 @@ export async function setUserCountries(formData: FormData): Promise<void> {
     await db().from("user_countries").insert(wanted.map((country_id) => ({ user_id: userId, country_id })));
   }
   revalidatePath(back);
+  redirect(back);
+}
+
+/** Add an existing white label to the country you are working in. */
+export async function addMerchantToCountry(formData: FormData): Promise<void> {
+  await requirePerm("merchants", "edit");
+  const back = "/admin/merchants";
+  const merchantId = String(formData.get("merchant_id") ?? "");
+  const countryId = String(formData.get("country_id") ?? "");
+  if (!merchantId || !countryId) fail(back, "Please pick a white label");
+  const { error } = await db()
+    .from("merchant_countries")
+    .insert({ merchant_id: merchantId, country_id: countryId });
+  if (error && !error.message.includes("duplicate")) fail(back, `Failed to add: ${error.message}`);
+  revalidatePath(back);
+  revalidatePath("/", "layout");
+  redirect(back);
+}
+
+/** Remove a white label from a country (only when it has no data there). */
+export async function removeMerchantFromCountry(formData: FormData): Promise<void> {
+  await requirePerm("merchants", "edit");
+  const back = "/admin/merchants";
+  const merchantId = String(formData.get("merchant_id") ?? "");
+  const countryId = String(formData.get("country_id") ?? "");
+  const [{ count: owners }, { count: companies }] = await Promise.all([
+    db().from("owners").select("id", { count: "exact", head: true }).eq("merchant_id", merchantId).eq("country_id", countryId),
+    db().from("companies").select("id", { count: "exact", head: true }).eq("merchant_id", merchantId).eq("country_id", countryId),
+  ]);
+  if ((owners ?? 0) > 0 || (companies ?? 0) > 0) {
+    fail(back, "This white label still has data in this country");
+  }
+  await db().from("merchant_countries").delete().eq("merchant_id", merchantId).eq("country_id", countryId);
+  revalidatePath(back);
+  revalidatePath("/", "layout");
   redirect(back);
 }

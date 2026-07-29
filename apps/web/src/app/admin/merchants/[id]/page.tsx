@@ -16,10 +16,12 @@ import { saveMerchantCountries } from "@/modules/merchants/actions";
 import { merchantCountries } from "@/modules/merchants/lib";
 import { UserCountriesCard } from "@/modules/merchants/components/user-countries";
 import { ErrorBanner } from "@/components/error-banner";
-import { ActiveTag, OwnerStatusTag } from "@/components/status-tag";
+import { ActiveTag } from "@/components/status-tag";
+import { ImagePicker } from "@/components/image-picker";
+import { saveAppSettings, uploadAppIcon, removeAppIcon, queueAppBuild } from "@/modules/merchants/actions-app";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
 import { TOGGLABLE_MODULES } from "@/modules/registry";
-import type { Country, Merchant, Owner, OwnerStatus, Role, User } from "@/lib/types";
+import type { Country, Merchant, Role, User } from "@/lib/types";
 
 export default async function MerchantDetailPage({
   params,
@@ -41,12 +43,19 @@ export default async function MerchantDetailPage({
   ]);
   const enabledIds = new Set(enabledCountries.map((c) => c.id));
 
-  const [{ data: users }, { data: owners }, logoUrl] = await Promise.all([
+  const canEdit = Boolean(can(cu, "merchants", "edit"));
+  const [{ data: users }, logoUrl, { data: buildRows }] = await Promise.all([
     db().from("users").select("*, role:roles(*)").eq("merchant_id", id).order("created_at"),
-    db().from("owners").select("*").eq("merchant_id", id).order("created_at", { ascending: false }),
     signedUrl(ASSETS_BUCKET, m.logo_path),
+    db().from("app_builds").select("*").eq("merchant_id", id).order("created_at", { ascending: false }).limit(10),
   ]);
   const disabled = (m.disabled_modules ?? []) as string[];
+  const appIcon = await signedUrl(ASSETS_BUCKET, (m as { app_icon_path?: string | null }).app_icon_path);
+  const builds = await Promise.all(
+    ((buildRows ?? []) as {
+      id: string; version_name: string; status: string; apk_path: string | null; created_at: string;
+    }[]).map(async (b) => ({ ...b, apk_url: await signedUrl("app-releases", b.apk_path, 60 * 60 * 24) }))
+  );
 
   return (
     <div className="space-y-8">
@@ -146,81 +155,85 @@ export default async function MerchantDetailPage({
         </form>
       </section>
 
-      {/* Login accounts */}
-      {can(cu, "users", "view") && (
-        <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Login Accounts</h2>
-          <div className="space-y-3">
-            {((users ?? []) as (User & { role: Role | null })[]).map((u) => (
-              <div key={u.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
-                <div>
-                  <p className="mono-num text-sm font-medium">{u.username}</p>
-                  <p className="text-xs text-muted">
-                    {u.name || "—"} · {u.role?.name ?? "No role"}
-                    {u.must_change_password && " · first login pending"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ActiveTag active={u.active} />
-                  <form action={toggleMerchantUser}>
-                    <input type="hidden" name="id" value={u.id} />
-                    <input type="hidden" name="merchant_id" value={m.id} />
-                    <input type="hidden" name="active" value={String(!u.active)} />
-                    <ActionButton icon="power" tip={u.active ? "Deactivate this account" : "Activate this account"} />
-                  </form>
-                  <form action={resetMerchantUserPassword} className="flex items-center gap-2">
-                    <input type="hidden" name="id" value={u.id} />
-                    <input type="hidden" name="merchant_id" value={m.id} />
-                    <input name="password" type="text" placeholder="New password" autoComplete="off" className="input w-28 py-1 text-xs" required />
-                    <ActionButton icon="key" tip="Reset password (forces change at next login)" />
-                  </form>
-                </div>
-              </div>
-            ))}
+
+      {/* Branded mobile app */}
+      {canEdit && (
+        <section className="card space-y-4 p-5">
+          <div>
+            <h2 className="text-sm font-semibold">Mobile App</h2>
+            <p className="mt-1 text-xs text-muted">
+              This white label&apos;s own Android app — its name, icon and package. Building queues a job on the
+              build server; the finished APK appears below.
+            </p>
           </div>
 
-          <div className="card mt-4 p-5">
-            <h3 className="mb-4 text-sm font-semibold">Add Login Account</h3>
-            <form action={createMerchantUser} className="grid gap-4 sm:grid-cols-4 sm:items-end">
-              <input type="hidden" name="merchant_id" value={m.id} />
-              <div>
-                <label className="mb-1 block text-xs text-muted">Username</label>
-                <input name="username" autoComplete="off" className="input mono-num" required />
+          <div className="flex flex-wrap items-end gap-4">
+            <ImagePicker
+              url={appIcon}
+              canEdit={canEdit}
+              uploadAction={uploadAppIcon}
+              removeAction={removeAppIcon}
+              fieldName="icon"
+              hidden={{ id: m.id }}
+              fallback="📱"
+              tip="app icon"
+              size="h-14 w-14"
+            />
+            <form action={saveAppSettings} className="flex flex-1 flex-wrap items-end gap-3">
+              <input type="hidden" name="id" value={m.id} />
+              <div className="min-w-48 flex-1">
+                <label className="mb-1 block text-xs text-muted">App Name</label>
+                <input name="app_name" defaultValue={m.app_name ?? ""} placeholder="e.g. Bo Le Work" className="input" />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted">Display Name (optional)</label>
-                <input name="name" className="input" />
+                <label className="mb-1 block text-xs text-muted">Package</label>
+                <p className="mono-num rounded-md border border-border bg-surface-raised px-3 py-2 text-xs text-muted">
+                  {m.app_package_id ?? "set on first save"}
+                </p>
               </div>
-              <div>
-                <label className="mb-1 block text-xs text-muted">Initial Password</label>
-                <input name="password" type="text" autoComplete="off" className="input mono-num" required />
-              </div>
-              <ActionButton icon="plus" tip="Create account with the White Label Owner role" label="Create" variant="primary" />
+              <SaveButton tip="Save the app name and icon" />
+            </form>
+            <form action={queueAppBuild}>
+              <input type="hidden" name="id" value={m.id} />
+              <ActionButton icon="upload" tip="Queue a new APK build for this white label" label="Build APK" variant="primary" />
             </form>
           </div>
-        </section>
-      )}
 
-      {/* Owners */}
-      {can(cu, "owners", "view") && (
-        <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
-            Owners ({(owners ?? []).length})
-          </h2>
-          <div className="card divide-y divide-border">
-            {(owners ?? []).length === 0 && <p className="px-5 py-6 text-sm text-muted">No owners yet.</p>}
-            {((owners ?? []) as Owner[]).map((o) => (
-              <Link key={o.id} href={`/admin/owners/${o.id}`} className="flex items-center justify-between px-5 py-3 transition-colors hover:bg-surface-raised">
+          <div className="card divide-y divide-border p-0">
+            {builds.length === 0 && <p className="px-4 py-3 text-xs text-muted">No builds yet.</p>}
+            {builds.map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-4 px-4 py-2.5">
                 <div>
-                  <p className="text-sm font-medium">{o.full_name || "(no name yet)"}</p>
-                  <p className="mono-num text-xs text-muted">{o.id_number || "—"}</p>
+                  <p className="mono-num text-sm">v{b.version_name}</p>
+                  <p className="text-xs text-muted">{new Date(b.created_at).toLocaleString()}</p>
                 </div>
-                <OwnerStatusTag status={o.status as OwnerStatus} />
-              </Link>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`rounded-full border px-2.5 py-0.5 text-[11px] capitalize ${
+                      b.status === "ready"
+                        ? "border-success/40 bg-success/10 text-success"
+                        : b.status === "failed"
+                          ? "border-danger/40 bg-danger/10 text-danger"
+                          : "border-warning/40 bg-warning/10 text-warning"
+                    }`}
+                  >
+                    {b.status}
+                  </span>
+                  {b.apk_url && (
+                    <a
+                      href={b.apk_url}
+                      className="rounded-md border border-border px-2.5 py-1 text-xs transition-colors hover:border-accent"
+                    >
+                      Download
+                    </a>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </section>
       )}
+
     </div>
   );
 }

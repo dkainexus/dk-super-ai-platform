@@ -79,6 +79,9 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   }
 
   if (isGlobal) {
+    if (can(cu, "merchants", "view")) {
+      sections[0].items.push({ href: "/admin/white-labels", label: "White Labels" });
+    }
     if (canSettings) {
       sections.push({
         heading: "Platform",

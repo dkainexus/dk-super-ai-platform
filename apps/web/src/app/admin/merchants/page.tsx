@@ -1,172 +1,122 @@
 import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import { createMerchant } from "@/modules/merchants/actions";
+import { addMerchantToCountry } from "@/modules/merchants/actions";
+import { requireCountryScope } from "@/modules/countries/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
-import { SubmitButton } from "@/components/action-buttons";
-import type { Country, Merchant } from "@/lib/types";
-import { requireCountryScope } from "@/modules/countries/lib";
+import { ActionButton } from "@/components/action-buttons";
+import { Table, TableToolbar } from "@/components/data-table";
+import { RowSettings } from "@/components/row-actions";
+import type { Merchant } from "@/lib/types";
 
-// White label directory: every tenant with its countries, plus creation
-// (pick the countries here — creation no longer lives on the country page).
+// White labels operating in the country you are working in, with how much each
+// one is carrying. Brands themselves are created in the platform console.
 export default async function MerchantsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; country?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { cu } = await requirePerm("merchants", "view");
-  const { error, country = "" } = await searchParams;
+  const { error } = await searchParams;
   const { active } = await requireCountryScope();
-  const scoped = active?.id ?? country;
+  if (!active) return null;
 
-  const [{ data: merchants }, { data: countries }, { data: mcRows }] = await Promise.all([
-    db().from("merchants").select("*, users(count), owners(count), companies(count)").order("name"),
-    db().from("countries").select("*").order("name"),
-    db().from("merchant_countries").select("merchant_id, country_id"),
+  const { data: links } = await db()
+    .from("merchant_countries")
+    .select("merchant:merchants(*)")
+    .eq("country_id", active.id);
+  const merchants = ((links ?? []) as unknown as { merchant: Merchant | null }[])
+    .map((l) => l.merchant)
+    .filter(Boolean) as Merchant[];
+  merchants.sort((a, b) => a.name.localeCompare(b.name));
+  const ids = merchants.map((m) => m.id);
+
+  const [{ data: owners }, { data: companies }, { data: accounts }, { data: allMerchants }] = await Promise.all([
+    ids.length
+      ? db().from("owners").select("merchant_id").eq("country_id", active.id).in("merchant_id", ids)
+      : Promise.resolve({ data: [] }),
+    ids.length
+      ? db().from("companies").select("merchant_id").eq("country_id", active.id).in("merchant_id", ids)
+      : Promise.resolve({ data: [] }),
+    ids.length
+      ? db().from("bank_accounts").select("merchant_id").eq("country_id", active.id).in("merchant_id", ids)
+      : Promise.resolve({ data: [] }),
+    db().from("merchants").select("id, name").eq("status", "active").order("name"),
   ]);
-  const countryById = new Map(((countries ?? []) as Country[]).map((c) => [c.id, c]));
-  const countriesOf = new Map<string, Country[]>();
-  for (const r of (mcRows ?? []) as { merchant_id: string; country_id: string }[]) {
-    const c = countryById.get(r.country_id);
-    if (!c) continue;
-    const list = countriesOf.get(r.merchant_id) ?? [];
-    list.push(c);
-    countriesOf.set(r.merchant_id, list);
-  }
 
-  type Row = Merchant & { users: { count: number }[]; owners: { count: number }[]; companies: { count: number }[] };
+  const tally = (rows: { merchant_id: string }[] | null) => {
+    const map = new Map<string, number>();
+    for (const r of rows ?? []) map.set(r.merchant_id, (map.get(r.merchant_id) ?? 0) + 1);
+    return map;
+  };
+  const ownerCount = tally(owners as { merchant_id: string }[] | null);
+  const companyCount = tally(companies as { merchant_id: string }[] | null);
+  const accountCount = tally(accounts as { merchant_id: string }[] | null);
+
+  const available = ((allMerchants ?? []) as { id: string; name: string }[]).filter((m) => !ids.includes(m.id));
+  const canEdit = can(cu, "merchants", "edit");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold">White Labels</h1>
-        <p className="mt-1 text-sm text-muted">
-          Every white label tenant on the platform — its countries, accounts and data.
-        </p>
+        <p className="mt-1 text-sm text-muted">Brands operating in {active.name}.</p>
       </div>
       <ErrorBanner message={error} />
 
-      {/* Country tabs — hidden while the back office is scoped to one country */}
-      <div className={`flex-wrap items-center gap-2 ${active ? "hidden" : "flex"}`}>
-        <Link
-          href="/admin/merchants"
-          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-            scoped === "" ? "border-accent bg-accent-soft text-accent-strong" : "border-border text-muted hover:text-foreground"
-          }`}
-        >
-          All
-        </Link>
-        {((countries ?? []) as Country[]).map((c) => (
-          <Link
-            key={c.id}
-            href={`/admin/merchants?country=${c.id}`}
-            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-              scoped === c.id ? "border-accent bg-accent-soft text-accent-strong" : "border-border text-muted hover:text-foreground"
-            }`}
-          >
-            {c.name}
-          </Link>
+      <TableToolbar count={merchants.length} noun="white label" />
+
+      <Table head={["White Label", "Owners", "Companies", "Bank Accounts", "Status", ""]}>
+        {merchants.length === 0 && (
+          <tr>
+            <td colSpan={6} className="px-4 py-6 text-sm text-muted">
+              No white labels in {active.name} yet — add one below.
+            </td>
+          </tr>
+        )}
+        {merchants.map((m) => (
+          <tr key={m.id} className="transition-colors hover:bg-surface-raised">
+            <td className="px-4 py-2.5 font-medium">{m.name}</td>
+            <td className="mono-num px-4 py-2.5">{ownerCount.get(m.id) ?? 0}</td>
+            <td className="mono-num px-4 py-2.5">{companyCount.get(m.id) ?? 0}</td>
+            <td className="mono-num px-4 py-2.5">{accountCount.get(m.id) ?? 0}</td>
+            <td className="px-4 py-2.5">
+              <ActiveTag active={m.status === "active"} on="Active" off="Suspended" />
+            </td>
+            <td className="px-4 py-2.5 text-right">
+              <RowSettings href={`/admin/merchants/${m.id}`} tip={`Open ${m.name}`} />
+            </td>
+          </tr>
         ))}
-      </div>
+      </Table>
 
-      {(scoped ? ((countries ?? []) as Country[]).filter((c) => c.id === scoped) : ((countries ?? []) as Country[])).map(
-        (c) => {
-          const mine = ((merchants ?? []) as Row[]).filter((m) =>
-            (countriesOf.get(m.id) ?? []).some((x) => x.id === c.id)
-          );
-          return (
-            <section key={c.id} className="space-y-2">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">{c.name}</h2>
-              <div className="card divide-y divide-border">
-                {mine.length === 0 && (
-                  <p className="px-5 py-4 text-sm text-muted">No white labels in {c.name} yet.</p>
-                )}
-                {mine.map((m) => (
-                  <Link
-                    key={m.id}
-                    href={`/admin/merchants/${m.id}`}
-                    className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-surface-raised"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{m.name}</p>
-                      <p className="truncate text-xs text-muted">
-                        {m.users?.[0]?.count ?? 0} account(s) · {m.owners?.[0]?.count ?? 0} owner(s) ·{" "}
-                        {m.companies?.[0]?.count ?? 0} compan(ies)
-                        {!scoped && (countriesOf.get(m.id) ?? []).length > 1
-                          ? ` · also in ${(countriesOf.get(m.id) ?? [])
-                              .filter((x) => x.id !== c.id)
-                              .map((x) => x.name)
-                              .join(", ")}`
-                          : ""}
-                      </p>
-                    </div>
-                    <ActiveTag active={m.status === "active"} on="Active" off="Suspended" />
-                  </Link>
-                ))}
-              </div>
-            </section>
-          );
-        }
-      )}
-
-      {!scoped && ((merchants ?? []) as Row[]).filter((m) => (countriesOf.get(m.id) ?? []).length === 0).length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">No country assigned</h2>
-          <div className="card divide-y divide-border">
-            {((merchants ?? []) as Row[])
-              .filter((m) => (countriesOf.get(m.id) ?? []).length === 0)
-              .map((m) => (
-                <Link
-                  key={m.id}
-                  href={`/admin/merchants/${m.id}`}
-                  className="flex items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-surface-raised"
-                >
-                  <p className="text-sm font-medium">{m.name}</p>
-                  <ActiveTag active={m.status === "active"} on="Active" off="Suspended" />
-                </Link>
-              ))}
-          </div>
-        </section>
-      )}
-
-      {can(cu, "merchants", "add") && (
+      {canEdit && (
         <section className="card p-5">
-          <h2 className="mb-4 text-sm font-semibold">Create White Label + Login Account</h2>
-          <form action={createMerchant} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs text-muted">White Label Name</label>
-                <input name="name" className="input" required />
+          <h2 className="mb-1 text-sm font-semibold">Add a white label to {active.name}</h2>
+          <p className="mb-4 text-xs text-muted">
+            Pick a brand that already exists — new brands are created in the platform console.
+          </p>
+          {available.length > 0 ? (
+            <form action={addMerchantToCountry} className="flex max-w-md items-end gap-3">
+              <input type="hidden" name="country_id" value={active.id} />
+              <div className="flex-1">
+                <label className="mb-1 block text-xs text-muted">White Label</label>
+                <select name="merchant_id" className="input" required>
+                  <option value="">— Select —</option>
+                  {available.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <label className="mb-1 block text-xs text-muted">Subdomain (optional, lowercase a-z 0-9 -)</label>
-                <input name="subdomain" placeholder="brand-a" className="input mono-num" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-muted">Login Username</label>
-                <input name="username" autoComplete="off" className="input mono-num" required />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-muted">Initial Password (must be changed at first login)</label>
-                <input name="password" type="text" autoComplete="off" className="input mono-num" required />
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs text-muted">
-                {active ? `Country — ${active.name} (more can be added later)` : "Countries (at least one — more can be added later)"}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                {(active ? [active] : ((countries ?? []) as Country[])).map((c) => (
-                  <label key={c.id} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:border-accent">
-                    <input type="checkbox" name={`mcc_${c.id}`} defaultChecked={Boolean(active)} className="h-4 w-4" />
-                    {c.name}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <SubmitButton label="Create White Label" />
-          </form>
+              <ActionButton icon="plus" tip={`Add this white label to ${active.name}`} label="Add" variant="primary" />
+            </form>
+          ) : (
+            <p className="text-xs text-muted">
+              Every white label is already here. Create a new one in the{" "}
+              <Link href="/admin/white-labels" className="text-accent-strong hover:underline">platform console</Link>.
+            </p>
+          )}
         </section>
       )}
     </div>
