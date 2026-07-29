@@ -21,7 +21,7 @@ export default async function MerchantBankAccountsPage({
 
   let cq = db()
     .from("companies")
-    .select("id, name, country_id")
+    .select("id, name, country_id, merchant_id")
     .eq("merchant_id", cu.merchant.id)
     .neq("status", "banned")
     .order("name");

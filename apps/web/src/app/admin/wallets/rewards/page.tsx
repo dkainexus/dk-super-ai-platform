@@ -8,7 +8,8 @@ import { requireCountryScope } from "@/modules/countries/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import { MoneyInput } from "@/components/money-input";
-import { Table, TableToolbar } from "@/components/data-table";
+import { FilterSelect, Table, TableToolbar } from "@/components/data-table";
+import { FilterForm } from "@/components/filter-form";
 import { Pagination, pageParams } from "@/components/pagination";
 import { fmtNum } from "@/lib/format";
 import type { Owner } from "@/lib/types";
@@ -18,11 +19,11 @@ import type { Owner } from "@/lib/types";
 export default async function WalletRewardsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; page?: string; per?: string }>;
+  searchParams: Promise<{ error?: string; merchant?: string; page?: string; per?: string }>;
 }) {
   const { cu } = await requirePerm("wallet", "view");
   const sp = await searchParams;
-  const { error } = sp;
+  const { error, merchant = "" } = sp;
   const { page, perPage, from, to } = pageParams(sp);
   const { active } = await requireCountryScope();
 
@@ -42,7 +43,7 @@ export default async function WalletRewardsPage({
     ownerQuery,
     videoQuery,
     examQuery,
-    ledger({ countryId: active?.id ?? null, type: "reward", from, to }),
+    ledger({ countryId: active?.id ?? null, merchantId: merchant || null, type: "reward", from, to }),
   ]);
 
   const rules = [
@@ -148,7 +149,26 @@ export default async function WalletRewardsPage({
       )}
 
       <section className="space-y-2">
-        <TableToolbar count={paid.total} noun="reward paid" />
+        <TableToolbar count={paid.total} noun="reward paid">
+          <FilterForm action="/admin/wallets/rewards">
+            <FilterSelect
+              label="White Label"
+              name="merchant"
+              value={merchant}
+              options={[
+                { value: "", label: "All white labels" },
+                ...((owners ?? []) as unknown as { merchant_id: string; merchant: { name: string } | null }[])
+                  .reduce((acc, o) => {
+                    if (o.merchant && !acc.some((x) => x.value === o.merchant_id)) {
+                      acc.push({ value: o.merchant_id, label: o.merchant.name });
+                    }
+                    return acc;
+                  }, [] as { value: string; label: string }[])
+                  .sort((a, b) => a.label.localeCompare(b.label)),
+              ]}
+            />
+          </FilterForm>
+        </TableToolbar>
         <Table head={["When", "Owner", "White Label", "What for", "Amount"]}>
           {paid.rows.length === 0 && (
             <tr>
@@ -167,7 +187,7 @@ export default async function WalletRewardsPage({
             </tr>
           ))}
         </Table>
-        <Pagination basePath="/admin/wallets/rewards" params={{}} page={page} perPage={perPage} total={paid.total} />
+        <Pagination basePath="/admin/wallets/rewards" params={{ merchant }} page={page} perPage={perPage} total={paid.total} />
       </section>
     </div>
   );

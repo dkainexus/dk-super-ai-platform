@@ -9,7 +9,7 @@ import { SaveButton } from "@/components/action-buttons";
 import { BranchPicker } from "@/modules/banks/components/branch-picker";
 import { MoneyInput } from "@/components/money-input";
 
-export type FormCompany = { id: string; name: string; country_id: string | null; merchant_name?: string };
+export type FormCompany = { id: string; name: string; country_id: string | null; merchant_id?: string; merchant_name?: string };
 export type FormBank = {
   id: string;
   name: string;
@@ -31,8 +31,16 @@ export function BankAccountForm({
   /** countryId → ISO code, so Google search is limited to the right country */
   countryCodes: Record<string, string>;
 }) {
+  const [merchantId, setMerchantId] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [bankId, setBankId] = useState("");
+
+  const merchants = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of companies) if (c.merchant_id) map.set(c.merchant_id, c.merchant_name ?? "—");
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [companies]);
+  const companyOptions = merchantId ? companies.filter((c) => c.merchant_id === merchantId) : [];
 
   const company = companies.find((c) => c.id === companyId) ?? null;
   const bankOptions = useMemo(
@@ -46,9 +54,28 @@ export function BankAccountForm({
     <form action={createBankAccount} className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
+          <label className="mb-1 block text-xs text-muted">White Label</label>
+          <select
+            value={merchantId}
+            onChange={(e) => {
+              setMerchantId(e.target.value);
+              setCompanyId("");
+              setBankId("");
+            }}
+            className="input"
+            required
+          >
+            <option value="">— Select a white label —</option>
+            {merchants.map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="mb-1 block text-xs text-muted">Company</label>
           <select
             name="company_id"
+            disabled={!merchantId}
             value={companyId}
             onChange={(e) => {
               setCompanyId(e.target.value);
@@ -57,12 +84,9 @@ export function BankAccountForm({
             className="input"
             required
           >
-            <option value="">— Select a company —</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.merchant_name ? ` (${c.merchant_name})` : ""}
-              </option>
+            <option value="">{merchantId ? "— Select a company —" : "Choose a white label first"}</option>
+            {companyOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </div>

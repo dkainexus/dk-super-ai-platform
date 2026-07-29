@@ -31,6 +31,13 @@ export default async function AdminOwnerEditPage({
     banksForCountry(owner.country_id, null),
     occupationsList(),
   ]);
+  const { data: provinceRows } = await db()
+    .from("provinces")
+    .select("name")
+    .eq("country_id", owner.country_id)
+    .eq("active", true)
+    .order("sort");
+  const provinces = ((provinceRows ?? []) as { name: string }[]).map((p) => p.name);
 
   return (
     <div className="space-y-6">
@@ -48,6 +55,7 @@ export default async function AdminOwnerEditPage({
 
       <div className="card p-5">
         <OwnerForm
+            provinces={provinces}
           fields={(fields ?? []) as CountryField[]}
           banks={banks}
           occupations={occupations}

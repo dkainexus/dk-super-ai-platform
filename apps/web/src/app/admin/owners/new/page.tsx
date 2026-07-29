@@ -4,7 +4,7 @@ import { db } from "@/lib/supabase";
 import { adminSaveOwner } from "@/modules/owners/actions";
 import { banksForCountry } from "@/modules/banks/lib";
 import { occupationsList } from "@/modules/owners/lib";
-import { merchantCountries } from "@/modules/merchants/lib";
+import { requireCountryScope } from "@/modules/countries/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { OwnerForm } from "@/modules/owners/components/owner-form";
 import type { CountryField, Merchant } from "@/lib/types";
@@ -14,22 +14,35 @@ import type { CountryField, Merchant } from "@/lib/types";
 export default async function AdminNewOwnerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ merchant?: string; country?: string; error?: string }>;
+  searchParams: Promise<{ merchant?: string; error?: string }>;
 }) {
   await requirePerm("owners", "add");
-  const { merchant: merchantId = "", country: countryParam = "", error } = await searchParams;
+  const { merchant: merchantId = "", error } = await searchParams;
+  const { active } = await requireCountryScope();
 
-  const { data: merchants } = await db().from("merchants").select("*").eq("status", "active").order("name");
-  const list = (merchants ?? []) as Merchant[];
-  const selected = list.find((m) => m.id === merchantId) ?? null;
-
-  const countries = selected ? await merchantCountries(selected.id) : [];
-  const country = countries.find((c) => c.id === countryParam) ?? (countries.length === 1 ? countries[0] : null);
+  // Only white labels that operate in the country we are working in.
+  const { data: links } = await db()
+    .from("merchant_countries")
+    .select("merchant:merchants(*)")
+    .eq("country_id", active?.id ?? "");
+  const list = ((links ?? []) as unknown as { merchant: Merchant | null }[])
+    .map((l) => l.merchant)
+    .filter((m): m is Merchant => Boolean(m) && m!.status === "active")
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const selected = list.find((m) => m.id === merchantId) ?? (list.length === 1 ? list[0] : null);
+  const country = active;
 
   const { data: fields } = country
     ? await db().from("country_fields").select("*").eq("country_id", country.id).eq("active", true).order("sort")
     : { data: [] };
   const banks = country ? await banksForCountry(country.id, null) : [];
+  const { data: provinceRows } = await db()
+    .from("provinces")
+    .select("name")
+    .eq("country_id", country?.id ?? "")
+    .eq("active", true)
+    .order("sort");
+  const provinces = ((provinceRows ?? []) as { name: string }[]).map((p) => p.name);
   const occupations = country ? await occupationsList() : [];
 
   return (
@@ -62,36 +75,13 @@ export default async function AdminNewOwnerPage({
         </div>
       </section>
 
-      {selected && (
-        <section className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold">2. Choose Country</h2>
-          <div className="flex flex-wrap gap-2">
-            {countries.map((c) => (
-              <Link
-                key={c.id}
-                href={`/admin/owners/new?merchant=${selected.id}&country=${c.id}`}
-                className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                  country?.id === c.id
-                    ? "border-accent bg-accent-soft text-accent-strong"
-                    : "border-border text-muted hover:border-accent hover:text-foreground"
-                }`}
-              >
-                {c.flag || "🌐"} {c.name}
-              </Link>
-            ))}
-            {countries.length === 0 && (
-              <p className="text-sm text-muted">This white label has no countries enabled yet.</p>
-            )}
-          </div>
-        </section>
-      )}
-
       {selected && country && (
         <section className="card p-5">
           <h2 className="mb-3 text-sm font-semibold">
-            3. Owner Details — {selected.name} · {country.flag || "🌐"} {country.name}
+            2. Owner Details — {selected.name} · {country.name}
           </h2>
           <OwnerForm
+            provinces={provinces}
             fields={(fields ?? []) as CountryField[]}
             banks={banks}
             occupations={occupations}

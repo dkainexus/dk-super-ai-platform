@@ -30,6 +30,13 @@ export default async function NewOwnerPage({
         occupationsList(),
       ])
     : [{ data: [] }, [], []];
+  const { data: provinceRows } = await db()
+    .from("provinces")
+    .select("name")
+    .eq("country_id", country?.id ?? "")
+    .eq("active", true)
+    .order("sort");
+  const provinces = ((provinceRows ?? []) as { name: string }[]).map((p) => p.name);
 
   return (
     <div className="space-y-6">
@@ -55,6 +62,7 @@ export default async function NewOwnerPage({
             </p>
           )}
           <OwnerForm
+            provinces={provinces}
             fields={(fields ?? []) as CountryField[]}
             banks={banks}
             occupations={occupations}

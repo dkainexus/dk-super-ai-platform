@@ -28,6 +28,7 @@ export async function OwnerForm({
   fields,
   banks = [],
   occupations = [],
+  provinces = [],
   owner,
   values,
   action = saveOwner,
@@ -37,6 +38,8 @@ export async function OwnerForm({
   fields: CountryField[];
   banks?: Bank[];
   occupations?: Occupation[];
+  /** State / province choices for the owner's country */
+  provinces?: string[];
   owner?: Owner;
   values?: OwnerFieldValue[];
   action?: (formData: FormData) => Promise<void>;
@@ -142,9 +145,45 @@ export async function OwnerForm({
         </div>
       )}
 
+      {/* Address — optional, but the province comes from the country's list */}
+      <div className="border-t border-border pt-4">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Address</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs text-muted">House / Building No.</label>
+            <input name="address_no" defaultValue={owner?.address_no ?? ""} className="input" disabled={locked} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Street</label>
+            <input name="street" defaultValue={owner?.street ?? ""} className="input" disabled={locked} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Sub-district</label>
+            <input name="subdistrict" defaultValue={owner?.subdistrict ?? ""} className="input" disabled={locked} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">District</label>
+            <input name="district" defaultValue={owner?.district ?? ""} className="input" disabled={locked} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">State / Province</label>
+            <select name="province" defaultValue={owner?.province ?? ""} className="input" disabled={locked}>
+              <option value="">— Select —</option>
+              {provinces.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Postal Code</label>
+            <input name="postal_code" defaultValue={owner?.postal_code ?? ""} className="input mono-num" disabled={locked} />
+          </div>
+        </div>
+      </div>
+
       {fields.length > 0 && (
         <div className="border-t border-border pt-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Country Custom Fields</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Extra Fields</p>
           <div className="grid gap-4 sm:grid-cols-2">
             {fields.map((f) => {
               const v = byField.get(f.id);

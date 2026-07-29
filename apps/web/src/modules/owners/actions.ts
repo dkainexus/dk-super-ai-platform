@@ -168,6 +168,16 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
   const bankId = String(formData.get("bank_id") ?? "") || null;
   const bankAccountNo = String(formData.get("bank_account_no") ?? "").trim() || null;
   const occupationId = String(formData.get("occupation_id") ?? "") || null;
+  const address = {
+    address_no: String(formData.get("address_no") ?? "").trim() || null,
+    street: String(formData.get("street") ?? "").trim() || null,
+    subdistrict: String(formData.get("subdistrict") ?? "").trim() || null,
+    district: String(formData.get("district") ?? "").trim() || null,
+    province: String(formData.get("province") ?? "").trim() || null,
+    postal_code: String(formData.get("postal_code") ?? "").trim() || null,
+    agent_id: String(formData.get("agent_id") ?? "") || null,
+  };
+
   const gender = String(formData.get("gender") ?? "") || null;
   const maritalStatus = String(formData.get("marital_status") ?? "") || null;
   const phone = String(formData.get("phone") ?? "").trim() || null;
@@ -184,6 +194,7 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
         bank_id: bankId,
         bank_account_no: bankAccountNo,
         occupation_id: occupationId,
+        ...address,
         gender,
         marital_status: maritalStatus,
         phone,
@@ -203,6 +214,7 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
         bank_id: bankId,
         bank_account_no: bankAccountNo,
         occupation_id: occupationId,
+        ...address,
         gender,
         marital_status: maritalStatus,
         phone,

@@ -11,10 +11,10 @@ import { requireCountryScope } from "@/modules/countries/lib";
 export default async function WithdrawalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; status?: string }>;
+  searchParams: Promise<{ error?: string; status?: string; merchant?: string }>;
 }) {
   const { cu } = await requirePerm("wallet", "view");
-  const { error, status = "" } = await searchParams;
+  const { error, status = "", merchant = "" } = await searchParams;
   const canEdit = Boolean(can(cu, "wallet", "edit"));
 
   let wq = db().from("withdrawals").select("*").order("requested_at", { ascending: false }).limit(100);
@@ -24,6 +24,7 @@ export default async function WithdrawalsPage({
     .from("owners")
     .select("id, full_name, merchant_id, country_id, status, merchant:merchants(name), country:countries(flag, name)");
   if (active) ownerQuery = ownerQuery.eq("country_id", active.id);
+  if (merchant) ownerQuery = ownerQuery.eq("merchant_id", merchant);
 
   const [{ data: withdrawals }, { data: owners }] = await Promise.all([
     wq,

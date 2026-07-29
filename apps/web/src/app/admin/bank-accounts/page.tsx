@@ -14,7 +14,7 @@ export default async function AdminBankAccountsPage({
   const { error, status = "" } = await searchParams;
   const { active } = await requireCountryScope();
 
-  let companyQuery = db().from("companies").select("id, name, country_id, merchant:merchants(name)").neq("status", "banned").order("name");
+  let companyQuery = db().from("companies").select("id, name, country_id, merchant_id, merchant:merchants(name)").neq("status", "banned").order("name");
   let bankQuery = db().from("banks").select("id, name, code, country_id, account_fields, channels").eq("active", true).order("sort");
   if (active) {
     companyQuery = companyQuery.eq("country_id", active.id);
@@ -32,8 +32,14 @@ export default async function AdminBankAccountsPage({
   );
 
   const formCompanies: FormCompany[] = ((companies ?? []) as unknown as {
-    id: string; name: string; country_id: string | null; merchant: { name: string } | null;
-  }[]).map((c) => ({ id: c.id, name: c.name, country_id: c.country_id, merchant_name: c.merchant?.name }));
+    id: string; name: string; country_id: string | null; merchant_id: string; merchant: { name: string } | null;
+  }[]).map((c) => ({
+    id: c.id,
+    name: c.name,
+    country_id: c.country_id,
+    merchant_id: c.merchant_id,
+    merchant_name: c.merchant?.name,
+  }));
 
 
   return (

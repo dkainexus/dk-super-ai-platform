@@ -128,6 +128,13 @@ export type Owner = {
   bank_id: string | null;
   bank_account_no: string | null;
   occupation_id: string | null;
+  address_no: string | null;
+  street: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postal_code: string | null;
+  agent_id: string | null;
   status: OwnerStatus;
   reject_reason: string | null;
   reviewed_by: string | null;
