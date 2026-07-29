@@ -104,6 +104,7 @@ export async function examQuestions(examId: string, categoryId?: string | null):
       .select("*")
       .eq("category_id", categoryId)
       .eq("active", true)
+      .order("sort")
       .order("created_at");
     return (data ?? []) as ExamQuestion[];
   }

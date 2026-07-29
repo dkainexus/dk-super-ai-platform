@@ -7,12 +7,12 @@ import type { ExamQuestion } from "@/lib/types";
 export default async function MerchantQuestionBankPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; generated?: string; category?: string }>;
+  searchParams: Promise<{ error?: string; generated?: string; saved?: string; category?: string }>;
 }) {
   const cu = await requireMerchantUser();
   await requirePerm("exams", "view");
   const { active } = await activeCountry(cu);
-  const { error, generated, category = "" } = await searchParams;
+  const { error, generated, saved, category = "" } = await searchParams;
 
   // Sets are defined per country by the platform; a white label works inside them.
   const { data: cats } = await db()
@@ -28,7 +28,7 @@ export default async function MerchantQuestionBankPage({
     .from("exam_questions")
     .select("*")
     .or(`merchant_id.is.null,merchant_id.eq.${cu.merchant.id}`)
-    .order("created_at", { ascending: false });
+    .order("sort").order("created_at");
   if (active) q = q.or(`country_id.is.null,country_id.eq.${active.id}`);
   if (category === "none") q = q.is("category_id", null);
   else if (category) q = q.eq("category_id", category);
@@ -53,6 +53,7 @@ export default async function MerchantQuestionBankPage({
       base="/m/exams"
       error={error}
       generated={generated}
+      saved={saved}
       canAdd={Boolean(can(cu, "exams", "add"))}
       canEdit={Boolean(can(cu, "exams", "edit"))}
       canDelete={Boolean(can(cu, "exams", "delete"))}

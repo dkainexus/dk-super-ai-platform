@@ -28,62 +28,6 @@ async function merchantScope(cu: Awaited<ReturnType<typeof requirePerm>>["cu"]) 
 
 // ---------- Question bank ----------
 
-export async function saveQuestion(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "");
-  const { cu } = await requirePerm("exams", id ? "edit" : "add");
-  const back = String(formData.get("back") ?? "/admin/exams/questions");
-
-  const type = String(formData.get("type") ?? "choice") === "essay" ? "essay" : "choice";
-  const question = String(formData.get("question") ?? "").trim();
-  const points = Math.max(1, parseInt(String(formData.get("points") ?? "1"), 10) || 1);
-  const options = (formData.getAll("options") as string[]).map((o) => o.trim()).filter(Boolean);
-  const correctIndex = parseInt(String(formData.get("correct_index") ?? "-1"), 10);
-  const modelAnswer = String(formData.get("model_answer") ?? "").trim() || null;
-  // Creation form has no Active checkbox (defaults true); the edit form marks
-  // its presence with active_edit so an unchecked box means inactive.
-  const active = formData.get("active_edit") ? formData.get("active") === "on" : true;
-
-  if (!question) fail(back, "Please enter the question");
-  if (type === "choice") {
-    if (options.length < 2) fail(back, "A choice question needs at least 2 options");
-    if (correctIndex < 0 || correctIndex >= options.length) fail(back, "Please mark the correct option");
-  }
-
-  const row: Record<string, unknown> = {
-    type,
-    question,
-    points,
-    options: type === "choice" ? options : [],
-    correct_index: type === "choice" ? correctIndex : null,
-    model_answer: type === "essay" ? modelAnswer : null,
-    category_id: String(formData.get("category_id") ?? "") || null,
-    active,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (id) {
-    let q = db().from("exam_questions").update(row).eq("id", id);
-    if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
-    const { error } = await q;
-    if (error) fail(back, `Failed to save: ${error.message}`);
-  } else {
-    if (cu.merchant) {
-      const scope = await merchantScope(cu);
-      row.merchant_id = scope.merchantId;
-      row.country_id = scope.countryId;
-    } else {
-      row.merchant_id = String(formData.get("merchant_id") ?? "") || null;
-      const { adminCountry } = await import("@/modules/countries/lib");
-      row.country_id = (await adminCountry()).active?.id ?? null;
-    }
-    row.created_by = cu.user.id;
-    const { error } = await db().from("exam_questions").insert(row);
-    if (error) fail(back, `Failed to create: ${error.message}`);
-  }
-  revalidate();
-  redirect(back);
-}
-
 export async function deleteQuestion(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("exams", "delete");
   const id = String(formData.get("id") ?? "");
@@ -271,7 +215,16 @@ export async function generateQuestions(formData: FormData): Promise<void> {
   }
 
   const categoryId = String(formData.get("category_id") ?? "") || null;
-  const rows = list.map((q) => {
+  // Generated questions land after whatever is already in the set.
+  let nextSort = 0;
+  if (categoryId) {
+    const { count } = await db()
+      .from("exam_questions")
+      .select("id", { count: "exact", head: true })
+      .eq("category_id", categoryId);
+    nextSort = count ?? 0;
+  }
+  const rows = list.map((q, i) => {
     const isChoice = q.type !== "essay";
     return {
       merchant_id: merchantId,
@@ -282,6 +235,7 @@ export async function generateQuestions(formData: FormData): Promise<void> {
       correct_index: isChoice ? Math.max(0, Math.min((q.options?.length ?? 1) - 1, q.correct_index ?? 0)) : null,
       model_answer: isChoice ? null : q.model_answer?.trim() || null,
       category_id: categoryId,
+      sort: (nextSort + i + 1) * 10,
       points: 1,
       created_by: cu.user.id,
     };
@@ -290,6 +244,89 @@ export async function generateQuestions(formData: FormData): Promise<void> {
   if (error) fail(base, `Failed to save generated questions: ${error.message}`);
   revalidate();
   redirect(`${base}?generated=${rows.length}${categoryId ? `&category=${categoryId}` : ""}`);
+}
+
+
+/**
+ * Save a whole set at once: the form posts every question as q_<i>_*, so new
+ * ones are inserted, existing ones updated, and any the operator removed are
+ * deleted — in the order they appear on screen.
+ */
+export async function saveQuestionSet(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("exams", "edit");
+  const base = cu.merchant ? "/m/exams/questions" : "/admin/exams/questions";
+  const back = String(formData.get("back") ?? base);
+  const categoryId = String(formData.get("category_id") ?? "") || null;
+
+  let merchantId: string | null = null;
+  let countryId: string | null = null;
+  if (cu.merchant) {
+    const scope = await merchantScope(cu);
+    merchantId = scope.merchantId;
+    countryId = scope.countryId;
+  } else {
+    merchantId = String(formData.get("merchant_id") ?? "") || null;
+    const { adminCountry } = await import("@/modules/countries/lib");
+    countryId = (await adminCountry()).active?.id ?? null;
+  }
+
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 0; formData.has(`q_${i}_question`); i++) {
+    const question = String(formData.get(`q_${i}_question`) ?? "").trim();
+    // A blank row is someone who clicked Add and changed their mind.
+    if (!question) continue;
+
+    const type = String(formData.get(`q_${i}_type`) ?? "choice") === "essay" ? "essay" : "choice";
+    const options = formData
+      .getAll(`q_${i}_options`)
+      .map((o) => String(o).trim())
+      .filter(Boolean);
+    const correct = parseInt(String(formData.get(`q_${i}_correct`) ?? "0"), 10) || 0;
+
+    if (type === "choice") {
+      if (options.length < 2) fail(back, `Question ${i + 1} needs at least 2 options`);
+      if (correct < 0 || correct >= options.length) fail(back, `Question ${i + 1} has no correct option marked`);
+    }
+
+    rows.push({
+      id: String(formData.get(`q_${i}_id`) ?? "") || undefined,
+      type,
+      question,
+      options: type === "choice" ? options : [],
+      correct_index: type === "choice" ? correct : null,
+      model_answer: type === "essay" ? String(formData.get(`q_${i}_model_answer`) ?? "").trim() || null : null,
+      points: Math.max(1, parseInt(String(formData.get(`q_${i}_points`) ?? "1"), 10) || 1),
+      active: formData.get(`q_${i}_active`) !== null,
+      category_id: categoryId,
+      sort: (rows.length + 1) * 10,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  const removed = formData.getAll("removed").map(String).filter(Boolean);
+  if (removed.length > 0) {
+    let del = db().from("exam_questions").delete().in("id", removed);
+    if (cu.merchant) del = del.eq("merchant_id", cu.merchant.id);
+    await del;
+  }
+
+  for (const row of rows) {
+    const { id, ...rest } = row;
+    if (id) {
+      let q = db().from("exam_questions").update(rest).eq("id", id as string);
+      if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+      const { error } = await q;
+      if (error) fail(back, `Failed to save: ${error.message}`);
+    } else {
+      const { error } = await db()
+        .from("exam_questions")
+        .insert({ ...rest, merchant_id: merchantId, country_id: countryId, created_by: cu.user.id });
+      if (error) fail(back, `Failed to add: ${error.message}`);
+    }
+  }
+
+  revalidate();
+  redirect(`${back}${back.includes("?") ? "&" : "?"}saved=${rows.length}`);
 }
 
 // ---------- Question categories (per country) ----------

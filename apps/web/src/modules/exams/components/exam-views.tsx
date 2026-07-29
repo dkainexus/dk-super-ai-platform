@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { createExam, updateExam, saveExamContent, deleteExam, deleteQuestion, generateQuestions, reorderExams } from "../actions";
-import { QuestionForm } from "./question-form";
+import { createExam, updateExam, saveExamContent, deleteExam, generateQuestions, reorderExams } from "../actions";
 import { ExamModePicker, type CategoryOption } from "./mode-picker";
+import { QuestionSetEditor } from "./question-set-editor";
 import { GenerateButton } from "./generate-button";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
@@ -136,6 +136,7 @@ export function QuestionBankView({
   base,
   error,
   generated,
+  saved,
   canAdd,
   canEdit,
   canDelete,
@@ -151,6 +152,7 @@ export function QuestionBankView({
   base: string;
   error?: string;
   generated?: string;
+  saved?: string;
   canAdd: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -188,6 +190,11 @@ export function QuestionBankView({
       {generated && (
         <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
           ✨ AI generated {generated} questions — review them below and edit anything that needs polish.
+        </p>
+      )}
+      {saved && (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
+          {saved} question{saved === "1" ? "" : "s"} saved.
         </p>
       )}
 
@@ -230,124 +237,67 @@ export function QuestionBankView({
         </>
       ) : (
         <>
-      {canAdd && (
-        <section className="card border-accent/30 p-5">
-          <h2 className="mb-1 text-sm font-semibold">✨ Generate with AI</h2>
-          <p className="mb-3 text-xs text-muted">
-            Describe a topic and the AI writes the questions straight into this set.
-          </p>
-          <form action={generateQuestions} className="grid gap-3 sm:grid-cols-[1fr_6rem_9rem_9rem_auto]">
-            {category && category.id !== "none" && (
-              <input type="hidden" name="category_id" value={category.id} />
-            )}
-            <div>
-              <label className="mb-1 block text-xs text-muted">Topic / source material</label>
-              <input name="topic" className="input" placeholder="e.g. Bank account safety rules for new members" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">How many</label>
-              <input name="count" type="number" min={1} max={20} defaultValue={5} className="input mono-num" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Type</label>
-              <select name="qtype" className="input">
-                <option value="choice">Choice</option>
-                <option value="essay">Essay (AI)</option>
-                <option value="mix">Mix</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Language</label>
-              <select name="language" className="input">
-                <option>English</option>
-                <option value="Thai">ไทย</option>
-                <option value="Vietnamese">Tiếng Việt</option>
-                <option value="Chinese">中文</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <GenerateButton />
-            </div>
-            {merchants && (
-              <div className="sm:col-span-full">
-                <label className="mb-1 block text-xs text-muted">White Label</label>
-                <select name="merchant_id" className="input">
-                  <option value="">All white labels</option>
-                  {merchants.map((m) => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </form>
-        </section>
-      )}
+          {canAdd && (
+            <section className="card border-accent/30 p-5">
+              <h2 className="mb-1 text-sm font-semibold">✨ Generate with AI</h2>
+              <p className="mb-3 text-xs text-muted">
+                Describe a topic and the AI writes the questions straight into this set.
+              </p>
+              <form action={generateQuestions} className="grid gap-3 sm:grid-cols-[1fr_6rem_9rem_9rem_auto]">
+                {category && category.id !== "none" && (
+                  <input type="hidden" name="category_id" value={category.id} />
+                )}
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Topic / source material</label>
+                  <input name="topic" className="input" placeholder="e.g. Bank account safety rules for new members" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">How many</label>
+                  <input name="count" type="number" min={1} max={20} defaultValue={5} className="input mono-num" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Type</label>
+                  <select name="qtype" className="input">
+                    <option value="choice">Choice</option>
+                    <option value="essay">Essay (AI)</option>
+                    <option value="mix">Mix</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Language</label>
+                  <select name="language" className="input">
+                    <option>English</option>
+                    <option value="Thai">ไทย</option>
+                    <option value="Vietnamese">Tiếng Việt</option>
+                    <option value="Chinese">中文</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <GenerateButton />
+                </div>
+                {merchants && (
+                  <div className="sm:col-span-full">
+                    <label className="mb-1 block text-xs text-muted">White Label</label>
+                    <select name="merchant_id" className="input">
+                      <option value="">All white labels</option>
+                      {merchants.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </form>
+            </section>
+          )}
 
-      {canAdd && (
-        <section className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold">Add question</h2>
-          <QuestionForm
+          <QuestionSetEditor
+            questions={questions}
+            categoryId={category && category.id !== "none" ? category.id : ""}
             back={back}
-            merchants={merchants}
-            countries={countries}
-            categories={categories}
-            defaultCategoryId={category && category.id !== "none" ? category.id : ""}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            merchantId={merchants ? "" : undefined}
           />
-        </section>
-      )}
-
-      <div className="space-y-3">
-        {questions.length === 0 && <p className="card px-5 py-6 text-sm text-muted">No questions yet.</p>}
-        {questions.map((q) => (
-          <details key={q.id} className="card p-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{q.question}</p>
-                <p className="text-xs text-muted">
-                  {q.type === "choice" ? `Choice · ${q.options.length} options` : "Essay · AI graded"} ·{" "}
-                  {q.points} pt · {q.scope_label}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <ActiveTag active={q.active} />
-              </div>
-            </summary>
-            {q.editable && canEdit ? (
-              <div className="mt-4 border-t border-border pt-4">
-                <QuestionForm question={q} back={back} categories={categories} />
-                {canDelete && (
-                  <form action={deleteQuestion} className="mt-3">
-                    <input type="hidden" name="id" value={q.id} />
-                    <input type="hidden" name="back" value={back} />
-                    <button
-                      type="submit"
-                      title="Delete this question (removed from all exams)"
-                      className="rounded-md border border-danger/40 px-3 py-1.5 text-sm text-danger transition-colors hover:bg-danger/10"
-                    >
-                      Delete
-                    </button>
-                  </form>
-                )}
-              </div>
-            ) : (
-              <div className="mt-4 border-t border-border pt-4 text-sm text-muted">
-                {q.type === "choice" ? (
-                  <ul className="space-y-1">
-                    {q.options.map((o, i) => (
-                      <li key={i} className={i === q.correct_index ? "text-success" : undefined}>
-                        {String.fromCharCode(65 + i)}. {o} {i === q.correct_index && "✓"}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>Reference: {q.model_answer ?? "—"}</p>
-                )}
-                {!q.editable && <p className="mt-2 text-xs">Platform question — managed by the platform.</p>}
-              </div>
-            )}
-          </details>
-        ))}
-          </div>
         </>
       )}
     </div>

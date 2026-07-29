@@ -16,10 +16,10 @@ import type { Country, ExamQuestion, Merchant } from "@/lib/types";
 export default async function AdminQuestionBankPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; generated?: string; category?: string }>;
+  searchParams: Promise<{ error?: string; generated?: string; saved?: string; category?: string }>;
 }) {
   const { cu } = await requirePerm("exams", "view");
-  const { error, generated, category = "" } = await searchParams;
+  const { error, generated, saved, category = "" } = await searchParams;
   const { active } = await requireCountryScope();
 
   const [{ data: cats }, { data: merchants }, { data: countries }] = await Promise.all([
@@ -35,7 +35,7 @@ export default async function AdminQuestionBankPage({
   const categories = ((cats ?? []) as { id: string; name: string }[]).map((c) => ({ id: c.id, label: c.name }));
   const open = category === "none" ? { id: "none", label: "Not in a set" } : categories.find((c) => c.id === category);
 
-  let questionQuery = db().from("exam_questions").select("*").order("created_at", { ascending: false });
+  let questionQuery = db().from("exam_questions").select("*").order("sort").order("created_at");
   if (active) questionQuery = questionQuery.or(`country_id.is.null,country_id.eq.${active.id}`);
   if (category === "none") questionQuery = questionQuery.is("category_id", null);
   else if (category) questionQuery = questionQuery.eq("category_id", category);
@@ -73,6 +73,7 @@ export default async function AdminQuestionBankPage({
       base="/admin/exams"
       error={error}
       generated={generated}
+      saved={saved}
       canAdd={Boolean(can(cu, "exams", "add"))}
       canEdit={canEdit}
       canDelete={Boolean(can(cu, "exams", "delete"))}
