@@ -25,8 +25,14 @@ export default async function AdminExamDetailPage({
   const selectedQ = new Set(exam.items.map((i) => i.question_id));
   const selectedV = new Set(exam.videos.map((v) => v.video_id));
 
-  const [{ data: questions }, { data: videos }, { data: merchants }, { data: countries }, { data: attempts }] =
-    await Promise.all([
+  const [
+    { data: questions },
+    { data: videos },
+    { data: merchants },
+    { data: countries },
+    { data: attempts },
+    { data: cats },
+  ] = await Promise.all([
       db().from("exam_questions").select("*").eq("active", true).order("created_at"),
       db().from("training_videos").select("*").eq("published", true).order("sort"),
       db().from("merchants").select("*").eq("status", "active").order("name"),
@@ -37,6 +43,12 @@ export default async function AdminExamDetailPage({
         .eq("exam_id", id)
         .order("created_at", { ascending: false })
         .limit(30),
+      db()
+        .from("question_categories")
+        .select("id, name")
+        .eq("country_id", exam.country_id ?? "")
+        .order("sort")
+        .order("name"),
     ]);
 
   return (
@@ -53,6 +65,7 @@ export default async function AdminExamDetailPage({
         label: `${q.type === "choice" ? "🔘" : "✍️"} ${q.question} (${q.points} pt)`,
         selected: selectedQ.has(q.id),
       }))}
+      categories={((cats ?? []) as { id: string; name: string }[]).map((c) => ({ id: c.id, label: c.name }))}
       videoOptions={((videos ?? []) as TrainingVideo[]).map((v) => ({
         id: v.id,
         label: v.title,

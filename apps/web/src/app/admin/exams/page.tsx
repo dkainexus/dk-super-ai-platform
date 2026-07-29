@@ -17,10 +17,16 @@ export default async function AdminExamsPage({
   let examQuery = db().from("exams").select("*, items:exam_items(question_id)").order("sort").order("created_at");
   if (active) examQuery = examQuery.or(`country_id.is.null,country_id.eq.${active.id}`);
 
-  const [{ data: exams }, { data: merchants }, { data: countries }] = await Promise.all([
+  const [{ data: exams }, { data: merchants }, { data: countries }, { data: cats }] = await Promise.all([
     examQuery,
     db().from("merchants").select("*").eq("status", "active").order("name"),
     db().from("countries").select("*").eq("active", true).order("sort"),
+    db()
+      .from("question_categories")
+      .select("id, name")
+      .eq("country_id", active?.id ?? "")
+      .order("sort")
+      .order("name"),
   ]);
   const wls = (merchants ?? []) as Merchant[];
   const cs = (countries ?? []) as Country[];
@@ -49,6 +55,8 @@ export default async function AdminExamsPage({
       exams={rows}
       merchants={wls.map((m) => ({ id: m.id, label: m.name }))}
       countries={cs.map((c) => ({ id: c.id, label: `${c.flag} ${c.name}` }))}
+      categories={((cats ?? []) as { id: string; name: string }[]).map((c) => ({ id: c.id, label: c.name }))}
+      canEdit={Boolean(can(cu, "exams", "edit"))}
     />
   );
 }

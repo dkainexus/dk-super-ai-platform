@@ -15,9 +15,11 @@ export function QuestionForm({
   back,
   merchants,
   countries,
+  categories = [],
 }: {
   question?: ExamQuestion;
   back: string;
+  categories?: Option[];
   /** Platform side only; merchant users are scoped server-side. */
   merchants?: Option[];
   countries?: Option[];
@@ -32,7 +34,7 @@ export function QuestionForm({
     <form action={saveQuestion} className="space-y-3">
       {question && <input type="hidden" name="id" value={question.id} />}
       <input type="hidden" name="back" value={back} />
-      <div className="grid gap-3 sm:grid-cols-[8rem_1fr_5rem]">
+      <div className="grid gap-3 sm:grid-cols-[8rem_1fr_10rem_5rem]">
         <div>
           <label className="mb-1 block text-xs text-muted">Type</label>
           <select
@@ -50,6 +52,19 @@ export function QuestionForm({
         <div>
           <label className="mb-1 block text-xs text-muted">Question</label>
           <input name="question" defaultValue={question?.question ?? ""} className="input" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted">Category</label>
+          <select
+            name="category_id"
+            defaultValue={(question as (ExamQuestion & { category_id?: string | null }) | undefined)?.category_id ?? ""}
+            className="input"
+          >
+            <option value="">No category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted">Points</label>

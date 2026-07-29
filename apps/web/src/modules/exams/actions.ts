@@ -56,6 +56,7 @@ export async function saveQuestion(formData: FormData): Promise<void> {
     options: type === "choice" ? options : [],
     correct_index: type === "choice" ? correctIndex : null,
     model_answer: type === "essay" ? modelAnswer : null,
+    category_id: String(formData.get("category_id") ?? "") || null,
     active,
     updated_at: new Date().toISOString(),
   };
@@ -102,9 +103,13 @@ export async function createExam(formData: FormData): Promise<void> {
   const title = String(formData.get("title") ?? "").trim();
   if (!title) fail(base, "Please enter a title");
 
+  const mode = String(formData.get("mode") ?? "bank") === "ai_interview" ? "ai_interview" : "bank";
   const row: Record<string, unknown> = {
     title,
     description: String(formData.get("description") ?? "").trim() || null,
+    mode,
+    category_id: mode === "bank" ? String(formData.get("category_id") ?? "") || null : null,
+    ai_brief: mode === "ai_interview" ? String(formData.get("ai_brief") ?? "").trim() || null : null,
     pass_score: Math.min(100, Math.max(0, parseInt(String(formData.get("pass_score") ?? "70"), 10) || 70)),
     retake_wait_minutes: Math.max(0, parseInt(String(formData.get("retake_wait_minutes") ?? "0"), 10) || 0),
     draw_count: Math.max(0, parseInt(String(formData.get("draw_count") ?? "0"), 10) || 0) || null,
@@ -133,10 +138,14 @@ export async function updateExam(formData: FormData): Promise<void> {
   const title = String(formData.get("title") ?? "").trim();
   if (!title) fail(back, "Title cannot be empty");
 
+  const mode = String(formData.get("mode") ?? "bank") === "ai_interview" ? "ai_interview" : "bank";
   const patch: Record<string, unknown> = {
     updated_by: cu.user.id,
     title,
     description: String(formData.get("description") ?? "").trim() || null,
+    mode,
+    category_id: mode === "bank" ? String(formData.get("category_id") ?? "") || null : null,
+    ai_brief: mode === "ai_interview" ? String(formData.get("ai_brief") ?? "").trim() || null : null,
     pass_score: Math.min(100, Math.max(0, parseInt(String(formData.get("pass_score") ?? "70"), 10) || 70)),
     retake_wait_minutes: Math.max(0, parseInt(String(formData.get("retake_wait_minutes") ?? "0"), 10) || 0),
     draw_count: Math.max(0, parseInt(String(formData.get("draw_count") ?? "0"), 10) || 0) || null,
@@ -272,4 +281,57 @@ export async function generateQuestions(formData: FormData): Promise<void> {
   if (error) fail(base, `Failed to save generated questions: ${error.message}`);
   revalidate();
   redirect(`${base}?generated=${rows.length}`);
+}
+
+// ---------- Question categories (per country) ----------
+
+export async function createQuestionCategory(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("exams", "edit");
+  if (cu.merchant) redirect("/m");
+  const back = "/admin/exams/categories";
+  const countryId = String(formData.get("country_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail(back, "Please enter a name");
+
+  const { count } = await db()
+    .from("question_categories")
+    .select("id", { count: "exact", head: true })
+    .eq("country_id", countryId);
+  const { error } = await db()
+    .from("question_categories")
+    .insert({ country_id: countryId || null, name, sort: ((count ?? 0) + 1) * 10 });
+  if (error) fail(back, `Failed to add: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function renameQuestionCategory(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("exams", "edit");
+  if (cu.merchant) redirect("/m");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail("/admin/exams/categories", "Name cannot be empty");
+  await db().from("question_categories").update({ name }).eq("id", String(formData.get("id") ?? ""));
+  revalidatePath("/admin/exams/categories");
+  redirect("/admin/exams/categories");
+}
+
+export async function deleteQuestionCategory(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("exams", "delete");
+  if (cu.merchant) redirect("/m");
+  await db().from("question_categories").delete().eq("id", String(formData.get("id") ?? ""));
+  revalidatePath("/admin/exams/categories");
+  redirect("/admin/exams/categories");
+}
+
+/** Drag & drop order of the exam list. */
+export async function reorderExams(ids: string[]): Promise<void> {
+  const { cu } = await requirePerm("exams", "edit");
+  await Promise.all(
+    ids.map((id, i) => {
+      let q = db().from("exams").update({ sort: (i + 1) * 10 }).eq("id", id);
+      if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+      return q;
+    })
+  );
+  revalidate();
 }

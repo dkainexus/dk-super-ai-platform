@@ -1,6 +1,7 @@
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { QuestionBankView, type QuestionRow } from "@/modules/exams/components/exam-views";
+import { requireCountryScope } from "@/modules/countries/lib";
 import type { Country, ExamQuestion, Merchant } from "@/lib/types";
 
 export default async function AdminQuestionBankPage({
@@ -11,10 +12,20 @@ export default async function AdminQuestionBankPage({
   const { cu } = await requirePerm("exams", "view");
   const { error, generated } = await searchParams;
 
-  const [{ data: questions }, { data: merchants }, { data: countries }] = await Promise.all([
-    db().from("exam_questions").select("*").order("created_at", { ascending: false }),
+  const { active } = await requireCountryScope();
+  let questionQuery = db().from("exam_questions").select("*").order("created_at", { ascending: false });
+  if (active) questionQuery = questionQuery.or(`country_id.is.null,country_id.eq.${active.id}`);
+
+  const [{ data: questions }, { data: merchants }, { data: countries }, { data: cats }] = await Promise.all([
+    questionQuery,
     db().from("merchants").select("*").eq("status", "active").order("name"),
     db().from("countries").select("*").eq("active", true).order("sort"),
+    db()
+      .from("question_categories")
+      .select("id, name")
+      .eq("country_id", active?.id ?? "")
+      .order("sort")
+      .order("name"),
   ]);
   const wls = (merchants ?? []) as Merchant[];
   const cs = (countries ?? []) as Country[];
@@ -40,6 +51,7 @@ export default async function AdminQuestionBankPage({
       questions={rows}
       merchants={wls.map((m) => ({ id: m.id, label: m.name }))}
       countries={cs.map((c) => ({ id: c.id, label: `${c.flag} ${c.name}` }))}
+      categories={((cats ?? []) as { id: string; name: string }[]).map((c) => ({ id: c.id, label: c.name }))}
     />
   );
 }

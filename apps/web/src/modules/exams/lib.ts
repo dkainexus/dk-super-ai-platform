@@ -93,7 +93,21 @@ export async function examsForOwner(owner: Owner): Promise<OwnerExam[]> {
 }
 
 /** Active questions of an exam, in paper order. */
-export async function examQuestions(examId: string): Promise<ExamQuestion[]> {
+/**
+ * The pool an exam draws from: a whole question category when one is set,
+ * otherwise the questions ticked on the exam itself.
+ */
+export async function examQuestions(examId: string, categoryId?: string | null): Promise<ExamQuestion[]> {
+  if (categoryId) {
+    const { data } = await db()
+      .from("exam_questions")
+      .select("*")
+      .eq("category_id", categoryId)
+      .eq("active", true)
+      .order("created_at");
+    return (data ?? []) as ExamQuestion[];
+  }
+
   const { data } = await db()
     .from("exam_items")
     .select("sort, question:exam_questions(*)")
@@ -229,4 +243,53 @@ export async function examStats(
     else s.pending++;
   }
   return out;
+}
+
+
+// ---------- AI interview mode ----------
+
+export type InterviewMessage = { role: "assistant" | "user"; content: string };
+export type InterviewTurn = {
+  reply: string;
+  done: boolean;
+  passed: boolean | null;
+  reason: string;
+};
+
+/**
+ * One turn of the AI interview: the examiner plays the part described in the
+ * exam's brief and, when it has heard enough, returns a pass or fail.
+ */
+export async function interviewTurn(exam: Exam, messages: InterviewMessage[]): Promise<InterviewTurn> {
+  const brief = (exam as Exam & { ai_brief?: string | null }).ai_brief?.trim();
+  const system = [
+    "You are running a spoken role-play assessment for a company training program.",
+    "Stay in character and ask one question at a time — never list several at once.",
+    "This is pass or fail, not a score: judge whether the trainee handled the situation well enough.",
+    "Ask at least four questions before deciding, and decide as soon as the outcome is clear.",
+    `The brief you must follow: ${brief || "Play a bank officer interviewing the trainee about their company account."}`,
+    'Respond with ONLY minified JSON: {"reply":"what you say next","done":false,"passed":null,"reason":""}.',
+    'When you have decided, set done to true, passed to true or false, and reason to a short explanation for the trainee.',
+  ].join(" ");
+
+  const raw = await aiComplete(
+    system,
+    messages.length > 0
+      ? messages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }))
+      : [{ role: "user", content: "(the trainee has joined — open the conversation)" }]
+  );
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+
+  try {
+    const parsed = JSON.parse(cleaned) as Partial<InterviewTurn>;
+    return {
+      reply: String(parsed.reply ?? "").trim(),
+      done: parsed.done === true,
+      passed: parsed.done === true ? parsed.passed === true : null,
+      reason: String(parsed.reason ?? "").trim(),
+    };
+  } catch {
+    // The model broke format — treat its text as the next line and keep going.
+    return { reply: cleaned.trim(), done: false, passed: null, reason: "" };
+  }
 }

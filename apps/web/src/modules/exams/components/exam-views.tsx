@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { createExam, updateExam, saveExamContent, deleteExam, deleteQuestion, generateQuestions } from "../actions";
+import { createExam, updateExam, saveExamContent, deleteExam, deleteQuestion, generateQuestions, reorderExams } from "../actions";
 import { QuestionForm } from "./question-form";
+import { ExamModePicker, type CategoryOption } from "./mode-picker";
 import { GenerateButton } from "./generate-button";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
 import { MoneyInput } from "@/components/money-input";
+import { DragReorder } from "@/components/drag-reorder";
 import type { Exam, ExamQuestion } from "@/lib/types";
 
 // Shared server-side views for the Exams module, used by both /admin and /m
@@ -23,6 +25,8 @@ export function ExamsIndexView({
   exams,
   merchants,
   countries,
+  categories = [],
+  canEdit = false,
 }: {
   base: string;
   error?: string;
@@ -30,6 +34,8 @@ export function ExamsIndexView({
   exams: ExamRow[];
   merchants?: Option[];
   countries?: Option[];
+  categories?: CategoryOption[];
+  canEdit?: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -71,6 +77,7 @@ export function ExamsIndexView({
               </select>
             </div>
           )}
+          <ExamModePicker categories={categories} />
           <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[8rem_12rem_auto] sm:items-end">
             <div>
               <label className="mb-1 block text-xs text-muted">Pass score %</label>
@@ -89,13 +96,13 @@ export function ExamsIndexView({
         </form>
       )}
 
-      <div className="card divide-y divide-border">
-        {exams.length === 0 && <p className="px-5 py-6 text-sm text-muted">No exams yet.</p>}
+      {exams.length === 0 && <p className="card px-5 py-6 text-sm text-muted">No exams yet.</p>}
+      <DragReorder ids={exams.map((e) => e.id)} onReorder={reorderExams} canEdit={canEdit}>
         {exams.map((e) => (
           <Link
             key={e.id}
             href={`${base}/${e.id}`}
-            className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-surface-raised"
+            className="card flex items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-surface-raised"
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{e.title}</p>
@@ -119,7 +126,7 @@ export function ExamsIndexView({
             <ActiveTag active={e.published} on="Published" off="Draft" />
           </Link>
         ))}
-      </div>
+      </DragReorder>
     </div>
   );
 }
@@ -134,6 +141,7 @@ export function QuestionBankView({
   questions,
   merchants,
   countries,
+  categories = [],
 }: {
   base: string;
   error?: string;
@@ -144,6 +152,7 @@ export function QuestionBankView({
   questions: QuestionRow[];
   merchants?: Option[];
   countries?: Option[];
+  categories?: CategoryOption[];
 }) {
   const back = `${base}/questions`;
   return (
@@ -215,7 +224,7 @@ export function QuestionBankView({
       {canAdd && (
         <section className="card p-5">
           <h2 className="mb-3 text-sm font-semibold">Add question</h2>
-          <QuestionForm back={back} merchants={merchants} countries={countries} />
+          <QuestionForm back={back} merchants={merchants} countries={countries} categories={categories} />
         </section>
       )}
 
@@ -237,7 +246,7 @@ export function QuestionBankView({
             </summary>
             {q.editable && canEdit ? (
               <div className="mt-4 border-t border-border pt-4">
-                <QuestionForm question={q} back={back} />
+                <QuestionForm question={q} back={back} categories={categories} />
                 {canDelete && (
                   <form action={deleteQuestion} className="mt-3">
                     <input type="hidden" name="id" value={q.id} />
@@ -288,6 +297,7 @@ export function ExamDetailView({
   attempts,
   merchants,
   countries,
+  categories = [],
 }: {
   base: string;
   exam: Exam;
@@ -302,8 +312,11 @@ export function ExamDetailView({
   attempts: { id: string; owner_name: string; score: number | null; passed: boolean | null; created_at: string }[];
   merchants?: Option[];
   countries?: Option[];
+  categories?: CategoryOption[];
 }) {
   const back = `${base}/${exam.id}`;
+  const e = exam as Exam & { mode?: string; category_id?: string | null; ai_brief?: string | null };
+  const isInterview = e.mode === "ai_interview";
   const canWrite = canEdit && editable;
   return (
     <div className="space-y-6">
@@ -345,6 +358,12 @@ export function ExamDetailView({
               </select>
             </div>
           )}
+          <ExamModePicker
+            mode={e.mode}
+            categoryId={e.category_id ?? ""}
+            aiBrief={e.ai_brief ?? ""}
+            categories={categories}
+          />
           <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[7rem_10rem_5rem_auto_auto_auto] sm:items-end">
             <div>
               <label className="mb-1 block text-xs text-muted">Pass %</label>
@@ -391,7 +410,7 @@ export function ExamDetailView({
         <form action={saveExamContent} className="card space-y-4 p-5">
           <input type="hidden" name="id" value={exam.id} />
           <input type="hidden" name="back" value={back} />
-          <div>
+          <div className={isInterview ? "hidden" : undefined}>
             <h2 className="text-sm font-semibold">Questions in this exam</h2>
             <p className="mt-0.5 text-xs text-muted">
               Ticked questions appear in the paper, in bank order.{" "}
