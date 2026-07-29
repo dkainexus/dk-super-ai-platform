@@ -11,6 +11,15 @@ const PROVINCES: Record<string, string[]> = {
   AU: ["Australian Capital Territory","New South Wales","Northern Territory","Queensland","South Australia","Tasmania","Victoria","Western Australia"],
 };
 
+/** The language trainees are spoken to in, per country. */
+const LANGUAGES: Record<string, string> = {
+  TH: "Thai",
+  VN: "Vietnamese",
+  MY: "Malay",
+  SG: "English",
+  AU: "English",
+};
+
 /** Level names per country — this is what makes the address 1, 2 or 3 deep. */
 const LEVELS: Record<string, string[]> = {
   TH: ["Province", "District", "Sub-district"],
@@ -23,7 +32,11 @@ const LEVELS: Record<string, string[]> = {
 export async function seedProvinces(countryId: string, code: string): Promise<void> {
   const key = code.toUpperCase();
   const levels = LEVELS[key];
-  if (levels) await db().from("countries").update({ address_levels: levels }).eq("id", countryId);
+  const language = LANGUAGES[key];
+  const patch: Record<string, unknown> = {};
+  if (levels) patch.address_levels = levels;
+  if (language) patch.language = language;
+  if (Object.keys(patch).length > 0) await db().from("countries").update(patch).eq("id", countryId);
 
   const list = PROVINCES[key];
   if (!list?.length) return;

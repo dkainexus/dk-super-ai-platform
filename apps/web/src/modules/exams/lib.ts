@@ -271,6 +271,13 @@ export const INTERVIEW_MAX_TURNS = 20;
  */
 export async function interviewTurn(exam: Exam, messages: InterviewMessage[]): Promise<InterviewTurn> {
   const brief = (exam as Exam & { ai_brief?: string | null }).ai_brief?.trim();
+
+  // Trainees are spoken to in their country's language from the first word.
+  let language = "English";
+  if (exam.country_id) {
+    const { data } = await db().from("countries").select("language").eq("id", exam.country_id).maybeSingle();
+    language = (data?.language as string | undefined)?.trim() || "English";
+  }
   const asked = messages.filter((m) => m.role === "assistant").length;
   const mustDecide = asked >= INTERVIEW_MAX_TURNS;
 
@@ -279,7 +286,7 @@ export async function interviewTurn(exam: Exam, messages: InterviewMessage[]): P
     "Stay in character and ask one question at a time — never list several at once.",
     "This is pass or fail, not a score: judge whether the trainee handled the situation well enough.",
     "Ask as many or as few questions as you need — decide as soon as the outcome is clear.",
-    "Reply in the language the trainee is using; open in English until they answer.",
+    `Speak ${language}. Open in ${language}, and if the trainee answers in another language, switch to theirs.`,
     `The reference you must follow: ${
       brief || "Play a bank officer interviewing the trainee about their company account."
     }`,

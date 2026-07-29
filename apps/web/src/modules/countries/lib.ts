@@ -12,6 +12,22 @@ export function currencyList(): string[] {
   return ["USDT", ...Intl.supportedValuesOf("currency")];
 }
 
+/**
+ * Languages the platform is spoken in. Anything the runtime can name is offered,
+ * with the region's own languages first so the common picks are at the top.
+ */
+export function languageList(): string[] {
+  const near = ["English", "Thai", "Vietnamese", "Malay", "Indonesian", "Chinese", "Khmer", "Lao", "Burmese", "Filipino"];
+  // Intl has no list of languages, so name a spread of common ones by code.
+  const display = new Intl.DisplayNames(["en"], { type: "language" });
+  const rest = new Set<string>();
+  for (const code of ["ar", "bn", "de", "es", "fr", "hi", "it", "ja", "ko", "nl", "pt", "ru", "ta", "tr", "ur"]) {
+    const name = display.of(code);
+    if (name && !near.includes(name)) rest.add(name);
+  }
+  return [...near, ...[...rest].sort()];
+}
+
 export const ADMIN_COUNTRY_COOKIE = "dk_admin_country";
 export const GLOBAL_SCOPE = "global";
 

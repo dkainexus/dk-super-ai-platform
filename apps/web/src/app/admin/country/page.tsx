@@ -2,7 +2,7 @@ import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { updateCountry, uploadCountryIcon, removeCountryIcon } from "@/modules/countries/actions";
-import { timezoneList, currencyList, requireCountryScope } from "@/modules/countries/lib";
+import { timezoneList, currencyList, languageList, requireCountryScope } from "@/modules/countries/lib";
 import { ImagePicker } from "@/components/image-picker";
 import { MoneyInput } from "@/components/money-input";
 import { ErrorBanner } from "@/components/error-banner";
@@ -29,7 +29,7 @@ export default async function CountrySettingsPage({
       <div>
         <h1 className="text-xl font-semibold">{c.name} Settings</h1>
         <p className="mt-1 text-sm text-muted">
-          The timezone, currency and icon used everywhere this country appears.
+          The timezone, currency, language and icon used everywhere this country appears.
         </p>
       </div>
       <ErrorBanner message={error} />
@@ -54,7 +54,7 @@ export default async function CountrySettingsPage({
           </div>
         </div>
 
-        <form action={updateCountry} className="grid items-end gap-4 sm:grid-cols-[1fr_5rem_1fr_7rem_8rem_auto]">
+        <form action={updateCountry} className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <input type="hidden" name="id" value={c.id} />
           <input type="hidden" name="back" value="/admin/country" />
           <div>
@@ -78,6 +78,19 @@ export default async function CountrySettingsPage({
             <select name="currency" defaultValue={c.currency} className="input mono-num" disabled={!canEdit}>
               {currencyList().map((cur) => (
                 <option key={cur} value={cur}>{cur}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Language</label>
+            <select
+              name="language"
+              defaultValue={(c as { language?: string }).language ?? "English"}
+              className="input"
+              disabled={!canEdit}
+            >
+              {languageList().map((l) => (
+                <option key={l} value={l}>{l}</option>
               ))}
             </select>
           </div>
