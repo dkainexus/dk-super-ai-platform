@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { INVOICE_SELECT, partyLabel, type InvoiceRow } from "@/modules/billing/lib";
-import { markInvoicePaid, cancelInvoice } from "@/modules/billing/actions";
+import { markInvoicePaid, cancelInvoice, settleFromWallet } from "@/modules/billing/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import { fmtNum } from "@/lib/format";
@@ -29,7 +29,9 @@ export default async function InvoiceDetailPage({
 
   const { data } = await db().from("invoices").select(INVOICE_SELECT).eq("id", id).maybeSingle();
   if (!data) notFound();
-  const inv = data as unknown as InvoiceRow;
+  const inv = data as unknown as InvoiceRow & { customer_id: string | null };
+  const { ledgerFor } = await import("@/modules/billing/ledger");
+  const wallet = inv.customer_id ? await ledgerFor("customer", inv.customer_id) : null;
   const canEdit = Boolean(can(cu, "billing", "edit"));
   const back = `/admin/billing/invoices/${inv.id}`;
   const lines = [...inv.invoice_lines].sort((a, b) => (a.period_start ?? "") < (b.period_start ?? "") ? -1 : 1);
@@ -86,6 +88,16 @@ export default async function InvoiceDetailPage({
         </table>
       </section>
 
+      {(inv as InvoiceRow & { usdt_total?: number | null; usdt_rate?: number | null }).usdt_total != null && (
+        <p className="mono-num text-sm">
+          USDT due:{" "}
+          <b>{fmtNum((inv as InvoiceRow & { usdt_total?: number }).usdt_total!)} USDT</b>
+          <span className="ml-2 text-xs text-muted">
+            locked @ {(inv as InvoiceRow & { usdt_rate?: number }).usdt_rate} on issue
+          </span>
+        </p>
+      )}
+
       <p className="text-xs text-muted">
         {inv.issued_at && `Issued ${new Date(inv.issued_at).toLocaleString()}`}
         {inv.paid_at && ` · paid ${new Date(inv.paid_at).toLocaleString()}`}
@@ -93,6 +105,18 @@ export default async function InvoiceDetailPage({
 
       {canEdit && inv.status === "issued" && (
         <div className="flex flex-wrap gap-2">
+          {inv.direction === "receivable" && inv.customer_id && wallet && wallet.balance >= Number(inv.total) && (
+            <form action={settleFromWallet}>
+              <input type="hidden" name="id" value={inv.id} />
+              <input type="hidden" name="back" value={back} />
+              <ActionButton
+                icon="check"
+                tip={`Pay this invoice from the wallet (holds ${fmtNum(wallet.balance)})`}
+                label="Settle from Wallet"
+                variant="primary"
+              />
+            </form>
+          )}
           <form action={markInvoicePaid}>
             <input type="hidden" name="id" value={inv.id} />
             <input type="hidden" name="back" value={back} />

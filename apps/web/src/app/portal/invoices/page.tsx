@@ -22,8 +22,10 @@ export default async function PortalInvoicesPage() {
     .eq("customer_id", c.id)
     .neq("status", "draft")
     .order("period_month", { ascending: false });
-  const rows = (data ?? []) as unknown as InvoiceRow[];
+  const rows = (data ?? []) as unknown as (InvoiceRow & { usdt_total?: number | null })[];
   const owed = rows.filter((r) => r.status === "issued").reduce((s, r) => s + Number(r.total), 0);
+  const { ledgerFor } = await import("@/modules/billing/ledger");
+  const wallet = await ledgerFor("customer", c.id);
 
   return (
     <div className="space-y-5">
@@ -32,7 +34,9 @@ export default async function PortalInvoicesPage() {
         <p className="mt-1 text-sm text-muted">
           {owed > 0
             ? `Outstanding: ${fmtNum(owed)} ${rows[0]?.currency ?? ""}`
-            : "Nothing outstanding."}
+            : "Nothing outstanding."}{" "}
+          Wallet balance: <span className="mono-num">{fmtNum(wallet.balance)} {wallet.currency ?? rows[0]?.currency ?? ""}</span>.
+          Top up in USDT — contact support with your transfer and we credit it the same day.
         </p>
       </div>
 
@@ -45,8 +49,13 @@ export default async function PortalInvoicesPage() {
               <span className="mono-num">{inv.ref ?? "Invoice"}</span>
               <span className="ml-2 font-normal text-muted">{inv.period_month.slice(0, 7)}</span>
             </p>
-            <span className={`rounded-full border px-2.5 py-0.5 text-[11px] capitalize ${STATUS_STYLE[inv.status] ?? ""}`}>
-              {inv.status}
+            <span className="flex items-center gap-2">
+              {inv.usdt_total != null && inv.status === "issued" && (
+                <span className="mono-num text-xs text-muted">{fmtNum(inv.usdt_total)} USDT</span>
+              )}
+              <span className={`rounded-full border px-2.5 py-0.5 text-[11px] capitalize ${STATUS_STYLE[inv.status] ?? ""}`}>
+                {inv.status}
+              </span>
             </span>
           </div>
           <Table head={["Line", "Amount"]}>

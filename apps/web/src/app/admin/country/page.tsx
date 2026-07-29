@@ -95,6 +95,25 @@ export default async function CountrySettingsPage({
             </select>
           </div>
           <div>
+            <label className="mb-1 block text-xs text-muted">USDT markup %</label>
+            <input
+              name="usdt_markup_pct"
+              defaultValue={(c as { usdt_markup_pct?: number }).usdt_markup_pct ?? 0}
+              className="input mono-num"
+              disabled={!canEdit}
+              title="Tilts the daily USDT rate against the counterparty: customers pay a little more, payouts cost a little less"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">USDT markup (flat, per USDT)</label>
+            <input
+              name="usdt_markup_flat"
+              defaultValue={(c as { usdt_markup_flat?: number }).usdt_markup_flat ?? 0}
+              className="input mono-num"
+              disabled={!canEdit}
+            />
+          </div>
+          <div>
             <label className="mb-1 block text-xs text-muted">New bank account reward</label>
             <MoneyInput name="new_account_reward" defaultValue={(c as { new_account_reward?: number }).new_account_reward ?? 0} />
           </div>

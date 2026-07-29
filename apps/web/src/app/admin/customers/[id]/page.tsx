@@ -9,6 +9,7 @@ import {
   setCustomerStatus,
   deleteCustomer,
 } from "@/modules/customers/actions";
+import { recordTopUp } from "@/modules/billing/actions";
 import { contracts, partyName } from "@/modules/contracts/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
@@ -44,6 +45,8 @@ export default async function CustomerDetailPage({
   ]);
 
   const canEdit = Boolean(can(cu, "customers", "edit"));
+  const { ledgerFor } = await import("@/modules/billing/ledger");
+  const wallet = await ledgerFor("customer", c.id);
 
   return (
     <div className="space-y-5">
@@ -135,6 +138,51 @@ export default async function CustomerDetailPage({
           </form>
         </section>
       )}
+
+      <section className="card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Wallet</h2>
+          <p className="mono-num text-lg font-semibold">
+            {fmtNum(wallet.balance)} {wallet.currency ?? ""}
+          </p>
+        </div>
+        {canEdit && (
+          <form action={recordTopUp} className="mb-4 grid gap-3 sm:grid-cols-[10rem_1fr_auto] sm:items-end">
+            <input type="hidden" name="customer_id" value={c.id} />
+            <div>
+              <label className="mb-1 block text-xs text-muted">USDT received</label>
+              <input name="usdt_amount" className="input mono-num" placeholder="0.00" required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Note (tx hash, reference…)</label>
+              <input name="note" className="input mono-num" />
+            </div>
+            <ActionButton
+              icon="plus"
+              tip="Credit the wallet at today's rate with this country's markup"
+              label="Record Top-Up"
+              variant="primary"
+            />
+          </form>
+        )}
+        <div className="divide-y divide-border">
+          {wallet.entries.length === 0 && <p className="py-3 text-sm text-muted">No wallet activity yet.</p>}
+          {wallet.entries.slice(0, 10).map((e) => (
+            <div key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <span className="text-muted">
+                {e.kind === "topup" ? "Top-up" : e.kind === "invoice_payment" ? `Paid ${e.note ?? "invoice"}` : e.kind}
+                {e.usdt_amount != null && (
+                  <span className="mono-num ml-2 text-xs">({fmtNum(e.usdt_amount)} USDT @ {e.usdt_rate})</span>
+                )}
+              </span>
+              <span className={`mono-num ${Number(e.amount) >= 0 ? "text-success" : "text-danger"}`}>
+                {Number(e.amount) >= 0 ? "+" : ""}
+                {fmtNum(e.amount)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

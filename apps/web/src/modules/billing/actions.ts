@@ -104,3 +104,127 @@ export async function cancelInvoice(formData: FormData): Promise<void> {
   revalidatePath("/admin/billing");
   redirect(back);
 }
+
+// ---------- Turnover review ----------
+
+export async function reviewTurnover(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("billing", "edit");
+  const id = String(formData.get("id") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const back = String(formData.get("back") ?? "/admin/billing/turnover");
+
+  const { data } = await db().from("turnover_declarations").select("status").eq("id", id).maybeSingle();
+  if (!data) fail(back, "Declaration not found");
+  if (data.status !== "pending") fail(back, "Already reviewed");
+
+  if (decision === "approve") {
+    await db()
+      .from("turnover_declarations")
+      .update({ status: "approved", reviewed_by: cu.user.id, reviewed_at: new Date().toISOString() })
+      .eq("id", id);
+  } else {
+    const reason = String(formData.get("reason") ?? "").trim();
+    if (!reason) fail(back, "Say why it is rejected — the customer resubmits against this");
+    await db()
+      .from("turnover_declarations")
+      .update({
+        status: "rejected",
+        reject_reason: reason,
+        reviewed_by: cu.user.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+  }
+  revalidatePath("/admin/billing/turnover");
+  redirect(back);
+}
+
+// ---------- Wallets ----------
+
+/** We received USDT from a customer; their ledger is credited in the country's currency. */
+export async function recordTopUp(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("billing", "edit");
+  const customerId = String(formData.get("customer_id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/customers/${customerId}`);
+  const usdt = parseFloat(String(formData.get("usdt_amount") ?? ""));
+  if (!Number.isFinite(usdt) || usdt <= 0) fail(back, "Enter the USDT amount received");
+
+  const { data: customer } = await db()
+    .from("customers")
+    .select("id, merchant_id, country_id")
+    .eq("id", customerId)
+    .maybeSingle();
+  if (!customer) fail(back, "Customer not found");
+
+  const { data: country } = await db()
+    .from("countries")
+    .select("currency, usdt_markup_pct, usdt_markup_flat")
+    .eq("id", customer.country_id ?? "")
+    .maybeSingle();
+  if (!country) fail(back, "The customer has no country to price against");
+
+  const { effectiveRates } = await import("./fx");
+  let rates;
+  try {
+    rates = await effectiveRates(country as { currency: string; usdt_markup_pct: number; usdt_markup_flat: number });
+  } catch (e) {
+    fail(back, e instanceof Error ? e.message : "No USDT rate available");
+  }
+
+  const credited = Math.round(usdt * rates.receivable * 100) / 100;
+  const { error } = await db().from("ledger_entries").insert({
+    merchant_id: customer.merchant_id,
+    country_id: customer.country_id,
+    holder_type: "customer",
+    holder_id: customer.id,
+    currency: country.currency,
+    amount: credited,
+    kind: "topup",
+    usdt_amount: usdt,
+    usdt_rate: rates.receivable,
+    note: String(formData.get("note") ?? "").trim() || null,
+    created_by: cu.user.id,
+  });
+  if (error) fail(back, `Failed to record: ${error.message}`);
+  revalidatePath(back);
+  redirect(`${back}?saved=topup`);
+}
+
+/** Pay an issued receivable from the customer's ledger balance. */
+export async function settleFromWallet(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("billing", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/billing/invoices/${id}`);
+
+  const { data } = await db().from("invoices").select("*").eq("id", id).maybeSingle();
+  if (!data) fail(back, "Invoice not found");
+  const inv = data as {
+    id: string; status: string; direction: string; total: number; currency: string;
+    customer_id: string | null; merchant_id: string; country_id: string | null; ref: string | null;
+  };
+  if (inv.status !== "issued") fail(back, "Only an issued invoice can be settled");
+  if (inv.direction !== "receivable" || !inv.customer_id) fail(back, "Only customer invoices settle from a wallet");
+
+  const { ledgerFor } = await import("./ledger");
+  const { balance } = await ledgerFor("customer", inv.customer_id);
+  if (balance < Number(inv.total))
+    fail(back, `The wallet holds ${balance.toLocaleString()} — not enough for this invoice`);
+
+  const { error } = await db().from("ledger_entries").insert({
+    merchant_id: inv.merchant_id,
+    country_id: inv.country_id,
+    holder_type: "customer",
+    holder_id: inv.customer_id,
+    currency: inv.currency,
+    amount: -Number(inv.total),
+    kind: "invoice_payment",
+    invoice_id: inv.id,
+    note: inv.ref,
+    created_by: cu.user.id,
+  });
+  if (error) fail(back, `Failed to settle: ${error.message}`);
+
+  await db().from("invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/admin/billing");
+  redirect(back);
+}

@@ -25,7 +25,7 @@ export type AccountLine = {
 
 export type BilledLine = {
   contract_account_id: string;
-  kind: "base_rent" | "setup_fee";
+  kind: "base_rent" | "setup_fee" | "turnover_topup";
   description: string;
   period_start: string | null;
   period_end: string | null;
@@ -241,3 +241,46 @@ export function rentRefund(baseRent: number, endedOn: string, paidTo: string): n
 // ---------- what the run tells you before you commit ----------
 
 export type RunWarning = { level: "info" | "warn"; message: string };
+
+// ---------- turnover ----------
+
+/**
+ * The top-up a month's approved turnover produces: the charge is the higher of
+ * the base already billed for that month and turnover × rate, so the base is a
+ * floor and the turnover only ever adds.
+ *
+ * `turnoverMonth` is the month the turnover belongs to — the run raising this
+ * line happens the month after, once the figure is in and approved.
+ */
+export function turnoverTopup(
+  line: AccountLine,
+  turnoverMonth: string,
+  turnover: number
+): BilledLine | null {
+  const billed = rentForMonth(line, turnoverMonth);
+  if (!billed) return null;
+  const rate = billed.terms.turnover_rate;
+  if (rate == null || rate <= 0) return null;
+
+  const byTurnover = money((turnover * rate) / 100);
+  if (byTurnover <= billed.amount) return null;
+
+  const amount = money(byTurnover - billed.amount);
+  return {
+    contract_account_id: line.contract_account_id,
+    kind: "turnover_topup",
+    description: `Turnover top-up for ${firstOfMonth(turnoverMonth).slice(0, 7)}`,
+    period_start: billed.start,
+    period_end: billed.end,
+    days: billed.days,
+    days_in_month: billed.inMonth,
+    amount,
+    dedupe_key: `topup|${line.contract_account_id}|${firstOfMonth(turnoverMonth)}`,
+    snapshot: {
+      turnover,
+      turnover_rate: rate,
+      by_turnover: byTurnover,
+      base_billed: billed.amount,
+    },
+  };
+}

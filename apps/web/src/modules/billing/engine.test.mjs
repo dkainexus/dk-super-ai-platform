@@ -189,3 +189,27 @@ test("§8 refunds — setup fee amortises over 30 days, rent over the month", ()
   assert.equal(rentRefund(CUSTOMER_RENT, "2026-04-10", "2026-04-30"), 86_666.67, "20 unused days of 30");
   assert.equal(rentRefund(CUSTOMER_RENT, "2026-04-30", "2026-04-30"), 0, "used the whole month");
 });
+
+test("§4 turnover top-ups — the base is a floor, turnover only adds", async () => {
+  const { turnoverTopup } = await import("./engine.ts");
+  const customer = line("ca-t", "2026-03-21", CUSTOMER_RENT, { rate: 0.3 });
+
+  // March stub: 12M × 0.30% = 36,000 < 46,129.03 billed → nothing.
+  assert.equal(turnoverTopup(customer, "2026-03-01", 12_000_000), null);
+
+  // April: 50M × 0.30% = 150,000 against 130,000 billed → 20,000.
+  const april = turnoverTopup(customer, "2026-04-01", 50_000_000);
+  assert.equal(april.amount, 20_000);
+  assert.equal(april.kind, "turnover_topup");
+
+  // The agent's own 0.05% on the same turnover: 25,000 against 10,000 → 15,000.
+  const agent = line("ca-t-agt", "2026-03-24", AGENT_RENT, { rate: 0.05 });
+  assert.equal(turnoverTopup(agent, "2026-04-01", 50_000_000).amount, 15_000);
+
+  // No rate on the line → never a top-up, whatever the turnover.
+  const flat = line("ca-t-flat", "2026-03-24", OWNER_RENT);
+  assert.equal(turnoverTopup(flat, "2026-04-01", 999_000_000), null);
+
+  // Same inputs, same key — a rerun cannot raise it twice.
+  assert.equal(april.dedupe_key, turnoverTopup(customer, "2026-04-01", 50_000_000).dedupe_key);
+});

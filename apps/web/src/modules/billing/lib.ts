@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/supabase";
-import { linesForAccount, type AccountLine, type BilledLine } from "./engine";
+import { linesForAccount, turnoverTopup, type AccountLine, type BilledLine } from "./engine";
 import type { Contract } from "@/modules/contracts/lib";
 
 // Turning contracts into a month's invoices. The arithmetic lives in engine.ts;
@@ -108,6 +108,22 @@ export async function buildDraft(countryId: string, periodMonth: string, userId:
     .eq("status", "active");
   const loaded = (contractRows ?? []) as unknown as LoadedContract[];
 
+  // Approved turnover for last month drives the top-ups raised this run. The
+  // same figure serves the customer's rate and the agent's own rate.
+  const { firstOfMonth, addMonths } = await import("./engine");
+  const prevMonth = firstOfMonth(addMonths(periodMonth, -1));
+  const { data: declRows } = await db()
+    .from("turnover_declarations")
+    .select("bank_account_id, amount")
+    .eq("period_month", prevMonth)
+    .eq("status", "approved");
+  const turnoverByAccount = new Map(
+    ((declRows ?? []) as { bank_account_id: string; amount: number }[]).map((d) => [
+      d.bank_account_id,
+      Number(d.amount),
+    ])
+  );
+
   // The keys already billed on issued invoices — those lines must not reappear.
   const { data: issuedLines } = await db()
     .from("invoice_lines")
@@ -135,11 +151,20 @@ export async function buildDraft(countryId: string, periodMonth: string, userId:
         setup_fee_invoiced: Boolean(acc.setup_fee_invoiced_at),
         terms: acc.contract_terms,
       };
-      for (const line of linesForAccount(accountLine, periodMonth)) {
+      const name = acc.bank_account
+        ? `${acc.bank_account.bank?.name ?? "?"} ${acc.bank_account.account_no}`
+        : "account";
+      const raised = linesForAccount(accountLine, periodMonth);
+
+      // Owners have no turnover component; customers and agents may.
+      const turnover = turnoverByAccount.get(acc.bank_account_id);
+      if (turnover != null && c.party_type !== "owner") {
+        const topup = turnoverTopup(accountLine, prevMonth, turnover);
+        if (topup) raised.push(topup);
+      }
+
+      for (const line of raised) {
         if (alreadyBilled.has(line.dedupe_key)) continue;
-        const name = acc.bank_account
-          ? `${acc.bank_account.bank?.name ?? "?"} ${acc.bank_account.account_no}`
-          : "account";
         lines.push({ ...line, description: `${name} — ${line.description}` });
       }
     }
@@ -235,7 +260,38 @@ export async function issueRun(runId: string, userId: string): Promise<number> {
   const ids = ((invoices ?? []) as { id: string }[]).map((i) => i.id);
   if (ids.length === 0) return 0;
 
+  // Lock today's USDT figure onto every invoice: what is quoted is what is due,
+  // whenever it is actually paid.
+  const { effectiveRates, usdtAmount } = await import("./fx");
+  const { data: run } = await db().from("billing_runs").select("country_id").eq("id", runId).maybeSingle();
+  const { data: countryRow } = run
+    ? await db()
+        .from("countries")
+        .select("currency, usdt_markup_pct, usdt_markup_flat")
+        .eq("id", run.country_id)
+        .maybeSingle()
+    : { data: null };
+  let rates: Awaited<ReturnType<typeof effectiveRates>> | null = null;
+  if (countryRow) {
+    try {
+      rates = await effectiveRates(countryRow as { currency: string; usdt_markup_pct: number; usdt_markup_flat: number });
+    } catch {
+      rates = null; // issue without USDT figures rather than blocking the run
+    }
+  }
+
   await db().from("invoices").update({ status: "issued", issued_at: now }).in("id", ids);
+
+  if (rates) {
+    const { data: toRate } = await db().from("invoices").select("id, direction, total").in("id", ids);
+    for (const inv of (toRate ?? []) as { id: string; direction: string; total: number }[]) {
+      const rate = inv.direction === "receivable" ? rates.receivable : rates.payable;
+      await db()
+        .from("invoices")
+        .update({ usdt_rate: rate, usdt_total: usdtAmount(Number(inv.total), rate) })
+        .eq("id", inv.id);
+    }
+  }
 
   // A setup fee that has now been billed must never be billed again.
   const { data: feeLines } = await db()
