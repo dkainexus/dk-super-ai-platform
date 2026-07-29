@@ -83,12 +83,21 @@ export async function updateMerchantByAdmin(formData: FormData): Promise<void> {
   const name = String(formData.get("name") ?? "").trim();
   const subdomain = slugify(String(formData.get("subdomain") ?? "").trim()).replace(/_/g, "-") || null;
   const status = String(formData.get("status") ?? "active");
+  // The code shows up in every reference number, so keep it short and uppercase.
+  const code =
+    String(formData.get("code") ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) || null;
   if (!name) fail(back, "Merchant name cannot be empty");
 
   const { error } = await db()
     .from("merchants")
-    .update({ name, subdomain, status: status === "suspended" ? "suspended" : "active" })
+    .update({
+      name,
+      subdomain,
+      status: status === "suspended" ? "suspended" : "active",
+      ...(code ? { code } : {}),
+    })
     .eq("id", id);
+  if (error?.message.includes("duplicate")) fail(back, "That code is already used by another white label");
   if (error) fail(back, `Failed to save: ${error.message}`);
   revalidatePath(back);
 }
