@@ -67,23 +67,27 @@ export default async function AdminDashboard() {
     );
   }
   if (can(cu, "merchants", "view")) {
+    const wl = cid
+      ? (await db().from("merchant_countries").select("merchant_id", { count: "exact", head: true }).eq("country_id", cid)).count ?? 0
+      : await countRows("merchants", (q: any) => q.eq("status", "active"));
     cards.push(
       <StatCard
         key="wl"
         label="White Labels"
-        value={await countRows("merchants", (q: any) => q.eq("status", "active"), cid)}
+        value={wl}
         icon="🏷️"
         palette={PALETTES.blue}
-        href="/admin/countries"
+        href="/admin/merchants"
       />
     );
   }
-  if (can(cu, "countries", "view")) {
+  // Countries is a platform-level stat — meaningless inside a single country.
+  if (!cid && can(cu, "countries", "view")) {
     cards.push(
       <StatCard
         key="countries"
         label="Countries"
-        value={await countRows("countries", (q: any) => q.eq("active", true), cid)}
+        value={await countRows("countries", (q: any) => q.eq("active", true))}
         icon="🌏"
         palette={PALETTES.green}
         href="/admin/countries"
@@ -91,7 +95,15 @@ export default async function AdminDashboard() {
     );
   }
   if (on("wallet")) {
-    const pendingW = await countRows("withdrawals", (q: any) => q.eq("status", "pending"), cid);
+    const pendingW = cid
+      ? (
+          await db()
+            .from("withdrawals")
+            .select("id, owner:owners!inner(country_id)", { count: "exact", head: true })
+            .eq("status", "pending")
+            .eq("owner.country_id", cid)
+        ).count ?? 0
+      : await countRows("withdrawals", (q: any) => q.eq("status", "pending"));
     cards.push(
       <StatCard
         key="wallet"
@@ -116,13 +128,13 @@ export default async function AdminDashboard() {
       />
     );
   }
-  if (can(cu, "users", "view")) {
-    const dates = await recentDates("users", cid);
+  if (!cid && can(cu, "users", "view")) {
+    const dates = await recentDates("users");
     cards.push(
       <StatCard
         key="users"
         label="Users"
-        value={await countRows("users", (q: any) => q.eq("active", true), cid)}
+        value={await countRows("users", (q: any) => q.eq("active", true))}
         icon="👤"
         palette={PALETTES.cyan}
         href="/admin/users"
@@ -130,9 +142,9 @@ export default async function AdminDashboard() {
       />
     );
   }
-  if (on("telegram")) {
-    const total = await countRows("telegram_bots", undefined, cid);
-    const healthy = await countRows("telegram_bots", (q: any) => q.eq("last_check_ok", true), cid);
+  if (!cid && on("telegram")) {
+    const total = await countRows("telegram_bots");
+    const healthy = await countRows("telegram_bots", (q: any) => q.eq("last_check_ok", true));
     cards.push(
       <StatCard
         key="tg"
