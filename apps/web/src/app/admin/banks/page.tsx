@@ -2,18 +2,16 @@ import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
-import { createBank, updateBank, deleteBank, addBankField, removeBankField } from "@/modules/banks/actions";
-import { BankLogo } from "@/modules/banks/components/bank-logo";
+import { createBank } from "@/modules/banks/actions";
 import { BankReorder } from "@/modules/banks/components/bank-reorder";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
-import { ActionButton, SaveButton } from "@/components/action-buttons";
-import type { Country } from "@/lib/types";
-import { adminCountry } from "@/modules/countries/lib";
+import { ActionButton } from "@/components/action-buttons";
+import { TableToolbar } from "@/components/data-table";
+import { requireCountryScope } from "@/modules/countries/lib";
 
 type Bank = {
   id: string;
-  country_id: string;
   name: string;
   code: string | null;
   active: boolean;
@@ -23,218 +21,108 @@ type Bank = {
   channels: string[];
 };
 
-// Banks module: per-country bank directory. Each bank carries a logo, its own
-// extra account fields (e.g. Company ID, App PIN) and supported payment
-// channels (PromptPay, MoMo, …) used by the Bank Accounts module.
+// Banks list for the active country. Drag a row to change the order shown
+// everywhere; open a bank to edit its logo, extra fields and channels.
 export default async function BanksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string; error?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { cu } = await requirePerm("banks", "view");
-  const { country = "", error } = await searchParams;
+  const { error } = await searchParams;
+  const { active } = await requireCountryScope();
 
-  const { active, all: list } = await adminCountry();
-  const selected = active ?? list.find((c) => c.id === country) ?? list[0] ?? null;
-
-  const { data: banks } = selected
-    ? await db().from("banks").select("*").eq("country_id", selected.id).order("sort").order("name")
+  const { data: banks } = active
+    ? await db().from("banks").select("*").eq("country_id", active.id).order("sort").order("name")
     : { data: [] };
-  const bankRows = (banks ?? []) as Bank[];
+  const rows = (banks ?? []) as Bank[];
   const logos = new Map(
-    await Promise.all(
-      bankRows.map(async (b) => [b.id, await signedUrl(ASSETS_BUCKET, b.logo_path)] as const)
-    )
+    await Promise.all(rows.map(async (b) => [b.id, await signedUrl(ASSETS_BUCKET, b.logo_path)] as const))
   );
 
   const canEdit = can(cu, "banks", "edit");
   const canAdd = can(cu, "banks", "add");
-  const canDelete = can(cu, "banks", "delete");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold">Banks</h1>
         <p className="mt-1 text-sm text-muted">
-          Bank directory per country — logo, extra account fields and payment channels feed the Bank Accounts module.
+          {active
+            ? `${active.name} — drag a row to change the order shown everywhere.`
+            : "Pick a country in the sidebar first."}
         </p>
       </div>
       <ErrorBanner message={error} />
 
-      {/* Country tabs — hidden while the back office is scoped to one country */}
-      <div className={`flex-wrap items-center gap-2 ${active ? "hidden" : "flex"}`}>
-        {list.map((c) => (
-          <Link
-            key={c.id}
-            href={`/admin/banks?country=${c.id}`}
-            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-              selected?.id === c.id
-                ? "border-accent bg-accent-soft text-accent-strong"
-                : "border-border text-muted hover:text-foreground"
-            }`}
-          >
-            {c.flag} {c.name}
-          </Link>
-        ))}
-      </div>
+      <TableToolbar count={rows.length} noun="bank" />
 
-      {selected && (
-        <>
-          {bankRows.length === 0 ? (
-            <p className="card px-5 py-6 text-sm text-muted">No banks for {selected.name} yet.</p>
-          ) : (
-            <BankReorder ids={bankRows.map((b) => b.id)} countryId={selected.id} canEdit={Boolean(canEdit)}>
-              {bankRows.map((b) => {
-              const logo = logos.get(b.id);
-              return (
-                <div key={b.id} className="card p-4">
-                  {canEdit ? (
-                    <form action={updateBank} className="space-y-3">
-                      <input type="hidden" name="id" value={b.id} />
-                      <input type="hidden" name="country_id" value={selected.id} />
-                      <div className="grid items-end gap-3 sm:grid-cols-[3rem_1fr_8rem_5rem_auto_auto]">
-                        <BankLogo
-                          bankId={b.id}
-                          countryId={selected.id}
-                          url={logo ?? null}
-                          canEdit={Boolean(canEdit)}
-                        />
-                        <div>
-                          <label className="mb-1 block text-xs text-muted">Name</label>
-                          <input name="name" defaultValue={b.name} className="input" />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs text-muted">Code</label>
-                          <input name="code" defaultValue={b.code ?? ""} className="input mono-num uppercase" />
-                        </div>
-                        <label className="flex items-center gap-2 pb-2 text-xs text-muted">
-                          <input type="checkbox" name="active" defaultChecked={b.active} /> Active
-                        </label>
-                        <SaveButton tip="Save this bank" />
-                        {canDelete && (
-                          <button
-                            type="submit"
-                            formAction={deleteBank}
-                            title="Delete this bank"
-                            className="rounded-md border border-danger/40 px-3 py-1.5 text-sm text-danger transition-colors hover:bg-danger/10"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <label className="mb-1 block text-xs text-muted">
-                            Extra account fields asked by this bank
-                          </label>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {(b.account_fields ?? []).map((f) => (
-                              <span
-                                key={f.key}
-                                className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent-soft px-3 py-1 text-xs text-accent-strong"
-                              >
-                                {f.label}
-                                <button
-                                  type="submit"
-                                  formAction={removeBankField}
-                                  name="key"
-                                  value={f.key}
-                                  title={`Remove ${f.label}`}
-                                  className="text-muted transition-colors hover:text-danger"
-                                >
-                                  ✕
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                            <input name="label" placeholder="e.g. Company ID" className="input py-1.5 text-xs" />
-                            <button
-                              type="submit"
-                              formAction={addBankField}
-                              title="Add this field to the bank"
-                              className="rounded-md border border-border px-3 py-1.5 text-xs transition-colors hover:border-accent"
-                            >
-                              + Add
-                            </button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs text-muted">
-                            Payment channels supported by this bank
-                          </label>
-                          {(selected.payment_channels ?? []).length === 0 ? (
-                            <p className="text-xs text-muted">
-                              No channels defined for {selected.name} yet —{" "}
-                              <Link href={`/admin/countries/${selected.id}`} className="text-accent hover:underline">
-                                add them on the country page
-                              </Link>
-                              .
-                            </p>
-                          ) : (
-                            <div className="flex flex-wrap gap-2 pt-1">
-                              {(selected.payment_channels ?? []).map((ch) => (
-                                <label
-                                  key={ch}
-                                  className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:border-accent"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    name="channels"
-                                    value={ch}
-                                    defaultChecked={(b.channels ?? []).includes(ch)}
-                                    className="h-4 w-4"
-                                  />
-                                  {ch}
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {logo ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={logo} alt="" className="h-8 w-8 rounded object-contain" />
-                        ) : (
-                          <span className="text-lg">🏦</span>
-                        )}
-                        <p className="text-sm font-medium">
-                          {b.name} {b.code && <span className="mono-num text-xs text-muted">({b.code})</span>}
-                        </p>
-                      </div>
-                      <ActiveTag active={b.active} />
+      {rows.length === 0 ? (
+        <p className="card px-5 py-6 text-sm text-muted">No banks in {active?.name ?? "this country"} yet.</p>
+      ) : (
+        <div className="card overflow-x-auto p-0">
+          <div className="min-w-[52rem]">
+            <div className="grid grid-cols-[1.5rem_2.75rem_1fr_5rem_1.2fr_1.2fr_5rem] gap-3 border-b border-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
+              <span />
+              <span />
+              <span>Bank</span>
+              <span>Code</span>
+              <span>Extra Fields</span>
+              <span>Payment Channels</span>
+              <span>Status</span>
+            </div>
+            <BankReorder ids={rows.map((b) => b.id)} countryId={active!.id} canEdit={Boolean(canEdit)} dense>
+              {rows.map((b) => {
+                const logo = logos.get(b.id);
+                return (
+                  <div
+                    key={b.id}
+                    className="grid grid-cols-[2.75rem_1fr_5rem_1.2fr_1.2fr_5rem] items-center gap-3 px-3 py-2.5"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-raised">
+                      {logo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={logo} alt="" className="h-full w-full object-contain" />
+                      ) : (
+                        <span>🏦</span>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
+                    <Link
+                      href={`/admin/banks/${b.id}`}
+                      className="truncate text-sm font-medium text-accent-strong hover:underline"
+                    >
+                      {b.name}
+                    </Link>
+                    <span className="mono-num text-xs text-muted">{b.code || "—"}</span>
+                    <span className="truncate text-xs text-muted">
+                      {(b.account_fields ?? []).map((f) => f.label).join(", ") || "—"}
+                    </span>
+                    <span className="truncate text-xs text-muted">{(b.channels ?? []).join(", ") || "—"}</span>
+                    <ActiveTag active={b.active} />
+                  </div>
+                );
               })}
             </BankReorder>
-          )}
+          </div>
+        </div>
+      )}
 
-          {canAdd && (
-            <section className="card p-5">
-              <h2 className="mb-4 text-sm font-semibold">
-                Add Bank — {selected.flag} {selected.name}
-              </h2>
-              <form action={createBank} className="grid gap-4 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
-                <input type="hidden" name="country_id" value={selected.id} />
-                <div>
-                  <label className="mb-1 block text-xs text-muted">Bank Name</label>
-                  <input name="name" className="input" required />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted">Code (optional)</label>
-                  <input name="code" placeholder="KBANK" className="input mono-num uppercase" />
-                </div>
-                <ActionButton icon="plus" tip="Add this bank" label="Add Bank" variant="primary" />
-              </form>
-            </section>
-          )}
-        </>
+      {canAdd && active && (
+        <section className="card p-5">
+          <h2 className="mb-4 text-sm font-semibold">Add Bank — {active.name}</h2>
+          <form action={createBank} className="grid gap-4 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
+            <input type="hidden" name="country_id" value={active.id} />
+            <div>
+              <label className="mb-1 block text-xs text-muted">Bank Name</label>
+              <input name="name" className="input" required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Code (optional)</label>
+              <input name="code" placeholder="BBL" className="input mono-num uppercase" />
+            </div>
+            <ActionButton icon="plus" tip="Add this bank" label="Add Bank" variant="primary" />
+          </form>
+        </section>
       )}
     </div>
   );

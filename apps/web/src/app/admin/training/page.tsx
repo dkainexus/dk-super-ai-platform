@@ -8,7 +8,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { SaveButton } from "@/components/action-buttons";
 import type { Country, Merchant, TrainingVideo } from "@/lib/types";
-import { adminCountry } from "@/modules/countries/lib";
+import { requireCountryScope } from "@/modules/countries/lib";
 
 function fmtDuration(s: number | null): string {
   if (!s) return "";
@@ -25,7 +25,7 @@ export default async function AdminTrainingPage({
   const { cu } = await requirePerm("training", "view");
   const { error } = await searchParams;
 
-  const { active } = await adminCountry();
+  const { active } = await requireCountryScope();
   let videoQuery = db().from("training_videos").select("*").order("sort").order("created_at");
   if (active) videoQuery = videoQuery.or(`country_id.is.null,country_id.eq.${active.id}`);
 

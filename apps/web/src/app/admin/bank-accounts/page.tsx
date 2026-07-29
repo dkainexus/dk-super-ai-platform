@@ -3,7 +3,7 @@ import { db } from "@/lib/supabase";
 import { bankAccounts } from "@/modules/bank-accounts/lib";
 import { BankAccountsView } from "@/modules/bank-accounts/components/accounts-view";
 import type { FormBank, FormCompany } from "@/modules/bank-accounts/components/account-form";
-import { adminCountry } from "@/modules/countries/lib";
+import { requireCountryScope } from "@/modules/countries/lib";
 
 export default async function AdminBankAccountsPage({
   searchParams,
@@ -12,7 +12,7 @@ export default async function AdminBankAccountsPage({
 }) {
   const { cu } = await requirePerm("bank_accounts", "view");
   const { error, status = "" } = await searchParams;
-  const { active } = await adminCountry();
+  const { active } = await requireCountryScope();
 
   let companyQuery = db().from("companies").select("id, name, country_id, merchant:merchants(name)").neq("status", "banned").order("name");
   let bankQuery = db().from("banks").select("id, name, code, country_id, account_fields, channels").eq("active", true).order("sort");

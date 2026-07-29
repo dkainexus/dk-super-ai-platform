@@ -116,11 +116,12 @@ export async function switchAdminCountry(formData: FormData): Promise<void> {
   const { cookies } = await import("next/headers");
   const { ADMIN_COUNTRY_COOKIE } = await import("./lib");
   const jar = await cookies();
-  if (id) {
-    jar.set(ADMIN_COUNTRY_COOKIE, id, { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
-  } else {
-    jar.delete(ADMIN_COUNTRY_COOKIE);
-  }
+  jar.set(ADMIN_COUNTRY_COOKIE, id || "global", {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 365,
+  });
   revalidatePath("/", "layout");
   redirect(path.startsWith("/admin") ? path : "/admin");
 }

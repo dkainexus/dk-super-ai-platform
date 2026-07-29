@@ -4,7 +4,7 @@ import { db } from "@/lib/supabase";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { FilterForm } from "@/components/filter-form";
 import { FilterSelect, Table, TableToolbar } from "@/components/data-table";
-import { adminCountry } from "@/modules/countries/lib";
+import { requireCountryScope } from "@/modules/countries/lib";
 import type { OwnerStatus } from "@/lib/types";
 
 const STATUSES = [
@@ -37,7 +37,7 @@ export default async function AdminOwnersPage({
 }) {
   const { cu } = await requirePerm("owners", "view");
   const { status = "", merchant = "" } = await searchParams;
-  const { active } = await adminCountry();
+  const { active } = await requireCountryScope();
 
   let mq = db().from("merchants").select("id, name, merchant_countries(country_id)").order("name");
   const { data: merchantRows } = await mq;

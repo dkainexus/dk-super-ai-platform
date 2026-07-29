@@ -24,10 +24,10 @@ function fail(path: string, message: string): never {
 export async function createBank(formData: FormData): Promise<void> {
   await requirePerm("banks", "add");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/banks?country=${countryId}`;
+  const back = "/admin/banks";
   const name = String(formData.get("name") ?? "").trim();
   const code = String(formData.get("code") ?? "").trim().toUpperCase() || null;
-  if (!countryId) fail("/admin/banks", "Please choose a country");
+  if (!countryId) fail(back, "Please choose a country");
   if (!name) fail(back, "Please enter the bank name");
 
   const { count } = await db().from("banks").select("id", { count: "exact", head: true }).eq("country_id", countryId);
@@ -46,7 +46,7 @@ export async function updateBank(formData: FormData): Promise<void> {
   await requirePerm("banks", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/banks?country=${countryId}`;
+  const back = `/admin/banks/${id}`;
   const name = String(formData.get("name") ?? "").trim();
   const code = String(formData.get("code") ?? "").trim().toUpperCase() || null;
   const active = formData.get("active") === "on";
@@ -66,10 +66,9 @@ export async function updateBank(formData: FormData): Promise<void> {
 export async function deleteBank(formData: FormData): Promise<void> {
   await requirePerm("banks", "delete");
   const id = String(formData.get("id") ?? "");
-  const countryId = String(formData.get("country_id") ?? "");
   await db().from("banks").delete().eq("id", id);
   revalidatePath("/admin/banks");
-  redirect(countryId ? `/admin/banks?country=${countryId}` : "/admin/banks");
+  redirect("/admin/banks");
 }
 
 
@@ -79,7 +78,7 @@ export async function addBankField(formData: FormData): Promise<void> {
   await requirePerm("banks", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/banks?country=${countryId}`;
+  const back = `/admin/banks/${id}`;
   const label = String(formData.get("label") ?? "").trim();
   if (!label) fail(back, "Please enter the field name");
 
@@ -97,7 +96,7 @@ export async function removeBankField(formData: FormData): Promise<void> {
   await requirePerm("banks", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/banks?country=${countryId}`;
+  const back = `/admin/banks/${id}`;
   const key = String(formData.get("key") ?? "");
   const { data: bank } = await db().from("banks").select("account_fields").eq("id", id).maybeSingle();
   const list = ((bank?.account_fields ?? []) as { key: string; label: string }[]).filter((f) => f.key !== key);
@@ -116,7 +115,7 @@ export async function removeBankLogo(formData: FormData): Promise<void> {
   if (bank?.logo_path) await db().storage.from(ASSETS_BUCKET).remove([bank.logo_path]);
   await db().from("banks").update({ logo_path: null }).eq("id", id);
   revalidatePath("/admin/banks");
-  redirect(`/admin/banks?country=${countryId}`);
+  redirect(`/admin/banks/${id}`);
 }
 
 /** Upload/replace a bank's logo on its own (fires as soon as a file is picked). */
@@ -124,7 +123,7 @@ export async function uploadBankLogo(formData: FormData): Promise<void> {
   await requirePerm("banks", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/banks?country=${countryId}`;
+  const back = `/admin/banks/${id}`;
   const logo = formData.get("logo");
   if (!(logo instanceof File) || logo.size === 0) fail(back, "Please choose an image");
   if (!logo.type.startsWith("image/")) fail(back, "The logo must be an image");

@@ -5,7 +5,7 @@ import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { HeroCard, StatCard, PALETTES, dailyCounts, cumulative } from "@/components/dash";
 import type { OwnerStatus } from "@/lib/types";
-import { adminCountry } from "@/modules/countries/lib";
+import { adminScope } from "@/modules/countries/lib";
 
 // Tables that carry a country_id and therefore follow the active-country scope.
 const COUNTRY_SCOPED = new Set(["owners", "companies", "bank_accounts", "training_videos", "exams", "banks"]);
@@ -30,10 +30,13 @@ async function recentDates(table: string, countryId?: string | null): Promise<st
 // user can view registers its stats here.
 export default async function AdminDashboard() {
   const cu = await requirePlatformUser();
-  const { active } = await adminCountry();
-  const cid = active?.id ?? null;
+  const scope = await adminScope(cu);
+  const cid = scope.active?.id ?? null;
+  const isGlobal = scope.mode === "global";
   const toggles = await globalModuleToggles();
-  const on = (key: string) => moduleEnabledFor(key, toggles, null) && can(cu, key, "view");
+  // Operational cards belong to a country; the console shows platform stats only.
+  const moduleOn = (key: string) => moduleEnabledFor(key, toggles, null) && can(cu, key, "view");
+  const on = (key: string) => !isGlobal && moduleOn(key);
   const ownersOn = on("owners");
   const companiesOn = on("companies");
 
@@ -66,7 +69,7 @@ export default async function AdminDashboard() {
       />
     );
   }
-  if (can(cu, "merchants", "view")) {
+  if (!isGlobal && can(cu, "merchants", "view")) {
     const wl = cid
       ? (await db().from("merchant_countries").select("merchant_id", { count: "exact", head: true }).eq("country_id", cid)).count ?? 0
       : await countRows("merchants", (q: any) => q.eq("status", "active"));
@@ -82,7 +85,7 @@ export default async function AdminDashboard() {
     );
   }
   // Countries is a platform-level stat — meaningless inside a single country.
-  if (!cid && can(cu, "countries", "view")) {
+  if (isGlobal && can(cu, "countries", "view")) {
     cards.push(
       <StatCard
         key="countries"
@@ -128,7 +131,7 @@ export default async function AdminDashboard() {
       />
     );
   }
-  if (!cid && can(cu, "users", "view")) {
+  if (isGlobal && can(cu, "users", "view")) {
     const dates = await recentDates("users");
     cards.push(
       <StatCard
@@ -142,7 +145,7 @@ export default async function AdminDashboard() {
       />
     );
   }
-  if (!cid && on("telegram")) {
+  if (isGlobal && moduleOn("telegram")) {
     const total = await countRows("telegram_bots");
     const healthy = await countRows("telegram_bots", (q: any) => q.eq("last_check_ok", true));
     cards.push(

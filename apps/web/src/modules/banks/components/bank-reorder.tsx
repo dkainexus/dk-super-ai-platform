@@ -11,11 +11,14 @@ export function BankReorder({
   ids,
   countryId,
   canEdit,
+  dense,
   children,
 }: {
   ids: string[];
   countryId: string;
   canEdit: boolean;
+  /** Table rows instead of cards: tighter spacing, divider lines */
+  dense?: boolean;
   children: ReactNode[];
 }) {
   const [order, setOrder] = useState<number[]>(ids.map((_, i) => i));
@@ -48,7 +51,7 @@ export function BankReorder({
   }
 
   return (
-    <div className="space-y-3">
+    <div className={dense ? "divide-y divide-border" : "space-y-3"}>
       {order.map((i) => (
         <div
           key={ids[i]}
@@ -60,9 +63,9 @@ export function BankReorder({
             e.preventDefault();
             commit();
           }}
-          className={`flex items-start gap-2 rounded-xl transition-[opacity,box-shadow] ${
-            dragging === i ? "opacity-60 shadow-[0_0_0_1px_var(--accent)]" : ""
-          }`}
+          className={`flex gap-2 transition-[opacity,box-shadow] ${
+            dense ? "items-center hover:bg-surface-raised" : "items-start rounded-xl"
+          } ${dragging === i ? "opacity-60 shadow-[0_0_0_1px_var(--accent)]" : ""}`}
         >
           {canEdit && (
             <span
@@ -75,7 +78,7 @@ export function BankReorder({
               }}
               onDragEnd={commit}
               title="Drag to reorder"
-              className="mt-5 cursor-grab select-none px-1 text-lg leading-none text-muted transition-colors hover:text-foreground active:cursor-grabbing"
+              className={`cursor-grab select-none px-1 text-lg leading-none text-muted transition-colors hover:text-foreground active:cursor-grabbing ${dense ? "" : "mt-5"}`}
             >
               ⠿
             </span>

@@ -6,7 +6,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
 import type { Country, Merchant } from "@/lib/types";
-import { adminCountry } from "@/modules/countries/lib";
+import { requireCountryScope } from "@/modules/countries/lib";
 
 // White label directory: every tenant with its countries, plus creation
 // (pick the countries here — creation no longer lives on the country page).
@@ -17,7 +17,7 @@ export default async function MerchantsPage({
 }) {
   const { cu } = await requirePerm("merchants", "view");
   const { error, country = "" } = await searchParams;
-  const { active } = await adminCountry();
+  const { active } = await requireCountryScope();
   const scoped = active?.id ?? country;
 
   const [{ data: merchants }, { data: countries }, { data: mcRows }] = await Promise.all([

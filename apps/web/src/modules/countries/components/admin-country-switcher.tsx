@@ -12,9 +12,14 @@ type CountryOpt = { id: string; name: string; flag: string | null };
 export function AdminCountrySwitcher({
   countries,
   activeId,
+  isGlobal,
+  canGoGlobal,
 }: {
   countries: CountryOpt[];
   activeId: string | null;
+  isGlobal: boolean;
+  /** Only superadmins get the platform console */
+  canGoGlobal: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -51,12 +56,12 @@ export function AdminCountrySwitcher({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title="Scope the whole back office to one country"
+        title="Switch between the platform console and a country"
         className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface-raised/60 px-3 py-2 text-sm transition-colors hover:border-accent"
       >
-        <span className="text-base leading-none">{active?.flag ?? "🌐"}</span>
+        <span className="text-base leading-none">{isGlobal ? "⚙️" : active?.flag ?? "🌐"}</span>
         <span className="min-w-0 flex-1 truncate text-left font-medium">
-          {active?.name ?? "All countries"}
+          {isGlobal ? "Global" : active?.name ?? "Pick a country"}
         </span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-muted">
           <path d="m6 9 6 6 6-6" />
@@ -65,7 +70,7 @@ export function AdminCountrySwitcher({
 
       {open && (
         <div className="absolute left-0 right-0 z-40 mt-1 overflow-hidden rounded-lg border border-border bg-surface shadow-xl">
-          {option("", "All countries", null, active === null)}
+          {canGoGlobal && option("", "Global — platform settings", "⚙️", isGlobal)}
           {countries.map((c) => option(c.id, c.name, c.flag, c.id === activeId))}
         </div>
       )}

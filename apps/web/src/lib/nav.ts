@@ -2,14 +2,24 @@ import "server-only";
 import { can, type CurrentUser } from "./auth";
 import { globalModuleToggles, moduleEnabledFor } from "./settings";
 import { activeCountry } from "@/modules/merchants/lib";
+import { adminScope } from "@/modules/countries/lib";
 import { MODULES } from "@/modules/registry";
 import type { NavItem, NavSection } from "@/components/sidebar-nav";
 
-/** Sidebar sections for the current user: permission- and toggle-filtered. */
+/**
+ * The platform back office has two shapes:
+ *  - the global console (superadmin only): platform-wide settings, no records
+ *  - a country: the operational modules for that country
+ * These module keys belong to the console and never show up inside a country.
+ */
+const GLOBAL_ONLY = new Set(["countries", "telegram", "users", "roles"]);
+
+/** Sidebar sections for the current user: permission-, toggle- and scope-filtered. */
 export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   const toggles = await globalModuleToggles();
   const isMerchant = Boolean(cu.merchant);
   const country = isMerchant ? (await activeCountry(cu)).active : null;
+  const isGlobal = !isMerchant && (await adminScope(cu)).mode === "global";
 
   const canSettings = Boolean(can(cu, "settings", "view"));
   const items: NavItem[] = [];
@@ -18,20 +28,13 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     if (!nav) continue;
     if (!m.core && !moduleEnabledFor(m.key, toggles, cu.merchant, country)) continue;
     if (!can(cu, m.key, "view")) continue;
+    if (!isMerchant && m.key !== "settings" && GLOBAL_ONLY.has(m.key) !== isGlobal) continue;
     const item: NavItem = { ...nav };
-    // Module settings live under their own module, not buried in Settings.
-    if (!isMerchant && m.settingsHref && canSettings) {
+    // Per-country module settings hang off their module, inside a country only.
+    if (!isMerchant && !isGlobal && m.settingsHref && canSettings) {
       item.children = [{ href: m.settingsHref, label: "Settings" }];
     }
     items.push(item);
-  }
-
-  // Training's release page has no home of its own — hang it off the module.
-  if (!isMerchant) {
-    const training = items.find((i) => i.href === "/admin/training");
-    if (training && canSettings) {
-      training.children = [...(training.children ?? []), { href: "/admin/settings/app", label: "App Releases" }];
-    }
   }
 
   const home = isMerchant ? "/m" : "/admin";
@@ -43,10 +46,21 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   ];
   const manage = items.filter((i) => isAdminManage(i.href));
   if (manage.length) sections.push({ heading: "Access", items: manage });
-  if (settingsItems.length) {
-    const system: NavItem[] = [...settingsItems];
-    if (!isMerchant && canSettings) system.unshift({ href: "/admin/modules", label: "Modules" });
-    sections.push({ heading: "System", items: system });
+
+  if (isGlobal) {
+    if (canSettings) {
+      sections.push({
+        heading: "Platform",
+        items: [
+          { href: "/admin/modules", label: "Modules" },
+          { href: "/admin/settings", label: "Platform Settings" },
+          { href: "/admin/settings/ai", label: "AI Assistant Keys" },
+          { href: "/admin/settings/app", label: "Mobile App Releases" },
+        ],
+      });
+    }
+  } else if (settingsItems.length) {
+    sections.push({ heading: "System", items: settingsItems });
   }
   return sections;
 }

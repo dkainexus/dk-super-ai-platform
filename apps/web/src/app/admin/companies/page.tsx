@@ -4,7 +4,7 @@ import { db } from "@/lib/supabase";
 import { CompanyStatusTag } from "@/components/status-tag";
 import { FilterForm } from "@/components/filter-form";
 import { FilterSelect, Table, TableToolbar } from "@/components/data-table";
-import { adminCountry } from "@/modules/countries/lib";
+import { requireCountryScope } from "@/modules/countries/lib";
 import { COMPANY_STATUS_LABEL, type Company, type CompanyStatus } from "@/lib/types";
 
 type Row = Company & {
@@ -21,7 +21,7 @@ export default async function AdminCompaniesPage({
 }) {
   const { cu } = await requirePerm("companies", "view");
   const { status = "", merchant = "", province = "" } = await searchParams;
-  const { active } = await adminCountry();
+  const { active } = await requireCountryScope();
 
   const { data: merchantRows } = await db()
     .from("merchants")
