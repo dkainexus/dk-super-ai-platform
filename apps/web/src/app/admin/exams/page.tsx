@@ -2,6 +2,7 @@ import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { ExamsIndexView, type ExamRow } from "@/modules/exams/components/exam-views";
 import type { Country, Exam, Merchant } from "@/lib/types";
+import { adminCountry } from "@/modules/countries/lib";
 
 export default async function AdminExamsPage({
   searchParams,
@@ -11,8 +12,12 @@ export default async function AdminExamsPage({
   const { cu } = await requirePerm("exams", "view");
   const { error } = await searchParams;
 
+  const { active } = await adminCountry();
+  let examQuery = db().from("exams").select("*, items:exam_items(question_id)").order("sort").order("created_at");
+  if (active) examQuery = examQuery.or(`country_id.is.null,country_id.eq.${active.id}`);
+
   const [{ data: exams }, { data: merchants }, { data: countries }] = await Promise.all([
-    db().from("exams").select("*, items:exam_items(question_id)").order("sort").order("created_at"),
+    examQuery,
     db().from("merchants").select("*").eq("status", "active").order("name"),
     db().from("countries").select("*").eq("active", true).order("sort"),
   ]);

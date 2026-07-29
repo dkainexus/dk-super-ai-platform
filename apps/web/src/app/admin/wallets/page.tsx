@@ -7,6 +7,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import type { Owner, Wallet, Withdrawal } from "@/lib/types";
 import { MoneyInput } from "@/components/money-input";
+import { adminCountry } from "@/modules/countries/lib";
 
 // Platform wallet center: withdrawal queue (the money you owe people) on
 // top, balances + manual credit below.
@@ -22,10 +23,16 @@ export default async function AdminWalletsPage({
 
   let wq = db().from("withdrawals").select("*").order("requested_at", { ascending: false }).limit(100);
   if (status) wq = wq.eq("status", status);
+  const { active } = await adminCountry();
+  let ownerQuery = db()
+    .from("owners")
+    .select("id, full_name, merchant_id, country_id, status, merchant:merchants(name), country:countries(flag, name)");
+  if (active) ownerQuery = ownerQuery.eq("country_id", active.id);
+
   const [{ data: withdrawals }, { data: wallets }, { data: owners }] = await Promise.all([
     wq,
     db().from("wallets").select("*").order("balance", { ascending: false }),
-    db().from("owners").select("id, full_name, merchant_id, country_id, status, merchant:merchants(name), country:countries(flag, name)"),
+    ownerQuery,
   ]);
 
   const ownerById = new Map(

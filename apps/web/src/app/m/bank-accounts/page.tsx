@@ -26,7 +26,7 @@ export default async function MerchantBankAccountsPage({
     .neq("status", "banned")
     .order("name");
   if (active) cq = cq.eq("country_id", active.id);
-  let bq = db().from("banks").select("id, name, country_id, account_fields, channels").eq("active", true).order("sort");
+  let bq = db().from("banks").select("id, name, code, country_id, account_fields, channels").eq("active", true).order("sort");
   if (active) bq = bq.eq("country_id", active.id);
   const [rows, { data: companies }, { data: banks }] = await Promise.all([
     bankAccounts({ merchantId: cu.merchant.id, countryId: active?.id }),

@@ -3,6 +3,7 @@ import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { CompanyStatusTag } from "@/components/status-tag";
 import { COMPANY_STATUS_LABEL, type Company, type CompanyStatus } from "@/lib/types";
+import { adminCountry } from "@/modules/countries/lib";
 
 // Platform-wide company list with filters on the structured columns.
 export default async function AdminCompaniesPage({
@@ -12,6 +13,8 @@ export default async function AdminCompaniesPage({
 }) {
   const { cu } = await requirePerm("companies", "view");
   const { status = "", country = "", merchant = "", province = "" } = await searchParams;
+  const { active } = await adminCountry();
+  const scoped = active?.id ?? country;
 
   const [{ data: countries }, { data: merchants }] = await Promise.all([
     db().from("countries").select("id, name, flag").order("sort"),
@@ -24,7 +27,7 @@ export default async function AdminCompaniesPage({
     .order("created_at", { ascending: false })
     .limit(200);
   if (status) q = q.eq("status", status);
-  if (country) q = q.eq("country_id", country);
+  if (scoped) q = q.eq("country_id", scoped);
   if (merchant) q = q.eq("merchant_id", merchant);
   if (province) q = q.ilike("province", `%${province}%`);
   const { data: companies } = await q;

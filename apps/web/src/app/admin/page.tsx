@@ -5,17 +5,24 @@ import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { HeroCard, StatCard, PALETTES, dailyCounts, cumulative } from "@/components/dash";
 import type { OwnerStatus } from "@/lib/types";
+import { adminCountry } from "@/modules/countries/lib";
 
-async function countRows(table: string, filter?: (q: any) => any): Promise<number> {
+// Tables that carry a country_id and therefore follow the active-country scope.
+const COUNTRY_SCOPED = new Set(["owners", "companies", "bank_accounts", "training_videos", "exams", "banks"]);
+
+async function countRows(table: string, filter?: (q: any) => any, countryId?: string | null): Promise<number> {
   let q = db().from(table).select("id", { count: "exact", head: true });
+  if (countryId && COUNTRY_SCOPED.has(table)) q = q.eq("country_id", countryId);
   if (filter) q = filter(q);
   const { count } = await q;
   return count ?? 0;
 }
 
-async function recentDates(table: string): Promise<string[]> {
+async function recentDates(table: string, countryId?: string | null): Promise<string[]> {
   const since = new Date(Date.now() - 14 * 86400000).toISOString();
-  const { data } = await db().from(table).select("created_at").gte("created_at", since).limit(2000);
+  let q = db().from(table).select("created_at").gte("created_at", since).limit(2000);
+  if (countryId && COUNTRY_SCOPED.has(table)) q = q.eq("country_id", countryId);
+  const { data } = await q;
   return ((data ?? []) as { created_at: string }[]).map((r) => r.created_at);
 }
 
@@ -23,6 +30,8 @@ async function recentDates(table: string): Promise<string[]> {
 // user can view registers its stats here.
 export default async function AdminDashboard() {
   const cu = await requirePlatformUser();
+  const { active } = await adminCountry();
+  const cid = active?.id ?? null;
   const toggles = await globalModuleToggles();
   const on = (key: string) => moduleEnabledFor(key, toggles, null) && can(cu, key, "view");
   const ownersOn = on("owners");
@@ -33,17 +42,17 @@ export default async function AdminDashboard() {
   let ownersTotal = 0;
   let pending = 0;
   if (ownersOn) {
-    ownersTotal = await countRows("owners");
-    pending = await countRows("owners", (q: any) => q.eq("status", "pending"));
-    const newDaily = dailyCounts(await recentDates("owners"));
+    ownersTotal = await countRows("owners", undefined, cid);
+    pending = await countRows("owners", (q: any) => q.eq("status", "pending"), cid);
+    const newDaily = dailyCounts(await recentDates("owners", cid));
     const before = ownersTotal - newDaily.reduce((a, b) => a + b, 0);
     heroSpark = cumulative(newDaily, Math.max(before, 0));
   }
 
   const cards: React.ReactNode[] = [];
   if (companiesOn) {
-    const total = await countRows("companies");
-    const registered = await countRows("companies", (q: any) => q.eq("status", "registered"));
+    const total = await countRows("companies", undefined, cid);
+    const registered = await countRows("companies", (q: any) => q.eq("status", "registered"), cid);
     cards.push(
       <StatCard
         key="companies"
@@ -53,7 +62,7 @@ export default async function AdminDashboard() {
         icon="🏢"
         palette={PALETTES.violet}
         href="/admin/companies"
-        spark={cumulative(dailyCounts(await recentDates("companies")), Math.max(total - 1, 0))}
+        spark={cumulative(dailyCounts(await recentDates("companies", cid)), Math.max(total - 1, 0))}
       />
     );
   }
@@ -62,7 +71,7 @@ export default async function AdminDashboard() {
       <StatCard
         key="wl"
         label="White Labels"
-        value={await countRows("merchants", (q: any) => q.eq("status", "active"))}
+        value={await countRows("merchants", (q: any) => q.eq("status", "active"), cid)}
         icon="🏷️"
         palette={PALETTES.blue}
         href="/admin/countries"
@@ -74,7 +83,7 @@ export default async function AdminDashboard() {
       <StatCard
         key="countries"
         label="Countries"
-        value={await countRows("countries", (q: any) => q.eq("active", true))}
+        value={await countRows("countries", (q: any) => q.eq("active", true), cid)}
         icon="🌏"
         palette={PALETTES.green}
         href="/admin/countries"
@@ -82,7 +91,7 @@ export default async function AdminDashboard() {
     );
   }
   if (on("wallet")) {
-    const pendingW = await countRows("withdrawals", (q: any) => q.eq("status", "pending"));
+    const pendingW = await countRows("withdrawals", (q: any) => q.eq("status", "pending"), cid);
     cards.push(
       <StatCard
         key="wallet"
@@ -100,7 +109,7 @@ export default async function AdminDashboard() {
       <StatCard
         key="banks"
         label="Banks"
-        value={await countRows("banks", (q: any) => q.eq("active", true))}
+        value={await countRows("banks", (q: any) => q.eq("active", true), cid)}
         icon="🏦"
         palette={PALETTES.pink}
         href="/admin/banks"
@@ -108,12 +117,12 @@ export default async function AdminDashboard() {
     );
   }
   if (can(cu, "users", "view")) {
-    const dates = await recentDates("users");
+    const dates = await recentDates("users", cid);
     cards.push(
       <StatCard
         key="users"
         label="Users"
-        value={await countRows("users", (q: any) => q.eq("active", true))}
+        value={await countRows("users", (q: any) => q.eq("active", true), cid)}
         icon="👤"
         palette={PALETTES.cyan}
         href="/admin/users"
@@ -122,8 +131,8 @@ export default async function AdminDashboard() {
     );
   }
   if (on("telegram")) {
-    const total = await countRows("telegram_bots");
-    const healthy = await countRows("telegram_bots", (q: any) => q.eq("last_check_ok", true));
+    const total = await countRows("telegram_bots", undefined, cid);
+    const healthy = await countRows("telegram_bots", (q: any) => q.eq("last_check_ok", true), cid);
     cards.push(
       <StatCard
         key="tg"
@@ -137,8 +146,8 @@ export default async function AdminDashboard() {
     );
   }
   if (on("training")) {
-    const total = await countRows("training_videos");
-    const published = await countRows("training_videos", (q: any) => q.eq("published", true));
+    const total = await countRows("training_videos", undefined, cid);
+    const published = await countRows("training_videos", (q: any) => q.eq("published", true), cid);
     cards.push(
       <StatCard
         key="training"
@@ -148,13 +157,13 @@ export default async function AdminDashboard() {
         icon="🎬"
         palette={PALETTES.violet}
         href="/admin/training"
-        spark={cumulative(dailyCounts(await recentDates("training_videos")), Math.max(total - 1, 0))}
+        spark={cumulative(dailyCounts(await recentDates("training_videos", cid)), Math.max(total - 1, 0))}
       />
     );
   }
   if (on("exams")) {
-    const total = await countRows("exams");
-    const attempts = await countRows("exam_attempts");
+    const total = await countRows("exams", undefined, cid);
+    const attempts = await countRows("exam_attempts", undefined, cid);
     cards.push(
       <StatCard
         key="exams"
@@ -164,13 +173,13 @@ export default async function AdminDashboard() {
         icon="📝"
         palette={PALETTES.blue}
         href="/admin/exams"
-        bars={dailyCounts(await recentDates("exam_attempts"), 12)}
+        bars={dailyCounts(await recentDates("exam_attempts", cid), 12)}
       />
     );
   }
   if (on("notifications")) {
-    const total = await countRows("notifications");
-    const unread = await countRows("notifications", (q: any) => q.is("read_at", null));
+    const total = await countRows("notifications", undefined, cid);
+    const unread = await countRows("notifications", (q: any) => q.is("read_at", null), cid);
     cards.push(
       <StatCard
         key="notifications"
@@ -180,7 +189,7 @@ export default async function AdminDashboard() {
         icon="🔔"
         palette={PALETTES.pink}
         href="/admin/notifications"
-        bars={dailyCounts(await recentDates("notifications"), 12)}
+        bars={dailyCounts(await recentDates("notifications", cid), 12)}
       />
     );
   }
@@ -216,7 +225,7 @@ export default async function AdminDashboard() {
             icon="⏳"
             palette={pending > 0 ? PALETTES.amber : PALETTES.green}
             href="/admin/owners?status=pending"
-            bars={dailyCounts(await recentDates("owners"), 12)}
+            bars={dailyCounts(await recentDates("owners", cid), 12)}
           />
         </div>
       )}

@@ -6,6 +6,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
 import type { Country, Merchant } from "@/lib/types";
+import { adminCountry } from "@/modules/countries/lib";
 
 // White label directory: every tenant with its countries, plus creation
 // (pick the countries here — creation no longer lives on the country page).
@@ -16,6 +17,8 @@ export default async function MerchantsPage({
 }) {
   const { cu } = await requirePerm("merchants", "view");
   const { error, country = "" } = await searchParams;
+  const { active } = await adminCountry();
+  const scoped = active?.id ?? country;
 
   const [{ data: merchants }, { data: countries }, { data: mcRows }] = await Promise.all([
     db().from("merchants").select("*, users(count), owners(count), companies(count)").order("name"),
@@ -44,12 +47,12 @@ export default async function MerchantsPage({
       </div>
       <ErrorBanner message={error} />
 
-      {/* Country tabs — white labels are grouped by the countries they run in */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Country tabs — hidden while the back office is scoped to one country */}
+      <div className={`flex-wrap items-center gap-2 ${active ? "hidden" : "flex"}`}>
         <Link
           href="/admin/merchants"
           className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-            country === "" ? "border-accent bg-accent-soft text-accent-strong" : "border-border text-muted hover:text-foreground"
+            scoped === "" ? "border-accent bg-accent-soft text-accent-strong" : "border-border text-muted hover:text-foreground"
           }`}
         >
           All
@@ -59,7 +62,7 @@ export default async function MerchantsPage({
             key={c.id}
             href={`/admin/merchants?country=${c.id}`}
             className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-              country === c.id ? "border-accent bg-accent-soft text-accent-strong" : "border-border text-muted hover:text-foreground"
+              scoped === c.id ? "border-accent bg-accent-soft text-accent-strong" : "border-border text-muted hover:text-foreground"
             }`}
           >
             {c.name}
@@ -67,7 +70,7 @@ export default async function MerchantsPage({
         ))}
       </div>
 
-      {(country ? ((countries ?? []) as Country[]).filter((c) => c.id === country) : ((countries ?? []) as Country[])).map(
+      {(scoped ? ((countries ?? []) as Country[]).filter((c) => c.id === scoped) : ((countries ?? []) as Country[])).map(
         (c) => {
           const mine = ((merchants ?? []) as Row[]).filter((m) =>
             (countriesOf.get(m.id) ?? []).some((x) => x.id === c.id)
@@ -107,7 +110,7 @@ export default async function MerchantsPage({
         }
       )}
 
-      {((merchants ?? []) as Row[]).filter((m) => (countriesOf.get(m.id) ?? []).length === 0).length > 0 && (
+      {!scoped && ((merchants ?? []) as Row[]).filter((m) => (countriesOf.get(m.id) ?? []).length === 0).length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">No country assigned</h2>
           <div className="card divide-y divide-border">

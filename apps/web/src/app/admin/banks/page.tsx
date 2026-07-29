@@ -4,10 +4,12 @@ import { db } from "@/lib/supabase";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { createBank, updateBank, deleteBank, addBankField, removeBankField } from "@/modules/banks/actions";
 import { BankLogo } from "@/modules/banks/components/bank-logo";
+import { BankReorder } from "@/modules/banks/components/bank-reorder";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
 import type { Country } from "@/lib/types";
+import { adminCountry } from "@/modules/countries/lib";
 
 type Bank = {
   id: string;
@@ -32,9 +34,8 @@ export default async function BanksPage({
   const { cu } = await requirePerm("banks", "view");
   const { country = "", error } = await searchParams;
 
-  const { data: countries } = await db().from("countries").select("*").eq("active", true).order("sort");
-  const list = (countries ?? []) as Country[];
-  const selected = list.find((c) => c.id === country) ?? list[0] ?? null;
+  const { active, all: list } = await adminCountry();
+  const selected = active ?? list.find((c) => c.id === country) ?? list[0] ?? null;
 
   const { data: banks } = selected
     ? await db().from("banks").select("*").eq("country_id", selected.id).order("sort").order("name")
@@ -60,8 +61,8 @@ export default async function BanksPage({
       </div>
       <ErrorBanner message={error} />
 
-      {/* Country tabs */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Country tabs — hidden while the back office is scoped to one country */}
+      <div className={`flex-wrap items-center gap-2 ${active ? "hidden" : "flex"}`}>
         {list.map((c) => (
           <Link
             key={c.id}
@@ -79,11 +80,11 @@ export default async function BanksPage({
 
       {selected && (
         <>
-          <div className="space-y-3">
-            {bankRows.length === 0 && (
-              <p className="card px-5 py-6 text-sm text-muted">No banks for {selected.name} yet.</p>
-            )}
-            {bankRows.map((b) => {
+          {bankRows.length === 0 ? (
+            <p className="card px-5 py-6 text-sm text-muted">No banks for {selected.name} yet.</p>
+          ) : (
+            <BankReorder ids={bankRows.map((b) => b.id)} countryId={selected.id} canEdit={Boolean(canEdit)}>
+              {bankRows.map((b) => {
               const logo = logos.get(b.id);
               return (
                 <div key={b.id} className="card p-4">
@@ -91,7 +92,7 @@ export default async function BanksPage({
                     <form action={updateBank} className="space-y-3">
                       <input type="hidden" name="id" value={b.id} />
                       <input type="hidden" name="country_id" value={selected.id} />
-                      <div className="grid items-end gap-3 sm:grid-cols-[3rem_1fr_8rem_6rem_5rem_auto_auto]">
+                      <div className="grid items-end gap-3 sm:grid-cols-[3rem_1fr_8rem_5rem_auto_auto]">
                         <BankLogo
                           bankId={b.id}
                           countryId={selected.id}
@@ -105,10 +106,6 @@ export default async function BanksPage({
                         <div>
                           <label className="mb-1 block text-xs text-muted">Code</label>
                           <input name="code" defaultValue={b.code ?? ""} className="input mono-num uppercase" />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs text-muted">Sort</label>
-                          <input name="sort" type="number" defaultValue={b.sort} className="input mono-num" />
                         </div>
                         <label className="flex items-center gap-2 pb-2 text-xs text-muted">
                           <input type="checkbox" name="active" defaultChecked={b.active} /> Active
@@ -214,8 +211,9 @@ export default async function BanksPage({
                   )}
                 </div>
               );
-            })}
-          </div>
+              })}
+            </BankReorder>
+          )}
 
           {canAdd && (
             <section className="card p-5">

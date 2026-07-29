@@ -3,6 +3,7 @@ import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { OwnerStatusTag } from "@/components/status-tag";
 import type { OwnerStatus } from "@/lib/types";
+import { adminCountry } from "@/modules/countries/lib";
 
 const STATUSES: { value: string; label: string }[] = [
   { value: "", label: "All" },
@@ -20,6 +21,8 @@ export default async function AdminOwnersPage({
 }) {
   const { cu } = await requirePerm("owners", "view");
   const { status = "", country = "" } = await searchParams;
+  const { active } = await adminCountry();
+  const scoped = active?.id ?? country;
 
   const { data: countries } = await db().from("countries").select("id, name, flag").order("sort");
 
@@ -29,7 +32,7 @@ export default async function AdminOwnersPage({
     .order("created_at", { ascending: false })
     .limit(200);
   if (status) q = q.eq("status", status);
-  if (country) q = q.eq("country_id", country);
+  if (scoped) q = q.eq("country_id", scoped);
   const { data: owners } = await q;
 
   const qs = (s: string, c: string) => {

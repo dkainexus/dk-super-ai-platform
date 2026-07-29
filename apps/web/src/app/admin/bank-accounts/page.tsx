@@ -3,6 +3,7 @@ import { db } from "@/lib/supabase";
 import { bankAccounts } from "@/modules/bank-accounts/lib";
 import { BankAccountsView } from "@/modules/bank-accounts/components/accounts-view";
 import type { FormBank, FormCompany } from "@/modules/bank-accounts/components/account-form";
+import { adminCountry } from "@/modules/countries/lib";
 
 export default async function AdminBankAccountsPage({
   searchParams,
@@ -11,11 +12,19 @@ export default async function AdminBankAccountsPage({
 }) {
   const { cu } = await requirePerm("bank_accounts", "view");
   const { error, status = "" } = await searchParams;
+  const { active } = await adminCountry();
+
+  let companyQuery = db().from("companies").select("id, name, country_id, merchant:merchants(name)").neq("status", "banned").order("name");
+  let bankQuery = db().from("banks").select("id, name, code, country_id, account_fields, channels").eq("active", true).order("sort");
+  if (active) {
+    companyQuery = companyQuery.eq("country_id", active.id);
+    bankQuery = bankQuery.eq("country_id", active.id);
+  }
 
   const [rows, { data: companies }, { data: banks }] = await Promise.all([
-    bankAccounts({}),
-    db().from("companies").select("id, name, country_id, merchant:merchants(name)").neq("status", "banned").order("name"),
-    db().from("banks").select("id, name, country_id, account_fields, channels").eq("active", true).order("sort"),
+    bankAccounts({ countryId: active?.id }),
+    companyQuery,
+    bankQuery,
   ]);
   const { data: countries } = await db().from("countries").select("id, code");
   const countryCodes = Object.fromEntries(

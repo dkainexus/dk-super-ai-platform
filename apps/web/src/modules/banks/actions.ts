@@ -49,14 +49,13 @@ export async function updateBank(formData: FormData): Promise<void> {
   const back = `/admin/banks?country=${countryId}`;
   const name = String(formData.get("name") ?? "").trim();
   const code = String(formData.get("code") ?? "").trim().toUpperCase() || null;
-  const sort = parseInt(String(formData.get("sort") ?? "100"), 10) || 100;
   const active = formData.get("active") === "on";
   if (!name) fail(back, "Bank name cannot be empty");
 
   // Payment channels are ticked from the country's list; extra fields and the
   // logo have their own instant actions.
   const channels = formData.getAll("channels").map(String).filter(Boolean);
-  const patch: Record<string, unknown> = { name, code, sort, active, channels };
+  const patch: Record<string, unknown> = { name, code, active, channels };
 
   const { error } = await db().from("banks").update(patch).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);
@@ -137,4 +136,13 @@ export async function uploadBankLogo(formData: FormData): Promise<void> {
   }
   revalidatePath("/admin/banks");
   redirect(back);
+}
+
+/** Persist a drag-and-drop ordering of a country's banks. */
+export async function reorderBanks(countryId: string, ids: string[]): Promise<void> {
+  await requirePerm("banks", "edit");
+  await Promise.all(
+    ids.map((id, i) => db().from("banks").update({ sort: (i + 1) * 10 }).eq("id", id).eq("country_id", countryId))
+  );
+  revalidatePath("/admin/banks");
 }

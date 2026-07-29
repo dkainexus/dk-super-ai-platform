@@ -4,6 +4,7 @@ import { sendNotification, deleteNotification } from "@/modules/notifications/ac
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import { NOTIFICATION_TYPE_LABEL, type AppNotification, type Country, type Merchant, type NotificationType } from "@/lib/types";
+import { adminCountry } from "@/modules/countries/lib";
 
 const TYPE_COLORS: Record<NotificationType, string> = {
   general: "border-border text-muted",
@@ -22,6 +23,10 @@ export default async function AdminNotificationsPage({
   const { cu } = await requirePerm("notifications", "view");
   const { error, sent } = await searchParams;
 
+  const { active } = await adminCountry();
+  let ownerQuery = db().from("owners").select("id, full_name, status").neq("status", "banned").order("full_name");
+  if (active) ownerQuery = ownerQuery.eq("country_id", active.id);
+
   const [{ data: rows }, { data: merchants }, { data: countries }, { data: owners }] = await Promise.all([
     db()
       .from("notifications")
@@ -30,7 +35,7 @@ export default async function AdminNotificationsPage({
       .limit(100),
     db().from("merchants").select("*").eq("status", "active").order("name"),
     db().from("countries").select("*").eq("active", true).order("sort"),
-    db().from("owners").select("id, full_name, status").neq("status", "banned").order("full_name"),
+    ownerQuery,
   ]);
   const list = (rows ?? []) as (AppNotification & { owner: { full_name: string | null } | null })[];
   const canAdd = can(cu, "notifications", "add");

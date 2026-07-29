@@ -13,6 +13,7 @@ export type FormCompany = { id: string; name: string; country_id: string | null;
 export type FormBank = {
   id: string;
   name: string;
+  code: string | null;
   country_id: string;
   account_fields: { key: string; label: string }[];
   channels: string[];
@@ -75,7 +76,9 @@ export function BankAccountForm({
           >
             <option value="">{companyId ? "— Select a bank —" : "Choose a company first"}</option>
             {bankOptions.map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
+              <option key={b.id} value={b.id}>
+                {b.name}{b.code ? ` (${b.code})` : ""}
+              </option>
             ))}
           </select>
         </div>

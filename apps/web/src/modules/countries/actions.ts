@@ -107,3 +107,20 @@ export async function removePaymentChannel(formData: FormData): Promise<void> {
   redirect(back);
 }
 
+
+/** Switch the platform admin's active country (empty = all countries). */
+export async function switchAdminCountry(formData: FormData): Promise<void> {
+  await requirePerm("countries", "view");
+  const id = String(formData.get("country_id") ?? "");
+  const path = String(formData.get("path") ?? "/admin");
+  const { cookies } = await import("next/headers");
+  const { ADMIN_COUNTRY_COOKIE } = await import("./lib");
+  const jar = await cookies();
+  if (id) {
+    jar.set(ADMIN_COUNTRY_COOKIE, id, { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+  } else {
+    jar.delete(ADMIN_COUNTRY_COOKIE);
+  }
+  revalidatePath("/", "layout");
+  redirect(path.startsWith("/admin") ? path : "/admin");
+}
