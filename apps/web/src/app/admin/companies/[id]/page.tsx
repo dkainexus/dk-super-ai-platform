@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
+import { regionTree, addressLevels } from "@/modules/countries/regions";
 import { bindableOwners, shareholdersEnabledFor, companyTypeNames } from "@/modules/companies/lib";
 import { CompanyForm } from "@/modules/companies/components/company-form";
 import { deleteCompany } from "@/modules/companies/actions";
@@ -30,17 +31,24 @@ export default async function AdminCompanyPage({
   if (!data) notFound();
   const company = data as Company & { merchant: Merchant; country: { name: string; flag: string | null } };
 
-  const [members, owners, shareholdersEnabled, companyTypes, { data: provinceRows }, { data: occupations }] = await Promise.all([
+  const [members, owners, shareholdersEnabled, companyTypes, { data: occupations }] = await Promise.all([
     db().from("company_members").select("*").eq("company_id", id).then((r) => (r.data ?? []) as CompanyMember[]),
     bindableOwners(company.merchant_id),
     shareholdersEnabledFor(company.country_id),
     companyTypeNames(company.country_id),
-        db().from("provinces").select("name").eq("country_id", company.country_id ?? "").eq("active", true).order("sort"),
     db().from("occupations").select("*"),
   ]);
   const occupationType = new Map(((occupations ?? []) as Occupation[]).map((o) => [o.id, o.company_type]));
   const typeByOwner = new Map(owners.map((o) => [o.id, o.occupation_id ? occupationType.get(o.occupation_id) ?? null : null]));
   const canEdit = can(cu, "companies", "edit");
+
+  const { data: addrCountry } = await db()
+    .from("countries")
+    .select("address_levels")
+    .eq("id", company.country_id)
+    .maybeSingle();
+  const regions = await regionTree(company.country_id);
+  const levels = addressLevels(addrCountry as { address_levels?: string[] | null } | null);
 
   return (
     <div className="space-y-6">
@@ -75,7 +83,8 @@ export default async function AdminCompanyPage({
             members={members}
             shareholdersEnabled={shareholdersEnabled}
             companyTypes={companyTypes}
-            provinces={((provinceRows ?? []) as { name: string }[]).map((p) => p.name)}
+            levels={levels}
+            regions={regions}
           />
         ) : (
           <p className="text-sm text-muted">You have view-only access to companies.</p>

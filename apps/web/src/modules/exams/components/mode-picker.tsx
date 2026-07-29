@@ -13,11 +13,14 @@ export function ExamModePicker({
   categoryId = "",
   aiBrief = "",
   categories,
+  children,
 }: {
   mode?: string;
   categoryId?: string;
   aiBrief?: string;
   categories: CategoryOption[];
+  /** Settings that only apply to a marked exam — hidden for the interview. */
+  children?: React.ReactNode;
 }) {
   const [mode, setMode] = useState(initial === "ai_interview" ? "ai_interview" : "bank");
 
@@ -55,14 +58,20 @@ export function ExamModePicker({
       </div>
 
       {mode === "bank" ? (
-        <div>
-          <label className="mb-1 block text-xs text-muted">Draw from category</label>
-          <select name="category_id" defaultValue={categoryId} className="input">
-            <option value="">Whole question bank</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.label}</option>
-            ))}
-          </select>
+        <div className="grid gap-3 sm:grid-cols-[1fr_8rem] sm:items-end">
+          <div>
+            <label className="mb-1 block text-xs text-muted">Question set</label>
+            <select name="category_id" defaultValue={categoryId} className="input" required>
+              <option value="">— Select a set —</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-muted">
+              The exam asks every question in the set. Manage sets under Exams → Question Categories.
+            </p>
+          </div>
+          {children}
         </div>
       ) : (
         <div>
@@ -77,7 +86,8 @@ export function ExamModePicker({
             }
           />
           <p className="mt-1 text-xs text-muted">
-            The AI follows this brief, plays the part, and returns a pass or fail with its reasoning — no score.
+            The AI follows this brief, plays the part, and returns a pass or fail with its reasoning — there is no
+            score and no question bank involved.
           </p>
         </div>
       )}

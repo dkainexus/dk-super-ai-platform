@@ -53,7 +53,7 @@ export function FilterSelect({
 export function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
   return (
     <div className="card overflow-x-auto p-0">
-      <table className="w-full min-w-[46rem] text-sm">
+      <table className="w-full min-w-max text-sm">
         <thead>
           <tr className="border-b border-border text-left">
             {head.map((h) => (

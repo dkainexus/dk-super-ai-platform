@@ -6,6 +6,7 @@
 import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 import { PhotoInput } from "@/components/photo-input";
 import { IdPhotoInput } from "@/components/id-photo-input";
+import { AddressPicker, type RegionNode } from "@/components/address-picker";
 import { saveOwner } from "@/modules/owners/actions-merchant";
 import { SaveButton } from "@/components/action-buttons";
 import type { Bank, CountryField, Occupation, Owner, OwnerFieldValue } from "@/lib/types";
@@ -29,7 +30,8 @@ export async function OwnerForm({
   fields,
   banks = [],
   occupations = [],
-  provinces = [],
+  levels,
+  regions = [],
   agents = [],
   merchants,
   owner,
@@ -41,8 +43,10 @@ export async function OwnerForm({
   fields: CountryField[];
   banks?: Bank[];
   occupations?: Occupation[];
-  /** State / province choices for the owner's country */
-  provinces?: string[];
+  /** Level names for the owner's country, widest first */
+  levels: string[];
+  /** Every area of that country, for the cascading address fields */
+  regions?: RegionNode[];
   /** Agents who can be credited with introducing this owner */
   agents?: { id: string; name: string }[];
   /** White labels to choose from — omitted when the brand is already fixed. */
@@ -68,6 +72,24 @@ export async function OwnerForm({
         <input key={k} type="hidden" name={k} value={v} />
       ))}
 
+      {merchants && (
+        <div>
+          <label className="mb-1 block text-xs text-muted">White Label *</label>
+          <select
+            name="merchant_id"
+            defaultValue={owner?.merchant_id ?? (merchants.length === 1 ? merchants[0].id : "")}
+            className="input"
+            required
+            disabled={locked}
+          >
+            <option value="">— Select a white label —</option>
+            {merchants.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="space-y-4">
         <div className="flex flex-col items-center gap-2">
           <p className="text-xs text-muted">Profile Picture *</p>
@@ -92,23 +114,6 @@ export async function OwnerForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {merchants && (
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs text-muted">White Label *</label>
-            <select
-              name="merchant_id"
-              defaultValue={owner?.merchant_id ?? (merchants.length === 1 ? merchants[0].id : "")}
-              className="input"
-              required
-              disabled={locked}
-            >
-              <option value="">— Select a white label —</option>
-              {merchants.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
         <div>
           <label className="mb-1 block text-xs text-muted">Full Name *</label>
           <input name="full_name" defaultValue={owner?.full_name ?? ""} className="input" required disabled={locked} />
@@ -198,7 +203,7 @@ export async function OwnerForm({
         </div>
       )}
 
-      {/* Address — optional, but the province comes from the country's list */}
+      {/* Address — the area levels come from the country's own list */}
       <div className="border-t border-border pt-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Address</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -210,23 +215,12 @@ export async function OwnerForm({
             <label className="mb-1 block text-xs text-muted">Street</label>
             <input name="street" defaultValue={owner?.street ?? ""} className="input" disabled={locked} />
           </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Sub-district</label>
-            <input name="subdistrict" defaultValue={owner?.subdistrict ?? ""} className="input" disabled={locked} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">District</label>
-            <input name="district" defaultValue={owner?.district ?? ""} className="input" disabled={locked} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">State / Province</label>
-            <select name="province" defaultValue={owner?.province ?? ""} className="input" disabled={locked}>
-              <option value="">— Select —</option>
-              {provinces.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
+          <AddressPicker
+            levels={levels}
+            regions={regions}
+            values={[owner?.province, owner?.district, owner?.subdistrict]}
+            disabled={locked}
+          />
           <div>
             <label className="mb-1 block text-xs text-muted">Postal Code</label>
             <input name="postal_code" defaultValue={owner?.postal_code ?? ""} className="input mono-num" disabled={locked} />

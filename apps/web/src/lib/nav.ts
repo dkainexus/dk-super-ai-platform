@@ -88,10 +88,13 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   if (!isMerchant && !isGlobal && canSettings) {
     // The country you are in has its own settings and module switches.
     sections.push({
-      heading: "This Country",
+      heading: "Country Setting",
       items: [
-        { href: "/admin/country", label: "Country Settings" },
-        { href: "/admin/country/provinces", label: "States / Provinces" },
+        {
+          href: "/admin/country",
+          label: "Countries",
+          children: [{ href: "/admin/country/regions", label: "States / Provinces" }],
+        },
         { href: "/admin/country/modules", label: "Modules" },
       ],
     });

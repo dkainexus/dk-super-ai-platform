@@ -14,7 +14,6 @@ import {
 import { saveMerchantModules } from "@/app/actions/settings";
 import { saveMerchantCountries } from "@/modules/merchants/actions";
 import { merchantCountries } from "@/modules/merchants/lib";
-import { UserCountriesCard } from "@/modules/merchants/components/user-countries";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
@@ -94,35 +93,6 @@ export default async function MerchantDetailPage({
             <input name="logo" type="file" accept="image/*" className="input" required />
           </div>
           <ActionButton icon="upload" tip="Upload this logo" label="Upload" />
-        </form>
-      </section>
-
-      {/* Per-merchant modules */}
-      <UserCountriesCard
-        users={((users ?? []) as (User & { role: Role | null })[]).map((u) => ({ id: u.id, username: u.username, name: u.name }))}
-        countries={enabledCountries}
-        back={`/admin/merchants/${m.id}`}
-      />
-
-      <section className="card p-5">
-        <h2 className="mb-1 text-sm font-semibold">Countries</h2>
-        <p className="mb-4 text-xs text-muted">
-          Which countries this white label operates in. Owners and companies always pick their country at creation —
-          a country with existing data cannot be removed.
-        </p>
-        <form action={saveMerchantCountries} className="space-y-3">
-          <input type="hidden" name="merchant_id" value={m.id} />
-          <div className="grid gap-2 sm:grid-cols-2">
-            {((allCountries ?? []) as Country[]).map((c) => (
-              <label key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-2.5 transition-colors hover:border-accent">
-                <span className="text-sm">
-                  {c.flag || "🌐"} {c.name} <span className="mono-num text-xs text-muted">{c.code}</span>
-                </span>
-                <input type="checkbox" name={`mc_${c.id}`} defaultChecked={enabledIds.has(c.id)} className="h-4 w-4" />
-              </label>
-            ))}
-          </div>
-          <SaveButton tip="Save the countries this white label operates in" />
         </form>
       </section>
 

@@ -37,6 +37,7 @@ export default async function MerchantBankAccountsPage({
       error={error}
       status={status}
       bank={bank}
+      merchant=""
       banks={(banks ?? []) as { id: string; name: string; code: string | null }[]}
       rows={rows}
       total={total}

@@ -3,6 +3,7 @@
 import { createUser, toggleUser, resetUserPassword, setUserRole, deleteUser } from "@/app/actions/access";
 import { ActionButton } from "@/components/action-buttons";
 import { ActiveTag } from "@/components/status-tag";
+import { Table, TableToolbar } from "@/components/data-table";
 import type { Merchant, Role, User } from "@/lib/types";
 
 export type UserRow = User & { role: Role | null; merchant: Merchant | null };
@@ -13,38 +14,53 @@ export function UsersManager({
   merchants,
   isMerchant,
   selfId,
+  filters,
 }: {
   users: UserRow[];
   roles: Role[]; // assignable roles
   merchants: Merchant[]; // platform side only: for the create form
   isMerchant: boolean;
   selfId: string;
+  /** Filter controls for the toolbar, rendered by the page. */
+  filters?: React.ReactNode;
 }) {
   const merchantRoles = roles.filter((r) => r.level === "merchant");
   const platformRoles = roles.filter((r) => r.level === "platform");
 
   return (
-    <div className="space-y-6">
-      <div className="card divide-y divide-border">
-        {users.length === 0 && <p className="px-5 py-6 text-sm text-muted">No users yet.</p>}
+    <div className="space-y-5">
+      <TableToolbar count={users.length} noun="user">
+        {filters}
+      </TableToolbar>
+
+      <Table
+        head={[
+          "Username",
+          "Name",
+          "Role",
+          ...(isMerchant ? [] : ["White Label"]),
+          "Status",
+          "",
+        ]}
+      >
+        {users.length === 0 && (
+          <tr>
+            <td colSpan={isMerchant ? 5 : 6} className="px-4 py-6 text-sm text-muted">
+              No users match these filters.
+            </td>
+          </tr>
+        )}
         {users.map((u) => (
-          <div key={u.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
-            <div className="min-w-0">
-              <p className="mono-num text-sm font-medium">
-                {u.username}
-                {u.is_superadmin && (
-                  <span className="ml-2 rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">Superadmin</span>
-                )}
-              </p>
-              <p className="truncate text-xs text-muted">
-                {u.name || "—"} · {u.role?.name ?? "No role"}
-                {!isMerchant && ` · ${u.merchant?.name ?? "Platform"}`}
-                {u.must_change_password && " · first login pending"}
-              </p>
-            </div>
-            {u.id !== selfId && !u.is_superadmin && (
-              <div className="flex flex-wrap items-center gap-2">
-                <ActiveTag active={u.active} />
+          <tr key={u.id} className="align-top transition-colors hover:bg-surface-raised">
+            <td className="mono-num px-4 py-2.5 font-medium">
+              {u.username}
+              {u.is_superadmin && (
+                <span className="ml-2 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] text-warning">Superadmin</span>
+              )}
+            </td>
+            <td className="px-4 py-2.5 text-muted">{u.name || "—"}</td>
+            <td className="px-4 py-2.5">
+              {u.id !== selfId && !u.is_superadmin ? (
                 <form action={setUserRole} className="flex items-center gap-2">
                   <input type="hidden" name="id" value={u.id} />
                   <select name="role_id" defaultValue={u.role_id ?? ""} className="input w-auto py-1 text-xs">
@@ -56,25 +72,47 @@ export function UsersManager({
                   </select>
                   <ActionButton icon="check" tip="Apply this role" />
                 </form>
-                <form action={resetUserPassword} className="flex items-center gap-2">
-                  <input type="hidden" name="id" value={u.id} />
-                  <input name="password" type="text" placeholder="New password" autoComplete="off" className="input w-28 py-1 text-xs" required />
-                  <ActionButton icon="key" tip="Reset password (forces change at next login)" />
-                </form>
-                <form action={toggleUser}>
-                  <input type="hidden" name="id" value={u.id} />
-                  <input type="hidden" name="active" value={String(!u.active)} />
-                  <ActionButton icon="power" tip={u.active ? "Deactivate this user" : "Activate this user"} />
-                </form>
-                <form action={deleteUser}>
-                  <input type="hidden" name="id" value={u.id} />
-                  <ActionButton icon="trash" tip="Delete this user permanently" variant="danger" />
-                </form>
-              </div>
-            )}
-          </div>
+              ) : (
+                <span className="text-muted">{u.role?.name ?? "No role"}</span>
+              )}
+            </td>
+            {!isMerchant && <td className="px-4 py-2.5 text-muted">{u.merchant?.name ?? "Platform"}</td>}
+            <td className="px-4 py-2.5">
+              <ActiveTag active={u.active} />
+              {u.must_change_password && (
+                <p className="mt-1 text-[10px] text-muted">first login pending</p>
+              )}
+            </td>
+            <td className="px-4 py-2.5">
+              {u.id !== selfId && !u.is_superadmin && (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <form action={resetUserPassword} className="flex items-center gap-2">
+                    <input type="hidden" name="id" value={u.id} />
+                    <input
+                      name="password"
+                      type="text"
+                      placeholder="New password"
+                      autoComplete="off"
+                      className="input w-28 py-1 text-xs"
+                      required
+                    />
+                    <ActionButton icon="key" tip="Reset password (forces change at next login)" />
+                  </form>
+                  <form action={toggleUser}>
+                    <input type="hidden" name="id" value={u.id} />
+                    <input type="hidden" name="active" value={String(!u.active)} />
+                    <ActionButton icon="power" tip={u.active ? "Deactivate this user" : "Activate this user"} />
+                  </form>
+                  <form action={deleteUser}>
+                    <input type="hidden" name="id" value={u.id} />
+                    <ActionButton icon="trash" tip="Delete this user permanently" variant="danger" />
+                  </form>
+                </div>
+              )}
+            </td>
+          </tr>
         ))}
-      </div>
+      </Table>
 
       <section className="card p-5">
         <h2 className="mb-4 text-sm font-semibold">Create User</h2>

@@ -74,6 +74,17 @@ export async function createBankAccount(formData: FormData): Promise<void> {
   if (!bankId) fail(base, "Please choose a bank");
   if (!accountNo) fail(base, "Please enter the account number");
 
+  // The same number at the same bank is the same account, whoever submits it.
+  const { data: clash } = await db()
+    .from("bank_accounts")
+    .select("id, ref, status")
+    .eq("bank_id", bankId)
+    .eq("account_no", accountNo)
+    .maybeSingle();
+  if (clash) {
+    fail(base, `That account already exists${clash.ref ? ` (${clash.ref})` : ""} — ${clash.status}.`);
+  }
+
   const { data: company } = await db()
     .from("companies")
     .select("id, merchant_id, country_id")
@@ -108,7 +119,13 @@ export async function createBankAccount(formData: FormData): Promise<void> {
     activated_at: new Date().toISOString(),
     created_by: cu.user.id,
   });
-  if (error) fail(base, `Failed to create: ${error.message}`);
+  if (error)
+    fail(
+      base,
+      error.message.includes("duplicate") || error.message.includes("bank_accounts_bank_account_no_uidx")
+        ? "That account number is already registered at this bank"
+        : `Failed to create: ${error.message}`
+    );
   revalidate();
   redirect(list);
 }
@@ -211,6 +228,15 @@ export async function editBankAccount(formData: FormData): Promise<void> {
   if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
   const { data: row } = await q.maybeSingle();
   if (!row) fail(back, "Account not found");
+
+  const { data: clash } = await db()
+    .from("bank_accounts")
+    .select("id, ref")
+    .eq("bank_id", row.bank_id)
+    .eq("account_no", accountNo)
+    .neq("id", id)
+    .maybeSingle();
+  if (clash) fail(back, `That account number is already registered at this bank${clash.ref ? ` (${clash.ref})` : ""}`);
 
   const { extra, channels } = await parseBankExtras(row.bank_id, formData);
   const branch = branchFields(formData);

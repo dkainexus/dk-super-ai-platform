@@ -48,3 +48,20 @@ export async function activeCountry(cu: CurrentUser): Promise<{ active: Country 
   const active = allowed.find((c) => c.id === picked) ?? allowed[0] ?? null;
   return { active, allowed };
 }
+
+/** White labels operating in a country, as filter options for the list pages. */
+export async function merchantFilterOptions(
+  countryId?: string | null
+): Promise<{ value: string; label: string }[]> {
+  const { data } = await db()
+    .from("merchants")
+    .select("id, name, merchant_countries(country_id)")
+    .order("name");
+  return ((data ?? []) as unknown as {
+    id: string;
+    name: string;
+    merchant_countries: { country_id: string }[];
+  }[])
+    .filter((m) => !countryId || m.merchant_countries.some((c) => c.country_id === countryId))
+    .map((m) => ({ value: m.id, label: m.name }));
+}

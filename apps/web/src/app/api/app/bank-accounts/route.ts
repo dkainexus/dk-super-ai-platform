@@ -88,6 +88,17 @@ export async function POST(req: Request): Promise<Response> {
     channels[k] = { enabled: Boolean(v?.enabled), ...(v?.value ? { value: String(v.value).slice(0, 100) } : {}) };
   }
 
+  // The same number at the same bank is the same account — reject the repeat.
+  const { data: clash } = await db()
+    .from("bank_accounts")
+    .select("id")
+    .eq("bank_id", bank.id)
+    .eq("account_no", body.account_no.trim())
+    .maybeSingle();
+  if (clash) {
+    return Response.json({ error: "This bank account has already been submitted" }, { status: 409 });
+  }
+
   const { error } = await db().from("bank_accounts").insert({
     merchant_id: company.merchant_id,
     country_id: company.country_id ?? owner.country_id,
@@ -109,6 +120,8 @@ export async function POST(req: Request): Promise<Response> {
     channels,
     status: "pending",
   });
+  if (error?.message?.includes("bank_accounts_bank_account_no_uidx"))
+    return Response.json({ error: "This bank account has already been submitted" }, { status: 409 });
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ ok: true });
 }

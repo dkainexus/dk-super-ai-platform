@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
+import { regionTree, addressLevels } from "@/modules/countries/regions";
 import { globalModuleToggles, moduleEnabledFor } from "@/lib/settings";
 import { bindableOwners, shareholdersEnabledFor, companyTypeNames } from "@/modules/companies/lib";
 import { activeCountry } from "@/modules/merchants/lib";
@@ -21,17 +22,24 @@ export default async function MerchantNewCompanyPage({
   if (!moduleEnabledFor("companies", toggles, cu.merchant, country)) redirect("/m");
   const { error } = await searchParams;
 
-  const [owners, shareholdersEnabled, companyTypes, { data: provinceRows }, { data: occupations }] = country
+  const [owners, shareholdersEnabled, companyTypes, { data: occupations }] = country
     ? await Promise.all([
         bindableOwners(cu.merchant.id),
         shareholdersEnabledFor(country.id),
           companyTypeNames(country.id),
-        db().from("provinces").select("name").eq("country_id", country.id ?? "").eq("active", true).order("sort"),
         db().from("occupations").select("*"),
       ])
     : [[], false, [] as string[], { data: [] }, { data: [] }];
   const occupationType = new Map(((occupations ?? []) as Occupation[]).map((o) => [o.id, o.company_type]));
   const typeByOwner = new Map(owners.map((o) => [o.id, o.occupation_id ? occupationType.get(o.occupation_id) ?? null : null]));
+
+  const { data: addrCountry } = await db()
+    .from("countries")
+    .select("address_levels")
+    .eq("id", country?.id ?? "")
+    .maybeSingle();
+  const regions = await regionTree(country?.id ?? "");
+  const levels = addressLevels(addrCountry as { address_levels?: string[] | null } | null);
 
   return (
     <div className="space-y-6">
@@ -69,7 +77,8 @@ export default async function MerchantNewCompanyPage({
             occupationTypeByOwner={typeByOwner}
             shareholdersEnabled={shareholdersEnabled}
             companyTypes={companyTypes}
-            provinces={((provinceRows ?? []) as { name: string }[]).map((p) => p.name)}
+            levels={levels}
+            regions={regions}
             hidden={{ country_id: country.id }}
           />
         )}

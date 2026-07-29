@@ -4,7 +4,9 @@ import { db } from "@/lib/supabase";
 import { merchantTotals } from "@/modules/wallet/lib";
 import { requireCountryScope } from "@/modules/countries/lib";
 import { ErrorBanner } from "@/components/error-banner";
-import { Table, TableToolbar } from "@/components/data-table";
+import { FilterSelect, Table, TableToolbar } from "@/components/data-table";
+import { FilterForm } from "@/components/filter-form";
+import { merchantFilterOptions } from "@/modules/merchants/lib";
 import { fmtNum } from "@/lib/format";
 import type { Owner, Wallet, Withdrawal } from "@/lib/types";
 
@@ -13,14 +15,15 @@ import type { Owner, Wallet, Withdrawal } from "@/lib/types";
 export default async function AdminWalletsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; merchant?: string }>;
 }) {
   await requirePerm("wallet", "view");
-  const { error } = await searchParams;
+  const { error, merchant = "" } = await searchParams;
   const { active } = await requireCountryScope();
 
   let ownerQuery = db().from("owners").select("id, full_name, ref, merchant_id, merchant:merchants(name)");
   if (active) ownerQuery = ownerQuery.eq("country_id", active.id);
+  if (merchant) ownerQuery = ownerQuery.eq("merchant_id", merchant);
   const { data: owners } = await ownerQuery;
   const ownerRows = (owners ?? []) as unknown as (Owner & { ref: string | null; merchant: { name: string } | null })[];
   const ownerIds = ownerRows.map((o) => o.id);
@@ -34,6 +37,7 @@ export default async function AdminWalletsPage({
       : Promise.resolve({ data: [] }),
     merchantTotals(active?.id ?? null),
   ]);
+  const merchantOptions = await merchantFilterOptions(active?.id ?? null);
 
   const walletRows = (wallets ?? []) as Wallet[];
   const pending = (withdrawals ?? []) as Withdrawal[];
@@ -105,7 +109,16 @@ export default async function AdminWalletsPage({
       </section>
 
       <section className="space-y-2">
-        <TableToolbar count={walletRows.length} noun="wallet" />
+        <TableToolbar count={walletRows.length} noun="wallet">
+          <FilterForm action="/admin/wallets">
+            <FilterSelect
+              label="White Label"
+              name="merchant"
+              value={merchant}
+              options={[{ value: "", label: "All white labels" }, ...merchantOptions]}
+            />
+          </FilterForm>
+        </TableToolbar>
         <Table head={["ID", "Owner", "White Label", "Balance"]}>
           {walletRows.length === 0 && (
             <tr>

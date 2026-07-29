@@ -57,7 +57,7 @@ export default async function WhiteLabelRegistryPage({
               <ActiveTag active={m.status === "active"} on="Active" off="Suspended" />
             </td>
             <td className="px-4 py-2.5 text-right">
-              <RowSettings href={`/admin/merchants/${m.id}`} tip={`Open ${m.name}`} />
+              <RowSettings href={`/admin/white-labels/${m.id}`} tip={`Open ${m.name}`} />
             </td>
           </tr>
         ))}

@@ -130,3 +130,37 @@ body {
   background: var(--danger);
   color: white;
 }
+
+/* ---------- Scrolling ----------
+   Chunky default scrollbars were showing up on every panel, and a stray wide
+   child could push the whole page sideways. Bars are now thin and only visible
+   where they are needed; sideways scrolling belongs to the element that is too
+   wide (a table), never to the page. */
+html {
+  scrollbar-gutter: stable;
+}
+body {
+  overflow-x: hidden;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--border) 90%, var(--muted)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--border) 90%, var(--muted));
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}

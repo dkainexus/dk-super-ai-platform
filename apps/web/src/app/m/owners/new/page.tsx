@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
+import { regionTree, addressLevels } from "@/modules/countries/regions";
 import { banksForCountry } from "@/modules/banks/lib";
 import { occupationsList } from "@/modules/owners/lib";
 import { activeCountry } from "@/modules/merchants/lib";
@@ -30,13 +31,8 @@ export default async function NewOwnerPage({
         occupationsList(),
       ])
     : [{ data: [] }, [], []];
-  const { data: provinceRows } = await db()
-    .from("provinces")
-    .select("name")
-    .eq("country_id", country?.id ?? "")
-    .eq("active", true)
-    .order("sort");
-  const provinces = ((provinceRows ?? []) as { name: string }[]).map((p) => p.name);
+  const regions = await regionTree(country?.id ?? "");
+  const levels = addressLevels(country as { address_levels?: string[] | null } | null);
   const { data: agentRows } = await db()
     .from("agents")
     .select("id, full_name")
@@ -71,7 +67,8 @@ export default async function NewOwnerPage({
             </p>
           )}
           <OwnerForm
-            provinces={provinces}
+            levels={levels}
+            regions={regions}
             agents={agentOptions}
             fields={(fields ?? []) as CountryField[]}
             banks={banks}

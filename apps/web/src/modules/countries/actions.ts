@@ -171,37 +171,94 @@ export async function removeCountryIcon(formData: FormData): Promise<void> {
 
 // ---------- States / provinces ----------
 
-export async function addProvince(formData: FormData): Promise<void> {
+/** Areas are one tree per country; `parent` decides which level you are adding to. */
+export async function addRegion(formData: FormData): Promise<void> {
   await requirePerm("countries", "edit");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = "/admin/country/provinces";
+  const parentId = String(formData.get("parent_id") ?? "") || null;
+  const level = Math.max(1, parseInt(String(formData.get("level") ?? "1"), 10) || 1);
+  const back = String(formData.get("back") ?? "/admin/country/regions");
   const name = String(formData.get("name") ?? "").trim();
   if (!name) fail(back, "Please enter the name");
-  const { count } = await db().from("provinces").select("id", { count: "exact", head: true }).eq("country_id", countryId);
+
+  let countQ = db().from("regions").select("id", { count: "exact", head: true }).eq("country_id", countryId);
+  countQ = parentId ? countQ.eq("parent_id", parentId) : countQ.is("parent_id", null);
+  const { count } = await countQ;
+
   const { error } = await db()
-    .from("provinces")
-    .insert({ country_id: countryId, name, sort: ((count ?? 0) + 1) * 10 });
-  if (error) fail(back, error.message.includes("duplicate") ? "That one already exists" : `Failed: ${error.message}`);
+    .from("regions")
+    .insert({ country_id: countryId, parent_id: parentId, level, name, sort: ((count ?? 0) + 1) * 10 });
+  if (error) fail(back, error.message.includes("duplicate") ? "That one already exists here" : `Failed: ${error.message}`);
   revalidatePath(back);
   redirect(back);
 }
 
-export async function updateProvince(formData: FormData): Promise<void> {
+/** Paste a whole level at once — one area per line. */
+export async function addRegionsBulk(formData: FormData): Promise<void> {
   await requirePerm("countries", "edit");
-  const back = "/admin/country/provinces";
+  const countryId = String(formData.get("country_id") ?? "");
+  const parentId = String(formData.get("parent_id") ?? "") || null;
+  const level = Math.max(1, parseInt(String(formData.get("level") ?? "1"), 10) || 1);
+  const back = String(formData.get("back") ?? "/admin/country/regions");
+  const names = [
+    ...new Set(
+      String(formData.get("names") ?? "")
+        .split(/[\n,]/)
+        .map((n) => n.trim())
+        .filter(Boolean)
+    ),
+  ];
+  if (names.length === 0) fail(back, "Paste at least one name");
+
+  const { error } = await db()
+    .from("regions")
+    .upsert(
+      names.map((name, i) => ({
+        country_id: countryId,
+        parent_id: parentId,
+        level,
+        name,
+        sort: (i + 1) * 10,
+      })),
+      { onConflict: "country_id,parent_id,name" }
+    );
+  if (error) fail(back, `Failed to add: ${error.message}`);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function updateRegion(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const back = String(formData.get("back") ?? "/admin/country/regions");
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   if (!name) fail(back, "Name cannot be empty");
-  const { error } = await db().from("provinces").update({ name, active: formData.get("active") === "on" }).eq("id", id);
+  const { error } = await db().from("regions").update({ name }).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);
   revalidatePath(back);
   redirect(back);
 }
 
-export async function deleteProvince(formData: FormData): Promise<void> {
+export async function deleteRegion(formData: FormData): Promise<void> {
   await requirePerm("countries", "edit");
-  const back = "/admin/country/provinces";
-  await db().from("provinces").delete().eq("id", String(formData.get("id") ?? ""));
+  const back = String(formData.get("back") ?? "/admin/country/regions");
+  await db().from("regions").delete().eq("id", String(formData.get("id") ?? ""));
+  revalidatePath(back);
+  redirect(back);
+}
+
+/** The level names — and therefore the depth — of a country's addresses. */
+export async function saveAddressLevels(formData: FormData): Promise<void> {
+  await requirePerm("countries", "edit");
+  const back = String(formData.get("back") ?? "/admin/country/regions");
+  const countryId = String(formData.get("country_id") ?? "");
+  const levels = [1, 2, 3]
+    .map((n) => String(formData.get(`level_${n}`) ?? "").trim())
+    .filter(Boolean);
+  if (levels.length === 0) fail(back, "An address needs at least one level");
+
+  const { error } = await db().from("countries").update({ address_levels: levels }).eq("id", countryId);
+  if (error) fail(back, `Failed to save: ${error.message}`);
   revalidatePath(back);
   redirect(back);
 }

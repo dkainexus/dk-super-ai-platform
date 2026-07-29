@@ -77,21 +77,18 @@ export function ExamsIndexView({
               </select>
             </div>
           )}
-          <ExamModePicker categories={categories} />
-          <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[8rem_12rem_auto] sm:items-end">
+          <ExamModePicker categories={categories}>
             <div>
               <label className="mb-1 block text-xs text-muted">Pass score %</label>
               <input name="pass_score" type="number" min={0} max={100} defaultValue={70} className="input mono-num" />
             </div>
+          </ExamModePicker>
+          <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[12rem_auto] sm:items-end">
             <div>
               <label className="mb-1 block text-xs text-muted">Retake wait (minutes)</label>
               <input name="retake_wait_minutes" type="number" min={0} defaultValue={0} className="input mono-num" />
             </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Random Questions (blank = all)</label>
-              <input name="draw_count" type="number" min={0} placeholder="all" className="input mono-num" />
-            </div>
-            <ActionButton icon="plus" tip="Create this exam and pick questions next" label="Create Exam" variant="primary" />
+            <ActionButton icon="plus" tip="Create this exam" label="Create Exam" variant="primary" />
           </div>
         </form>
       )}
@@ -107,7 +104,10 @@ export function ExamsIndexView({
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{e.title}</p>
               <p className="text-xs text-muted">
-                {e.scope_label} · {e.question_count} questions · pass {e.pass_score}%
+                {e.scope_label} ·{" "}
+                {(e as ExamRow & { mode?: string }).mode === "ai_interview"
+                  ? "AI interview — pass / fail"
+                  : `${e.question_count} questions · pass ${e.pass_score}%`}
               </p>
               {e.stats && (
                 <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
@@ -363,19 +363,16 @@ export function ExamDetailView({
             categoryId={e.category_id ?? ""}
             aiBrief={e.ai_brief ?? ""}
             categories={categories}
-          />
-          <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[7rem_10rem_5rem_auto_auto_auto] sm:items-end">
+          >
             <div>
               <label className="mb-1 block text-xs text-muted">Pass %</label>
               <input name="pass_score" type="number" min={0} max={100} defaultValue={exam.pass_score} className="input mono-num" />
             </div>
+          </ExamModePicker>
+          <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[10rem_auto_auto_auto_auto] sm:items-end">
             <div>
               <label className="mb-1 block text-xs text-muted">Retake wait (min)</label>
               <input name="retake_wait_minutes" type="number" min={0} defaultValue={exam.retake_wait_minutes} className="input mono-num" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Random Questions (blank = all)</label>
-              <input name="draw_count" type="number" min={0} defaultValue={exam.draw_count ?? ""} placeholder="all" className="input mono-num" />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted">Reward on pass</label>
@@ -410,7 +407,7 @@ export function ExamDetailView({
         <form action={saveExamContent} className="card space-y-4 p-5">
           <input type="hidden" name="id" value={exam.id} />
           <input type="hidden" name="back" value={back} />
-          <div className={isInterview ? "hidden" : undefined}>
+          <div className={isInterview || e.category_id ? "hidden" : undefined}>
             <h2 className="text-sm font-semibold">Questions in this exam</h2>
             <p className="mt-0.5 text-xs text-muted">
               Ticked questions appear in the paper, in bank order.{" "}

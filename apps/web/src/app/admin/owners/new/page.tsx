@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
+import { regionTree, addressLevels } from "@/modules/countries/regions";
 import { adminSaveOwner } from "@/modules/owners/actions";
 import { banksForCountry } from "@/modules/banks/lib";
 import { occupationsList } from "@/modules/owners/lib";
@@ -35,13 +36,8 @@ export default async function AdminNewOwnerPage({
     ? await db().from("country_fields").select("*").eq("country_id", country.id).eq("active", true).order("sort")
     : { data: [] };
   const banks = country ? await banksForCountry(country.id, null) : [];
-  const { data: provinceRows } = await db()
-    .from("provinces")
-    .select("name")
-    .eq("country_id", country?.id ?? "")
-    .eq("active", true)
-    .order("sort");
-  const provinces = ((provinceRows ?? []) as { name: string }[]).map((p) => p.name);
+  const regions = await regionTree(country?.id ?? "");
+  const levels = addressLevels(country as { address_levels?: string[] | null } | null);
   const { data: agentRows } = await db()
     .from("agents")
     .select("id, full_name")
@@ -71,7 +67,8 @@ export default async function AdminNewOwnerPage({
       {country && (
         <section className="card p-5">
           <OwnerForm
-            provinces={provinces}
+            levels={levels}
+            regions={regions}
             agents={agentOptions}
             merchants={list.map((m) => ({ id: m.id, name: m.name }))}
             fields={(fields ?? []) as CountryField[]}

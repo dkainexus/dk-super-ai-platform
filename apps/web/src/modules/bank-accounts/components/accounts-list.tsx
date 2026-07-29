@@ -16,7 +16,9 @@ export function BankAccountsList({
   error,
   status,
   bank,
+  merchant,
   banks,
+  merchants,
   rows,
   total,
   counts,
@@ -28,7 +30,10 @@ export function BankAccountsList({
   error?: string;
   status: string;
   bank: string;
+  merchant: string;
   banks: { id: string; name: string; code: string | null }[];
+  /** Omitted on the white-label side, where there is only one brand. */
+  merchants?: { value: string; label: string }[];
   rows: BankAccountRow[];
   total: number;
   counts: Record<string, number>;
@@ -56,28 +61,16 @@ export function BankAccountsList({
       </div>
       <ErrorBanner message={error} />
 
-      <div className="flex flex-wrap items-center gap-2">
-        {STATUSES.map((f) => (
-          <Link
-            key={f || "all"}
-            href={f ? `${base}?status=${f}` : base}
-            className={`rounded-full border px-3 py-1 text-xs capitalize transition-colors ${
-              status === f
-                ? "border-accent bg-accent-soft text-accent-strong"
-                : "border-border text-muted hover:text-foreground"
-            }`}
-          >
-            {f || "all"}
-            {f === "pending" && (counts.pending ?? 0) > 0 && (
-              <span className="ml-1 rounded-full bg-warning/20 px-1.5 text-warning">{counts.pending}</span>
-            )}
-          </Link>
-        ))}
-      </div>
-
       <TableToolbar count={total} noun="account">
         <FilterForm action={base}>
-          <input type="hidden" name="status" value={status} />
+          {merchants && (
+            <FilterSelect
+              label="White Label"
+              name="merchant"
+              value={merchant}
+              options={[{ value: "", label: "All white labels" }, ...merchants]}
+            />
+          )}
           <FilterSelect
             label="Bank"
             name="bank"
@@ -86,6 +79,17 @@ export function BankAccountsList({
               { value: "", label: "All banks" },
               ...banks.map((b) => ({ value: b.id, label: b.code ? `${b.name} (${b.code})` : b.name })),
             ]}
+          />
+          <FilterSelect
+            label="Status"
+            name="status"
+            value={status}
+            options={STATUSES.map((f) => ({
+              value: f,
+              label: f
+                ? `${f[0].toUpperCase()}${f.slice(1)}${f === "pending" && counts.pending ? ` (${counts.pending})` : ""}`
+                : "All statuses",
+            }))}
           />
         </FilterForm>
       </TableToolbar>
@@ -127,7 +131,7 @@ export function BankAccountsList({
         ))}
       </Table>
 
-      <Pagination basePath={base} params={{ status, bank }} page={page} perPage={perPage} total={total} />
+      <Pagination basePath={base} params={{ status, bank, merchant }} page={page} perPage={perPage} total={total} />
     </div>
   );
 }

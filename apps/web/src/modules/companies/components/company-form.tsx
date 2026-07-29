@@ -4,8 +4,15 @@
 
 import { saveCompany } from "@/modules/companies/actions";
 import { SaveButton } from "@/components/action-buttons";
+import { AddressPicker, type RegionNode } from "@/components/address-picker";
 import { COMPANY_STATUS_LABEL, type Company, type CompanyMember, type Owner } from "@/lib/types";
-import { OwnerTypePicker, ShareholderRows, type OwnerOption } from "./company-form-parts";
+import {
+  CompanyScope,
+  OwnerTypePicker,
+  ShareholderRows,
+  WhiteLabelField,
+  type OwnerOption,
+} from "./company-form-parts";
 
 export function CompanyForm({
   owners,
@@ -14,7 +21,8 @@ export function CompanyForm({
   members = [],
   shareholdersEnabled,
   companyTypes = [],
-  provinces = [],
+  levels,
+  regions = [],
   merchants,
   hidden = {},
 }: {
@@ -24,8 +32,10 @@ export function CompanyForm({
   members?: CompanyMember[];
   shareholdersEnabled: boolean;
   companyTypes?: string[];
-  /** State / province choices for the company's country */
-  provinces?: string[];
+  /** Level names for the company's country, widest first */
+  levels: string[];
+  /** Every area of that country, for the cascading address fields */
+  regions?: RegionNode[];
   /** White labels to choose from — omitted when the brand is already fixed. */
   merchants?: { id: string; name: string }[];
   hidden?: Record<string, string>;
@@ -44,11 +54,14 @@ export function CompanyForm({
     .map((m) => ({ ownerId: m.owner_id, percent: String(m.share_percent ?? "") }));
 
   return (
+    <CompanyScope initial={company?.merchant_id ?? (merchants?.length === 1 ? merchants[0].id : "")}>
     <form action={saveCompany} className="space-y-6">
       {company && <input type="hidden" name="id" value={company.id} />}
       {Object.entries(hidden).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
       ))}
+
+      {merchants && <WhiteLabelField merchants={merchants} defaultValue={company?.merchant_id ?? ""} />}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -64,8 +77,7 @@ export function CompanyForm({
           ownerId={boundOwner?.owner_id ?? ""}
           companyType={company?.company_type ?? defaultType}
           types={companyTypes}
-          merchants={merchants}
-          merchantId={company?.merchant_id ?? ""}
+          scoped={Boolean(merchants)}
         />
         <div>
           <label className="mb-1 block text-xs text-muted">Business Start Date</label>
@@ -100,27 +112,11 @@ export function CompanyForm({
             <label className="mb-1 block text-xs text-muted">Street / Road</label>
             <input name="street" defaultValue={company?.street ?? ""} className="input" />
           </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Subdistrict</label>
-            <input name="subdistrict" defaultValue={company?.subdistrict ?? ""} className="input" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">District</label>
-            <input name="district" defaultValue={company?.district ?? ""} className="input" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Province</label>
-            {provinces.length > 0 ? (
-              <select name="province" defaultValue={company?.province ?? ""} className="input">
-                <option value="">— Select —</option>
-                {provinces.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            ) : (
-              <input name="province" defaultValue={company?.province ?? ""} className="input" />
-            )}
-          </div>
+          <AddressPicker
+            levels={levels}
+            regions={regions}
+            values={[company?.province, company?.district, company?.subdistrict]}
+          />
           <div>
             <label className="mb-1 block text-xs text-muted">Postal Code</label>
             <input name="postal_code" defaultValue={company?.postal_code ?? ""} className="input mono-num" />
@@ -145,5 +141,6 @@ export function CompanyForm({
 
       <SaveButton label={company ? "Save Changes" : "Create Company"} />
     </form>
+    </CompanyScope>
   );
 }

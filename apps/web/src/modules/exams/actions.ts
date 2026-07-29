@@ -110,9 +110,13 @@ export async function createExam(formData: FormData): Promise<void> {
     mode,
     category_id: mode === "bank" ? String(formData.get("category_id") ?? "") || null : null,
     ai_brief: mode === "ai_interview" ? String(formData.get("ai_brief") ?? "").trim() || null : null,
-    pass_score: Math.min(100, Math.max(0, parseInt(String(formData.get("pass_score") ?? "70"), 10) || 70)),
+    pass_score:
+      mode === "ai_interview"
+        ? 0
+        : Math.min(100, Math.max(0, parseInt(String(formData.get("pass_score") ?? "70"), 10) || 70)),
     retake_wait_minutes: Math.max(0, parseInt(String(formData.get("retake_wait_minutes") ?? "0"), 10) || 0),
-    draw_count: Math.max(0, parseInt(String(formData.get("draw_count") ?? "0"), 10) || 0) || null,
+    // An interview is judged as a whole; a marked exam asks its whole set.
+    draw_count: null,
     created_by: cu.user.id,
   };
   if (cu.merchant) {
@@ -146,9 +150,12 @@ export async function updateExam(formData: FormData): Promise<void> {
     mode,
     category_id: mode === "bank" ? String(formData.get("category_id") ?? "") || null : null,
     ai_brief: mode === "ai_interview" ? String(formData.get("ai_brief") ?? "").trim() || null : null,
-    pass_score: Math.min(100, Math.max(0, parseInt(String(formData.get("pass_score") ?? "70"), 10) || 70)),
+    pass_score:
+      mode === "ai_interview"
+        ? 0
+        : Math.min(100, Math.max(0, parseInt(String(formData.get("pass_score") ?? "70"), 10) || 70)),
     retake_wait_minutes: Math.max(0, parseInt(String(formData.get("retake_wait_minutes") ?? "0"), 10) || 0),
-    draw_count: Math.max(0, parseInt(String(formData.get("draw_count") ?? "0"), 10) || 0) || null,
+    draw_count: null,
     reward_amount: String(formData.get("reward_amount") ?? "").trim()
       ? parseFloat(String(formData.get("reward_amount"))) || null
       : null,

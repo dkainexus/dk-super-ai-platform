@@ -1,6 +1,48 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
+
+// The chosen white label decides which owners can be bound, and the two
+// controls sit in different parts of the form, so they share it through context.
+const ScopeContext = createContext<{ merchantId: string; setMerchantId: (id: string) => void }>({
+  merchantId: "",
+  setMerchantId: () => {},
+});
+
+export function CompanyScope({ initial, children }: { initial: string; children: React.ReactNode }) {
+  const [merchantId, setMerchantId] = useState(initial);
+  return <ScopeContext.Provider value={{ merchantId, setMerchantId }}>{children}</ScopeContext.Provider>;
+}
+
+/** The white label the company belongs to — the first thing you choose. */
+export function WhiteLabelField({
+  merchants,
+  defaultValue,
+}: {
+  merchants: { id: string; name: string }[];
+  defaultValue: string;
+}) {
+  const { merchantId, setMerchantId } = useContext(ScopeContext);
+  const value = merchantId || defaultValue;
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs text-muted">White Label *</label>
+      <select
+        name="merchant_id"
+        value={value}
+        onChange={(e) => setMerchantId(e.target.value)}
+        className="input"
+        required
+      >
+        <option value="">— Select a white label —</option>
+        {merchants.map((m) => (
+          <option key={m.id} value={m.id}>{m.name}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 export type OwnerOption = { id: string; name: string; companyType: string | null; ref?: string | null; merchantId?: string };
 
@@ -11,44 +53,22 @@ export function OwnerTypePicker({
   ownerId,
   companyType,
   types,
-  merchants,
-  merchantId: initialMerchant = "",
+  scoped = false,
 }: {
   owners: OwnerOption[];
   ownerId: string;
   companyType: string;
   /** Company types configured for this country; empty = free text. */
   types: string[];
-  /** White labels to choose from — omitted when the brand is already fixed. */
-  merchants?: { id: string; name: string }[];
-  merchantId?: string;
+  /** True when a white label is chosen on this form — the pool follows it. */
+  scoped?: boolean;
 }) {
   const [type, setType] = useState(companyType);
-  const [merchant, setMerchant] = useState(
-    initialMerchant || (merchants?.length === 1 ? merchants[0].id : "")
-  );
-  // The owner must belong to the chosen brand, so the search pool follows it.
-  const pool = merchants ? owners.filter((o) => !merchant || o.merchantId === merchant) : owners;
+  const { merchantId: merchant } = useContext(ScopeContext);
+  const pool = scoped ? owners.filter((o) => !merchant || o.merchantId === merchant) : owners;
 
   return (
     <>
-      {merchants && (
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs text-muted">White Label *</label>
-          <select
-            name="merchant_id"
-            value={merchant}
-            onChange={(e) => setMerchant(e.target.value)}
-            className="input"
-            required
-          >
-            <option value="">— Select a white label —</option>
-            {merchants.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
       <OwnerSearch
         key={merchant}
         owners={pool}

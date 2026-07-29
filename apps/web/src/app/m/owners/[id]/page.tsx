@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { db } from "@/lib/supabase";
+import { regionTree, addressLevels } from "@/modules/countries/regions";
 import { env } from "@/lib/env";
 import { submitOwnerForReview, deleteOwner, generateOwnerInvite } from "@/modules/owners/actions-merchant";
 import { CopyField } from "@/components/copy-field";
@@ -38,6 +39,14 @@ export default async function MerchantOwnerDetailPage({
   const owner = data as Owner;
   const allowedList = await allowedCountries(cu);
   if (!allowedList.some((c) => c.id === owner.country_id)) notFound();
+
+  const { data: ownerCountry } = await db()
+    .from("countries")
+    .select("address_levels")
+    .eq("id", owner.country_id)
+    .maybeSingle();
+  const regions = await regionTree(owner.country_id);
+  const levels = addressLevels(ownerCountry as { address_levels?: string[] | null } | null);
   if (scope === "own" && owner.created_by && owner.created_by !== cu.user.id) notFound();
 
   const [{ data: fields }, { data: values }, banks, occupations] = await Promise.all([
@@ -105,6 +114,8 @@ export default async function MerchantOwnerDetailPage({
 
       <div className="card p-5">
         <OwnerForm
+          levels={levels}
+          regions={regions}
           fields={(fields ?? []) as CountryField[]}
           banks={banks}
           occupations={occupations}
