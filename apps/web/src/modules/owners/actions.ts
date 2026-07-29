@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
+import { DEFAULT_APP_PASSWORD } from "./lib";
 import { slugify } from "@/lib/slug";
 import { uploadFile, fileExt } from "@/lib/storage";
 import { merchantHasCountry } from "@/modules/merchants/lib";
@@ -346,6 +347,7 @@ export async function setOwnerAppAccess(formData: FormData): Promise<void> {
   if (password) {
     const { hashPassword } = await import("@/lib/password");
     patch.app_password_hash = await hashPassword(password);
+    patch.app_must_change_password = password === DEFAULT_APP_PASSWORD;
   }
   const { error } = await db().from("owners").update(patch).eq("id", id);
   if (error)
@@ -441,4 +443,53 @@ export async function toggleCountryField(formData: FormData): Promise<void> {
   if (error) fail(back, `Failed to update: ${error.message}`);
   revalidatePath(back);
   redirect(back);
+}
+
+
+/**
+ * Hand an owner their app login in one click: username derived from their
+ * reference number, the shared starter password, and a forced change on first
+ * sign-in.
+ */
+export async function generateOwnerAppAccess(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("owners", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/owners/${id}`);
+
+  let q = db().from("owners").select("id, ref, full_name, merchant_id, app_username").eq("id", id);
+  if (cu.merchant) q = q.eq("merchant_id", cu.merchant.id);
+  const { data: owner } = await q.maybeSingle();
+  if (!owner) fail(back, "Owner not found");
+
+  // Prefer the reference (TH-OWN-BLG00001 → th-own-blg00001); fall back to the name.
+  const base =
+    (owner.ref ?? slugify(owner.full_name ?? "owner")).toLowerCase().replace(/[^a-z0-9]+/g, "") || "owner";
+  let username = owner.app_username ?? base;
+  if (!owner.app_username) {
+    for (let n = 0; n < 50; n++) {
+      const candidate = n === 0 ? base : `${base}${n}`;
+      const { data: taken } = await db()
+        .from("owners")
+        .select("id")
+        .eq("app_username", candidate)
+        .maybeSingle();
+      if (!taken) {
+        username = candidate;
+        break;
+      }
+    }
+  }
+
+  const { hashPassword } = await import("@/lib/password");
+  const { error } = await db()
+    .from("owners")
+    .update({
+      app_username: username,
+      app_password_hash: await hashPassword(DEFAULT_APP_PASSWORD),
+      app_must_change_password: true,
+    })
+    .eq("id", id);
+  if (error) fail(back, `Failed to generate: ${error.message}`);
+  revalidatePath(back);
+  redirect(`${back}?saved=app`);
 }

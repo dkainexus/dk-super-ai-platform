@@ -144,6 +144,7 @@ export type Owner = {
   invite_token: string | null;
   invite_expires_at: string | null;
   app_username: string | null;
+  app_must_change_password: boolean;
   app_password_hash: string | null;
   app_last_login_at: string | null;
   notes: string | null;

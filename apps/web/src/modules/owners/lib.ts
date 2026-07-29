@@ -1,3 +1,5 @@
+export const DEFAULT_APP_PASSWORD = "123456";
+
 import "server-only";
 import { db } from "@/lib/supabase";
 import type { Occupation } from "@/lib/types";

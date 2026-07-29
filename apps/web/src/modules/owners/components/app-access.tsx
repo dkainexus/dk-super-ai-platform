@@ -1,4 +1,5 @@
-import { setOwnerAppAccess } from "../actions";
+import { setOwnerAppAccess, generateOwnerAppAccess } from "../actions";
+import { ActionButton } from "@/components/action-buttons";
 import { SaveButton } from "@/components/action-buttons";
 import type { Owner } from "@/lib/types";
 
@@ -17,6 +18,20 @@ export function AppAccessCard({ owner, back }: { owner: Owner; back: string }) {
           {hasAccess ? "Enabled" : "Not set"}
         </span>
       </div>
+      {!hasAccess && (
+        <form action={generateOwnerAppAccess} className="mb-4 flex flex-wrap items-center gap-3">
+          <input type="hidden" name="id" value={owner.id} />
+          <input type="hidden" name="back" value={back} />
+          <ActionButton icon="plus" tip="Create a login from this owner's reference number" label="Generate Login" variant="primary" />
+          <p className="text-xs text-muted">
+            Username comes from the reference number, password starts as <span className="mono-num">123456</span> and
+            must be changed at first sign-in.
+          </p>
+        </form>
+      )}
+      {owner.app_must_change_password && hasAccess && (
+        <p className="mb-3 text-xs text-warning">Starter password still in use — the owner must change it on sign-in.</p>
+      )}
       <form action={setOwnerAppAccess} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
         <input type="hidden" name="id" value={owner.id} />
         <input type="hidden" name="back" value={back} />

@@ -36,6 +36,8 @@ export async function POST(req: Request): Promise<Response> {
   const token = await signOwnerToken(owner.id);
   return Response.json({
     token,
+    // The app sends the user straight to "change your password" when this is set.
+    must_change_password: owner.app_must_change_password === true,
     owner: { id: owner.id, name: owner.full_name, username: owner.app_username },
   });
 }

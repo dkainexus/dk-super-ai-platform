@@ -8,6 +8,7 @@ import { RowSettings } from "@/components/row-actions";
 import { Pagination, pageParams } from "@/components/pagination";
 import { requireCountryScope } from "@/modules/countries/lib";
 import type { OwnerStatus } from "@/lib/types";
+import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 
 const STATUSES = [
   { value: "", label: "All statuses" },
@@ -21,6 +22,7 @@ const STATUSES = [
 type Row = {
   id: string;
   ref: string | null;
+  photo_full_body_path: string | null;
   full_name: string | null;
   id_number: string | null;
   phone: string | null;
@@ -52,7 +54,7 @@ export default async function AdminOwnersPage({
 
   let q = db()
     .from("owners")
-    .select("id, ref, full_name, id_number, phone, status, created_at, merchant_id, merchant:merchants(name), occupation:occupations(name)", { count: "exact" })
+    .select("id, ref, photo_full_body_path, full_name, id_number, phone, status, created_at, merchant_id, merchant:merchants(name), occupation:occupations(name)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, to);
   if (status) q = q.eq("status", status);
@@ -61,6 +63,11 @@ export default async function AdminOwnersPage({
   const { data, count } = await q;
   const rows = (data ?? []) as unknown as Row[];
   const total = count ?? rows.length;
+  const photos = new Map(
+    await Promise.all(
+      rows.map(async (o) => [o.id, await signedUrl(DOCS_BUCKET, o.photo_full_body_path, 60 * 30)] as const)
+    )
+  );
 
   return (
     <div className="space-y-5">
@@ -93,16 +100,26 @@ export default async function AdminOwnersPage({
         </FilterForm>
       </TableToolbar>
 
-      <Table head={["ID", "Name", "White Label", "ID Number", "Phone", "Occupation", "Status", "Added", ""]}>
+      <Table head={["", "ID", "Name", "White Label", "ID Number", "Phone", "Occupation", "Status", "Added", ""]}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={9} className="px-4 py-6 text-sm text-muted">
+            <td colSpan={10} className="px-4 py-6 text-sm text-muted">
               No owners match these filters.
             </td>
           </tr>
         )}
         {rows.map((o) => (
           <tr key={o.id} className="transition-colors hover:bg-surface-raised">
+            <td className="py-2 pl-4 pr-0">
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-raised">
+                {photos.get(o.id) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photos.get(o.id)!} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xs text-muted">👤</span>
+                )}
+              </div>
+            </td>
             <td className="mono-num px-4 py-2.5 text-xs text-muted">{o.ref ?? "—"}</td>
             <td className="px-4 py-2.5 font-medium">{o.full_name || "(no name yet)"}</td>
             <td className="px-4 py-2.5 text-muted">{o.merchant?.name ?? "—"}</td>
