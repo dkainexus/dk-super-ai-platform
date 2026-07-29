@@ -148,6 +148,7 @@ export function QuestionBankView({
   categoryCounts = {},
   uncategorised = 0,
   categoryForm,
+  setActions,
 }: {
   base: string;
   error?: string;
@@ -164,8 +165,10 @@ export function QuestionBankView({
   category?: { id: string; label: string } | null;
   categoryCounts?: Record<string, number>;
   uncategorised?: number;
-  /** Add / rename / delete controls, rendered by the page. */
+  /** The "new set" form, rendered by the page. */
   categoryForm?: React.ReactNode;
+  /** Rename / delete buttons for one set, rendered by the page. */
+  setActions?: (category: { id: string; label: string }) => React.ReactNode;
 }) {
   const back = category ? `${base}/questions?category=${category.id}` : `${base}/questions`;
   return (
@@ -211,16 +214,19 @@ export function QuestionBankView({
               </p>
             )}
             {categories.map((c) => (
-              <Link
-                key={c.id}
-                href={`${base}/questions?category=${c.id}`}
-                className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-surface-raised"
-              >
-                <span className="text-sm font-medium">{c.label}</span>
-                <span className="mono-num text-xs text-muted">
-                  {categoryCounts[c.id] ?? 0} question{(categoryCounts[c.id] ?? 0) === 1 ? "" : "s"} →
-                </span>
-              </Link>
+              <div key={c.id} className="flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-surface-raised">
+                <Link
+                  href={`${base}/questions?category=${c.id}`}
+                  title={`Open ${c.label}`}
+                  className="flex flex-1 items-center justify-between gap-4"
+                >
+                  <span className="text-sm font-medium">{c.label}</span>
+                  <span className="mono-num text-xs text-muted">
+                    {categoryCounts[c.id] ?? 0} question{(categoryCounts[c.id] ?? 0) === 1 ? "" : "s"} →
+                  </span>
+                </Link>
+                {setActions?.(c)}
+              </div>
             ))}
             {uncategorised > 0 && (
               <Link

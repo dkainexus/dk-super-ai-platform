@@ -8,7 +8,7 @@ import {
 } from "@/modules/exams/actions";
 import { requireCountryScope } from "@/modules/countries/lib";
 import { ActionButton } from "@/components/action-buttons";
-import { AutoSaveInput } from "@/components/auto-save-input";
+import { InlineRename } from "@/components/inline-rename";
 import type { Country, ExamQuestion, Merchant } from "@/lib/types";
 
 // The bank is a shelf of question sets. Landing here shows the sets; opening one
@@ -86,46 +86,35 @@ export default async function AdminQuestionBankPage({
       uncategorised={uncategorised}
       categoryForm={
         canEdit && active ? (
-          <div className="space-y-4">
-            <form
-              action={createQuestionCategory}
-              className="card grid gap-3 p-5 sm:grid-cols-[1fr_auto] sm:items-end"
-            >
-              <input type="hidden" name="country_id" value={active.id} />
-              <div>
-                <label className="mb-1 block text-xs text-muted">New Question Set</label>
-                <input name="name" className="input" placeholder="e.g. Account Opening" required />
-              </div>
-              <ActionButton icon="plus" tip="Create this question set" label="Add Set" variant="primary" />
-            </form>
-            {categories.length > 0 && (
-              <details className="card p-5">
-                <summary className="cursor-pointer text-xs text-muted hover:text-foreground">
-                  Rename or delete a set
-                </summary>
-                <div className="mt-3 divide-y divide-border">
-                  {categories.map((c) => (
-                    <div key={c.id} className="flex flex-wrap items-center gap-3 py-2.5">
-                      <AutoSaveInput
-                        action={renameQuestionCategory}
-                        name="name"
-                        value={c.label}
-                        hidden={{ id: c.id }}
-                        className="input min-w-48 flex-1 py-1.5 text-sm"
-                      />
-                      <span className="mono-num text-xs text-muted">{counts[c.id] ?? 0} questions</span>
-                      {can(cu, "exams", "delete") && (
-                        <form action={deleteQuestionCategory}>
-                          <input type="hidden" name="id" value={c.id} />
-                          <ActionButton icon="trash" tip={`Delete ${c.label}`} variant="danger" />
-                        </form>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </details>
+          <form
+            action={createQuestionCategory}
+            className="card grid gap-3 p-5 sm:grid-cols-[1fr_auto] sm:items-end"
+          >
+            <input type="hidden" name="country_id" value={active.id} />
+            <div>
+              <label className="mb-1 block text-xs text-muted">New Question Set</label>
+              <input name="name" className="input" placeholder="e.g. Account Opening" required />
+            </div>
+            <ActionButton icon="plus" tip="Create this question set" label="Add Set" variant="primary" />
+          </form>
+        ) : null
+      }
+      setActions={(c) =>
+        canEdit ? (
+          <>
+            <InlineRename
+              action={renameQuestionCategory}
+              value={c.label}
+              hidden={{ id: c.id }}
+              label={c.label}
+            />
+            {can(cu, "exams", "delete") && (
+              <form action={deleteQuestionCategory}>
+                <input type="hidden" name="id" value={c.id} />
+                <ActionButton icon="trash" tip={`Delete ${c.label}`} variant="danger" />
+              </form>
             )}
-          </div>
+          </>
         ) : null
       }
     />
