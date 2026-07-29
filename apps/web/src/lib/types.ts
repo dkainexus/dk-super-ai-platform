@@ -240,6 +240,8 @@ export type TrainingVideo = {
   thumb_path: string | null;
   duration_seconds: number | null;
   sort: number;
+  reward_amount: number | null;
+  auto_notify: boolean;
   published: boolean;
   created_by: string | null;
   created_at: string;
@@ -294,6 +296,8 @@ export type Exam = {
   pass_score: number;
   retake_wait_minutes: number;
   draw_count: number | null;
+  reward_amount: number | null;
+  auto_notify: boolean;
   published: boolean;
   sort: number;
   created_by: string | null;
@@ -327,6 +331,14 @@ export type Wallet = {
 };
 
 export type WalletTxType = "reward" | "rent" | "withdrawal" | "refund" | "adjustment";
+
+export const WALLET_TX_LABEL: Record<WalletTxType, string> = {
+  reward: "Reward",
+  rent: "Rent",
+  withdrawal: "Withdrawal",
+  refund: "Refund",
+  adjustment: "Adjustment",
+};
 
 export type WalletTransaction = {
   id: string;

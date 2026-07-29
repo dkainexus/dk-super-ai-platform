@@ -139,6 +139,10 @@ export async function updateExam(formData: FormData): Promise<void> {
     pass_score: Math.min(100, Math.max(0, parseInt(String(formData.get("pass_score") ?? "70"), 10) || 70)),
     retake_wait_minutes: Math.max(0, parseInt(String(formData.get("retake_wait_minutes") ?? "0"), 10) || 0),
     draw_count: Math.max(0, parseInt(String(formData.get("draw_count") ?? "0"), 10) || 0) || null,
+    reward_amount: String(formData.get("reward_amount") ?? "").trim()
+      ? parseFloat(String(formData.get("reward_amount"))) || null
+      : null,
+    auto_notify: formData.get("auto_notify") === "on",
     sort: parseInt(String(formData.get("sort") ?? "100"), 10) || 100,
     published: formData.get("published") === "on",
     updated_at: new Date().toISOString(),

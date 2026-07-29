@@ -5,6 +5,7 @@ import { GenerateButton } from "./generate-button";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton, SaveButton } from "@/components/action-buttons";
+import { MoneyInput } from "@/components/money-input";
 import type { Exam, ExamQuestion } from "@/lib/types";
 
 // Shared server-side views for the Exams module, used by both /admin and /m
@@ -343,6 +344,13 @@ export function ExamDetailView({
               <label className="mb-1 block text-xs text-muted">Random Questions (blank = all)</label>
               <input name="draw_count" type="number" min={0} defaultValue={exam.draw_count ?? ""} placeholder="all" className="input mono-num" />
             </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Reward on pass</label>
+              <MoneyInput name="reward_amount" defaultValue={exam.reward_amount} />
+            </div>
+            <label className="flex items-center gap-2 pb-2 text-xs text-muted">
+              <input type="checkbox" name="auto_notify" defaultChecked={exam.auto_notify} /> Notify
+            </label>
             <div>
               <label className="mb-1 block text-xs text-muted">Sort</label>
               <input name="sort" type="number" defaultValue={exam.sort} className="input mono-num" />

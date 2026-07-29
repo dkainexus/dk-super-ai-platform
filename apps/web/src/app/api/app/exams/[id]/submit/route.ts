@@ -2,6 +2,7 @@ import { db } from "@/lib/supabase";
 import { ownerFromRequest, unauthorized } from "@/lib/app-auth";
 import { examsForOwner, examQuestions, gradeAttempt, type SubmittedAnswer } from "@/modules/exams/lib";
 import { notifyOwner } from "@/modules/notifications/lib";
+import { grantReward } from "@/modules/wallet/lib";
 
 export const maxDuration = 60; // essay grading calls the AI
 
@@ -58,6 +59,21 @@ export async function POST(
     passed: result.passed,
     feedback: result.feedback,
   });
+
+  // Exam reward — paid once, recorded against the owner's white label.
+  if (result.passed) {
+    try {
+      await grantReward(owner, {
+        kind: "exam",
+        id: exam.id,
+        title: exam.title,
+        reward_amount: (exam as { reward_amount?: number | null }).reward_amount ?? null,
+        auto_notify: (exam as { auto_notify?: boolean }).auto_notify ?? true,
+      });
+    } catch {
+      // a failed reward must never fail the submission
+    }
+  }
   if (error) return Response.json({ error: error.message }, { status: 400 });
 
   const firstPass = result.passed && !exam.passed;

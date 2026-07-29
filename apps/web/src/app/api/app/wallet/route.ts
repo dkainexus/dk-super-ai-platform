@@ -1,7 +1,7 @@
 import { db } from "@/lib/supabase";
 import { ownerFromRequest, unauthorized } from "@/lib/app-auth";
 import {
-  trainingRewardOffer,
+  pendingRewards,
   walletForOwner,
   walletTransactions,
   withdrawalsForOwner,
@@ -14,30 +14,19 @@ export async function GET(req: Request): Promise<Response> {
   if (!owner) return unauthorized();
 
   const wallet = await walletForOwner(owner.id);
-  const [transactions, withdrawals, bank, offer] = await Promise.all([
+  const [transactions, withdrawals, bank, offers] = await Promise.all([
     wallet ? walletTransactions(wallet.id) : Promise.resolve([]),
     withdrawalsForOwner(owner.id),
     owner.bank_id
       ? db().from("banks").select("name").eq("id", owner.bank_id).maybeSingle().then((r) => r.data)
       : Promise.resolve(null),
-    trainingRewardOffer(owner),
+    pendingRewards(owner),
   ]);
 
   const received = transactions
     .filter((t) => t.type === "reward")
     .map((t) => ({ id: t.id, title: t.note ?? "Reward", amount: t.amount, date: t.created_at }));
-  const trainingGranted = transactions.some((t) => t.reference === "training_complete");
-  const pending =
-    offer && !trainingGranted
-      ? [
-          {
-            id: "training",
-            title: "Complete all training videos",
-            amount: offer.amount,
-            progress: { completed: offer.completed, total: offer.total },
-          },
-        ]
-      : [];
+  const pending = offers.map((o) => ({ id: o.id, title: o.title, amount: o.amount }));
 
   return Response.json({
     balance: wallet?.balance ?? 0,

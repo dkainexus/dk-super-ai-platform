@@ -40,6 +40,13 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
         { href: "/admin/banks/fields", label: "Extra Fields" },
       ];
     }
+    if (!isMerchant && !isGlobal && m.key === "wallet") {
+      item.children = [
+        { href: "/admin/wallets/transactions", label: "Transactions" },
+        { href: "/admin/wallets/withdrawals", label: "Withdrawals" },
+        { href: "/admin/wallets/rewards", label: "Rewards" },
+      ];
+    }
     if (!isMerchant && !isGlobal && m.key === "owners") {
       item.children = [
         ...(item.children ?? []),

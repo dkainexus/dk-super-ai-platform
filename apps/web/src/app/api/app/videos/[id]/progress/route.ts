@@ -1,6 +1,6 @@
 import { db } from "@/lib/supabase";
 import { ownerFromRequest, unauthorized } from "@/lib/app-auth";
-import { maybeGrantTrainingReward } from "@/modules/wallet/lib";
+import { grantReward } from "@/modules/wallet/lib";
 
 // POST /api/app/videos/:id/progress  { seconds, completed } → upsert progress.
 export async function POST(
@@ -40,13 +40,26 @@ export async function POST(
   );
   if (error) return Response.json({ error: error.message }, { status: 400 });
 
-  // Training-completion reward (idempotent; no-op unless everything is done).
+  // Reward attached to this video (idempotent, and never blocks the save).
   let rewarded = false;
   if (body.completed) {
     try {
-      rewarded = await maybeGrantTrainingReward(owner);
+      const { data: video } = await db()
+        .from("training_videos")
+        .select("id, title, reward_amount, auto_notify")
+        .eq("id", id)
+        .maybeSingle();
+      if (video) {
+        rewarded = await grantReward(owner, {
+          kind: "video",
+          id: video.id,
+          title: video.title,
+          reward_amount: video.reward_amount,
+          auto_notify: video.auto_notify,
+        });
+      }
     } catch {
-      rewarded = false; // never fail the progress save because of the reward
+      rewarded = false;
     }
   }
   return Response.json({ ok: true, rewarded });

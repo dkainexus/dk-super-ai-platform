@@ -9,7 +9,7 @@ import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
 import { setSetting } from "@/lib/settings";
 import { notifyOwner } from "@/modules/notifications/lib";
-import { walletApply, walletSettings } from "./lib";
+import { walletApply } from "./lib";
 import type { Withdrawal } from "@/lib/types";
 
 function fail(path: string, message: string): never {
@@ -135,18 +135,3 @@ export async function processWithdrawal(formData: FormData): Promise<void> {
 }
 
 /** Wallet module settings: training-completion reward amount per country. */
-export async function saveWalletSettings(formData: FormData): Promise<void> {
-  const { cu } = await requirePerm("settings", "edit");
-  if (cu.merchant) redirect("/m");
-  const current = await walletSettings();
-  const { data: countries } = await db().from("countries").select("id");
-  for (const c of (countries ?? []) as { id: string }[]) {
-    const raw = String(formData.get(`tr_${c.id}`) ?? "").trim();
-    const amount = parseFloat(raw);
-    if (raw === "" || !Number.isFinite(amount) || amount <= 0) delete current.training_rewards[c.id];
-    else current.training_rewards[c.id] = amount;
-  }
-  await setSetting("wallet", current);
-  revalidatePath("/admin/settings/wallet");
-  redirect("/admin/settings/wallet?saved=1");
-}

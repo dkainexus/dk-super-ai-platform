@@ -8,6 +8,7 @@ import { TrainingUploadForm } from "@/modules/training/components/upload-form";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { PublishButton } from "@/components/publish-button";
+import { MoneyInput } from "@/components/money-input";
 import { SaveButton } from "@/components/action-buttons";
 import type { Country, Merchant, TrainingVideo } from "@/lib/types";
 import { requireCountryScope } from "@/modules/countries/lib";
@@ -102,7 +103,7 @@ export default async function AdminTrainingPage({
                     <label className="mb-1 block text-xs text-muted">Description</label>
                     <input name="description" defaultValue={v.description ?? ""} className="input" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[1fr_5rem_auto_auto] sm:items-end">
+                  <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[1fr_5rem_7rem_auto_auto_auto] sm:items-end">
                     <div>
                       <label className="mb-1 block text-xs text-muted">White Label</label>
                       <select name="merchant_id" defaultValue={v.merchant_id ?? ""} className="input">
@@ -116,6 +117,13 @@ export default async function AdminTrainingPage({
                       <label className="mb-1 block text-xs text-muted">Sort</label>
                       <input name="sort" type="number" defaultValue={v.sort} className="input mono-num" />
                     </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted">Reward on finish</label>
+                      <MoneyInput name="reward_amount" defaultValue={v.reward_amount} />
+                    </div>
+                    <label className="flex items-center gap-2 pb-2 text-xs text-muted">
+                      <input type="checkbox" name="auto_notify" defaultChecked={v.auto_notify} /> Notify
+                    </label>
                     <input type="hidden" name="published" value={v.published ? "on" : ""} />
                     <SaveButton tip="Save this video" />
                     {canDelete && (

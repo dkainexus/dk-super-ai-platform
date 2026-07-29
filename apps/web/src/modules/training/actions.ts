@@ -93,6 +93,10 @@ export async function updateTrainingVideo(formData: FormData): Promise<void> {
     title,
     description: String(formData.get("description") ?? "").trim() || null,
     sort: parseInt(String(formData.get("sort") ?? "100"), 10) || 100,
+    reward_amount: String(formData.get("reward_amount") ?? "").trim()
+      ? parseFloat(String(formData.get("reward_amount"))) || null
+      : null,
+    auto_notify: formData.get("auto_notify") === "on",
     published: formData.get("published") === "on",
     updated_at: new Date().toISOString(),
   };

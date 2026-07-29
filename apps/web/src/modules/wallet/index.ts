@@ -6,5 +6,4 @@ export const walletModule: ModuleDef = {
   description: "Owner wallets — rewards, rent credits and withdrawal processing",
   adminNav: { href: "/admin/wallets", label: "Wallets" },
   merchantNav: { href: "/m/wallets", label: "Wallets" },
-  settingsHref: "/admin/settings/wallet",
 };

@@ -86,3 +86,25 @@ create table if not exists app_builds (
   updated_at timestamptz not null default now()
 );
 create index if not exists app_builds_merchant_idx on app_builds(merchant_id, created_at desc);
+
+-- wallet_apply records the white label the movement belongs to
+drop function if exists wallet_apply(uuid, text, text, numeric, text, text, uuid);
+create or replace function wallet_apply(
+  p_owner uuid, p_currency text, p_type text, p_amount numeric,
+  p_reference text default null, p_note text default null,
+  p_created_by uuid default null, p_merchant uuid default null
+) returns uuid language plpgsql as $$
+declare v_wallet uuid; v_balance numeric; v_merchant uuid;
+begin
+  select id, balance into v_wallet, v_balance from wallets where owner_id = p_owner for update;
+  if v_wallet is null then
+    insert into wallets (owner_id, currency, balance) values (p_owner, p_currency, 0)
+    returning id, balance into v_wallet, v_balance;
+  end if;
+  if v_balance + p_amount < 0 then raise exception 'Insufficient balance'; end if;
+  v_merchant := coalesce(p_merchant, (select merchant_id from owners where id = p_owner));
+  insert into wallet_transactions (wallet_id, type, amount, reference, note, created_by, merchant_id)
+  values (v_wallet, p_type, p_amount, p_reference, p_note, p_created_by, v_merchant);
+  update wallets set balance = balance + p_amount, updated_at = now() where id = v_wallet;
+  return v_wallet;
+end $$;
