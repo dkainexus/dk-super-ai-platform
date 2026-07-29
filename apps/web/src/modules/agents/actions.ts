@@ -52,7 +52,6 @@ export async function createAgent(formData: FormData): Promise<void> {
       merchant_id: merchantId,
       country_id: countryId,
       full_name: fullName,
-      phone: String(formData.get("phone") ?? "").trim() || null,
       email: String(formData.get("email") ?? "").trim() || null,
       // The agent finishes their own sign-up through this link.
       invite_token: randomBytes(24).toString("base64url"),
@@ -78,7 +77,6 @@ export async function updateAgent(formData: FormData): Promise<void> {
     .from("agents")
     .update({
       full_name: fullName,
-      phone: String(formData.get("phone") ?? "").trim() || null,
       email: String(formData.get("email") ?? "").trim() || null,
       updated_at: new Date().toISOString(),
     })

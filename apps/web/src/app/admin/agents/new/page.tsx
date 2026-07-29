@@ -53,10 +53,6 @@ export default async function NewAgentPage({
           <label className="mb-1 block text-xs text-muted">Full Name</label>
           <input name="full_name" className="input" required />
         </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted">Phone</label>
-          <input name="phone" className="input mono-num" />
-        </div>
         <div className="sm:col-span-2">
           <label className="mb-1 block text-xs text-muted">Email</label>
           <input name="email" type="email" className="input" />

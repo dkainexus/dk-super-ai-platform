@@ -64,16 +64,12 @@ export async function AgentDetail({
 
       <section className="card p-5">
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">Details</h2>
-        <form action={updateAgent} className="grid gap-4 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
+        <form action={updateAgent} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <input type="hidden" name="id" value={a.id} />
           <input type="hidden" name="back" value={back} />
           <div>
             <label className="mb-1 block text-xs text-muted">Full Name</label>
             <input name="full_name" defaultValue={a.full_name} className="input" disabled={!canEdit} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Phone</label>
-            <input name="phone" defaultValue={a.phone ?? ""} className="input mono-num" disabled={!canEdit} />
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted">Email</label>
