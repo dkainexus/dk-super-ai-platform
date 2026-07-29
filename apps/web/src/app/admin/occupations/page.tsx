@@ -5,7 +5,7 @@ import { createOccupation, deleteOccupation, setOccupation } from "@/modules/own
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import { AutoSaveSelect } from "@/components/auto-save-select";
-import { Table, TableToolbar } from "@/components/data-table";
+import { TableToolbar } from "@/components/data-table";
 
 type Occupation = { id: string; name: string; category_id: string | null; sort: number };
 type Category = { id: string; name: string };
@@ -65,53 +65,50 @@ export default async function OccupationsPage({
 
       <TableToolbar count={rows.length} noun="occupation" />
 
-      <Table head={["Occupation", "Category", ""]}>
-        {rows.length === 0 && (
-          <tr>
-            <td colSpan={3} className="px-4 py-6 text-sm text-muted">No occupations yet.</td>
-          </tr>
-        )}
-        {rows.map((o) => (
-          <tr key={o.id} className="transition-colors hover:bg-surface-raised">
-            <td className="px-4 py-2">
-              {canEdit ? (
-                <form action={setOccupation}>
-                  <input type="hidden" name="id" value={o.id} />
-                  <input
-                    name="name"
-                    defaultValue={o.name}
-                    className="input w-full max-w-xs py-1.5 text-sm"
-                    title="Press Enter to rename"
-                  />
-                </form>
-              ) : (
-                o.name
-              )}
-            </td>
-            <td className="px-4 py-2">
-              {canEdit ? (
-                <AutoSaveSelect
-                  action={setOccupation}
-                  name="category_id"
-                  value={o.category_id ?? ""}
-                  hidden={{ id: o.id }}
-                  options={[{ value: "", label: "— none —" }, ...cats.map((c) => ({ value: c.id, label: c.name }))]}
-                />
-              ) : (
-                cats.find((c) => c.id === o.category_id)?.name ?? "—"
-              )}
-            </td>
-            <td className="px-4 py-2 text-right">
-              {canEdit && (
-                <form action={deleteOccupation}>
-                  <input type="hidden" name="id" value={o.id} />
-                  <ActionButton icon="trash" tip={`Delete ${o.name}`} variant="danger" />
-                </form>
-              )}
-            </td>
-          </tr>
-        ))}
-      </Table>
+      {[...cats, { id: "", name: "Uncategorised" }].map((cat) => {
+        const mine = rows.filter((o) => (o.category_id ?? "") === cat.id);
+        if (mine.length === 0) return null;
+        return (
+          <section key={cat.id || "none"} className="space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">{cat.name}</h2>
+            <div className="card divide-y divide-border">
+              {mine.map((o) => (
+                <div key={o.id} className="flex flex-wrap items-center gap-3 px-4 py-2">
+                  {canEdit ? (
+                    <>
+                      <form action={setOccupation} className="min-w-48 flex-1">
+                        <input type="hidden" name="id" value={o.id} />
+                        <input
+                          name="name"
+                          defaultValue={o.name}
+                          className="input w-full py-1.5 text-sm"
+                          title="Press Enter to rename"
+                        />
+                      </form>
+                      <AutoSaveSelect
+                        action={setOccupation}
+                        name="category_id"
+                        value={o.category_id ?? ""}
+                        hidden={{ id: o.id }}
+                        options={[
+                          { value: "", label: "— none —" },
+                          ...cats.map((c) => ({ value: c.id, label: c.name })),
+                        ]}
+                      />
+                      <form action={deleteOccupation}>
+                        <input type="hidden" name="id" value={o.id} />
+                        <ActionButton icon="trash" tip={`Delete ${o.name}`} variant="danger" />
+                      </form>
+                    </>
+                  ) : (
+                    <span className="text-sm">{o.name}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

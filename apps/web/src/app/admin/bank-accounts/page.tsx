@@ -48,6 +48,7 @@ export default async function AdminBankAccountsPage({
       companies={formCompanies}
       banks={(banks ?? []) as FormBank[]}
       countryCodes={countryCodes}
+      channels={(active?.payment_channels ?? []) as string[]}
     />
   );
 }

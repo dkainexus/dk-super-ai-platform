@@ -63,13 +63,12 @@ export default async function BanksPage({
       ) : (
         <div className="card overflow-x-auto p-0">
           <div className="min-w-[52rem]">
-            <div className="grid grid-cols-[1.5rem_2.75rem_1fr_5rem_1.2fr_1.2fr_8rem] gap-3 border-b border-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
+            <div className="grid grid-cols-[1.5rem_2.75rem_1fr_5rem_1.5fr_8rem] gap-3 border-b border-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               <span />
               <span />
               <span>Bank</span>
               <span>Code</span>
               <span>Extra Fields</span>
-              <span>Payment Channels</span>
               <span>Status</span>
             </div>
             <BankReorder ids={rows.map((b) => b.id)} countryId={active!.id} canEdit={Boolean(canEdit)} dense>
@@ -78,7 +77,7 @@ export default async function BanksPage({
                 return (
                   <div
                     key={b.id}
-                    className="grid grid-cols-[2.75rem_1fr_5rem_1.2fr_1.2fr_8rem] items-center gap-3 px-3 py-2.5"
+                    className="grid grid-cols-[2.75rem_1fr_5rem_1.5fr_8rem] items-center gap-3 px-3 py-2.5"
                   >
                     <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-raised">
                       {logo ? (
@@ -93,7 +92,6 @@ export default async function BanksPage({
                     <span className="truncate text-xs text-muted">
                       {(b.account_fields ?? []).map((f) => f.label).join(", ") || "—"}
                     </span>
-                    <span className="truncate text-xs text-muted">{(b.channels ?? []).join(", ") || "—"}</span>
                     <div className="flex items-center justify-between gap-2">
                       <ActiveTag active={b.active} />
                       <RowSettings href={`/admin/banks/${b.id}`} tip={`Open ${b.name}`} />

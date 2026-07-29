@@ -57,13 +57,16 @@ export default async function BankDetailPage({
 
       <section className="card space-y-4 p-5">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Bank</h2>
-        <form action={updateBank} className="grid items-end gap-4 sm:grid-cols-[3.5rem_1fr_8rem_5rem_auto_auto]">
+        <div className="flex items-center gap-4">
+          <BankLogo bankId={bank.id} countryId={bank.country_id} url={logo} canEdit={canEdit} />
+          <p className="text-xs text-muted">Click the logo to upload or replace it; hover to remove.</p>
+        </div>
+        <form action={updateBank} className="grid items-end gap-4 sm:grid-cols-[1fr_8rem_5rem_auto_auto]">
           <input type="hidden" name="id" value={bank.id} />
           <input type="hidden" name="country_id" value={bank.country_id} />
           {(bank.channels ?? []).map((c) => (
             <input key={c} type="hidden" name="channels" value={c} />
           ))}
-          <BankLogo bankId={bank.id} countryId={bank.country_id} url={logo} canEdit={canEdit} />
           <div>
             <label className="mb-1 block text-xs text-muted">Name</label>
             <input name="name" defaultValue={bank.name} className="input" disabled={!canEdit} />
@@ -132,43 +135,6 @@ export default async function BankDetailPage({
         )}
       </section>
 
-      <section className="card space-y-3 p-5">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Payment Channels</h2>
-          <p className="mt-1 text-xs text-muted">
-            Which of {active?.name ?? "the country"}&apos;s channels this bank supports.
-          </p>
-        </div>
-        <form action={updateBank} className="space-y-3">
-          <input type="hidden" name="id" value={bank.id} />
-          <input type="hidden" name="country_id" value={bank.country_id} />
-          <input type="hidden" name="name" value={bank.name} />
-          <input type="hidden" name="code" value={bank.code ?? ""} />
-          {bank.active && <input type="hidden" name="active" value="on" />}
-          <div className="flex flex-wrap gap-2">
-            {(active?.payment_channels ?? []).length === 0 && (
-              <p className="text-sm text-muted">No channels defined for this country yet.</p>
-            )}
-            {(active?.payment_channels ?? []).map((ch) => (
-              <label
-                key={ch}
-                className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:border-accent"
-              >
-                <input
-                  type="checkbox"
-                  name="channels"
-                  value={ch}
-                  defaultChecked={(bank.channels ?? []).includes(ch)}
-                  disabled={!canEdit}
-                  className="h-4 w-4"
-                />
-                {ch}
-              </label>
-            ))}
-          </div>
-          {canEdit && (active?.payment_channels ?? []).length > 0 && <SaveButton tip="Save the supported channels" />}
-        </form>
-      </section>
     </div>
   );
 }

@@ -52,6 +52,7 @@ export default async function MerchantBankAccountsPage({
       companies={(companies ?? []) as FormCompany[]}
       banks={(banks ?? []) as FormBank[]}
       countryCodes={countryCodes}
+      channels={(active?.payment_channels ?? []) as string[]}
     />
   );
 }

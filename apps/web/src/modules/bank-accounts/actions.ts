@@ -23,9 +23,13 @@ export async function parseBankExtras(
   bankId: string,
   formData: FormData
 ): Promise<{ extra: Record<string, string>; channels: Record<string, { enabled: boolean; value?: string }> }> {
-  const { data: bank } = await db().from("banks").select("account_fields, channels").eq("id", bankId).maybeSingle();
+  const { data: bank } = await db()
+    .from("banks")
+    .select("account_fields, country:countries(payment_channels)")
+    .eq("id", bankId)
+    .maybeSingle();
   const fields = ((bank?.account_fields ?? []) as { key: string; label: string }[]) || [];
-  const chans = ((bank?.channels ?? []) as string[]) || [];
+  const chans = (((bank?.country as { payment_channels?: string[] } | null)?.payment_channels ?? []) as string[]) || [];
   const extra: Record<string, string> = {};
   for (const f of fields) {
     const v = String(formData.get(`extra_${f.key}`) ?? "").trim();

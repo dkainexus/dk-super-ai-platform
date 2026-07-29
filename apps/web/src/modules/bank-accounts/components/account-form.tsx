@@ -16,16 +16,18 @@ export type FormBank = {
   code: string | null;
   country_id: string;
   account_fields: { key: string; label: string }[];
-  channels: string[];
 };
 
 export function BankAccountForm({
   companies,
   banks,
   countryCodes,
+  channels,
 }: {
   companies: FormCompany[];
   banks: FormBank[];
+  /** Payment channels available in this country */
+  channels: string[];
   /** countryId → ISO code, so Google search is limited to the right country */
   countryCodes: Record<string, string>;
 }) {
@@ -129,11 +131,11 @@ export function BankAccountForm({
             ))}
           </div>
 
-          {bank.channels.length > 0 && (
+          {channels.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Payment Channels</p>
               <div className="grid gap-3 sm:grid-cols-2">
-                {bank.channels.map((c) => (
+                {channels.map((c) => (
                   <div key={c} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
                     <label className="flex items-center gap-2 text-sm">
                       <input type="checkbox" name={`channel_${c}`} /> {c}

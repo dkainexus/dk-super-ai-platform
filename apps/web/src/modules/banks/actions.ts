@@ -52,10 +52,9 @@ export async function updateBank(formData: FormData): Promise<void> {
   const active = formData.get("active") === "on";
   if (!name) fail(back, "Bank name cannot be empty");
 
-  // Payment channels are ticked from the country's list; extra fields and the
-  // logo have their own instant actions.
-  const channels = formData.getAll("channels").map(String).filter(Boolean);
-  const patch: Record<string, unknown> = { name, code, active, channels };
+  // Payment channels are country-wide, so there is nothing per-bank to save
+  // here; extra fields and the logo have their own instant actions.
+  const patch: Record<string, unknown> = { name, code, active };
 
   const { error } = await db().from("banks").update(patch).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);

@@ -35,6 +35,7 @@ export function BankAccountsView({
   companies,
   banks,
   countryCodes,
+  channels,
 }: {
   base: string;
   error?: string;
@@ -46,6 +47,7 @@ export function BankAccountsView({
   companies: FormCompany[];
   banks: FormBank[];
   countryCodes: Record<string, string>;
+  channels: string[];
 }) {
   const pendingCount = rows.filter((r) => r.status === "pending").length;
   const shown = status ? rows.filter((r) => r.status === status) : rows;
@@ -211,7 +213,7 @@ export function BankAccountsView({
                         <input name={`extra_${f.key}`} defaultValue={a.extra?.[f.key] ?? ""} className="input" />
                       </div>
                     ))}
-                    {(a.bank?.channels ?? []).map((c) => (
+                    {channels.map((c) => (
                       <div key={c} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
                         <label className="flex items-center gap-2 text-xs">
                           <input type="checkbox" name={`channel_${c}`} defaultChecked={a.channels?.[c]?.enabled} /> {c}
@@ -301,7 +303,7 @@ export function BankAccountsView({
           <p className="mb-4 text-xs text-muted">
             Pick the company first — banks, branches and extra fields follow the company&apos;s country.
           </p>
-          <BankAccountForm companies={companies} banks={banks} countryCodes={countryCodes} />
+          <BankAccountForm companies={companies} banks={banks} countryCodes={countryCodes} channels={channels} />
         </section>
       )}
     </div>

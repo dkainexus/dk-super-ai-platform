@@ -22,6 +22,9 @@ export function BankReorder({
   children: ReactNode[];
 }) {
   const [order, setOrder] = useState<number[]>(ids.map((_, i) => i));
+  // The drag handlers close over the order from their render, so the latest
+  // arrangement lives in a ref — otherwise the first drop saves the old order.
+  const latest = useRef<number[]>(ids.map((_, i) => i));
   const [dragging, setDragging] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const saved = useRef<string>(ids.join(","));
@@ -36,13 +39,14 @@ export function BankReorder({
       const to = next.indexOf(target);
       if (from === -1 || to === -1 || from === to) return prev;
       next.splice(to, 0, ...next.splice(from, 1));
+      latest.current = next;
       return next;
     });
   }
 
   function commit() {
     setDragging(null);
-    const nextIds = order.map((i) => ids[i]);
+    const nextIds = latest.current.map((i) => ids[i]);
     if (nextIds.join(",") === saved.current) return;
     saved.current = nextIds.join(",");
     startTransition(() => {

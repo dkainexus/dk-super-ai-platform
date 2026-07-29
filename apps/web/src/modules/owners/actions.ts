@@ -21,24 +21,24 @@ function fail(path: string, message: string): never {
 export async function createCountryField(formData: FormData): Promise<void> {
   await requirePerm("settings", "edit");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/settings/owners?country=${countryId}`;
+  const back = String(formData.get("back") ?? "/admin/settings/owners");
   const label = String(formData.get("label") ?? "").trim();
-  const rawKey = String(formData.get("field_key") ?? "").trim();
   const fieldType = String(formData.get("field_type") ?? "text") as FieldType;
   const required = formData.get("required") === "on";
   const optionsRaw = String(formData.get("options") ?? "").trim();
 
   if (!label) fail(back, "Please enter a field label");
-  if (!["text", "number", "date", "file", "select"].includes(fieldType)) fail(back, "Invalid field type");
+  if (!["text", "number", "date", "file", "select", "multiselect"].includes(fieldType)) fail(back, "Invalid field type");
 
-  let fieldKey = slugify(rawKey || label);
+  // The storage key is derived from the label — nobody should have to type it.
+  let fieldKey = slugify(label);
   if (!fieldKey) fieldKey = `field_${Date.now().toString(36)}`;
 
-  const options =
-    fieldType === "select"
-      ? optionsRaw.split(/[,，\n]/).map((s) => s.trim()).filter(Boolean)
-      : [];
-  if (fieldType === "select" && options.length === 0) fail(back, "Select fields need at least one option");
+  const choiceType = fieldType === "select" || fieldType === "multiselect";
+  const options = choiceType
+    ? optionsRaw.split(/[,，\n]/).map((s) => s.trim()).filter(Boolean)
+    : [];
+  if (choiceType && options.length === 0) fail(back, "Dropdown and multiple select need at least one choice");
 
   const { count } = await db()
     .from("country_fields")
@@ -56,20 +56,23 @@ export async function createCountryField(formData: FormData): Promise<void> {
   });
   if (error) fail(back, `Failed to create: ${error.message}`);
   revalidatePath("/admin/settings/owners");
+  redirect(back);
 }
 
 export async function updateCountryField(formData: FormData): Promise<void> {
   await requirePerm("settings", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/settings/owners?country=${countryId}`;
+  const back = String(formData.get("back") ?? "/admin/settings/owners");
   const label = String(formData.get("label") ?? "").trim();
+  const optionsRaw = String(formData.get("options") ?? "").trim();
   const required = formData.get("required") === "on";
   const sort = parseInt(String(formData.get("sort") ?? "100"), 10) || 100;
   const active = formData.get("active") === "on";
   if (!label) fail(back, "Field label cannot be empty");
 
-  await db().from("country_fields").update({ label, required, sort, active }).eq("id", id);
+  const options = optionsRaw.split(/[,，\n]/).map((x) => x.trim()).filter(Boolean);
+  await db().from("country_fields").update({ label, required, sort, active, options }).eq("id", id);
   revalidatePath("/admin/settings/owners");
 }
 
@@ -77,7 +80,7 @@ export async function deleteCountryField(formData: FormData): Promise<void> {
   await requirePerm("settings", "edit");
   const id = String(formData.get("id") ?? "");
   const countryId = String(formData.get("country_id") ?? "");
-  const back = `/admin/settings/owners?country=${countryId}`;
+  const back = String(formData.get("back") ?? "/admin/settings/owners");
 
   // Refuse to delete a field that already has values; deactivate instead.
   const { count } = await db()

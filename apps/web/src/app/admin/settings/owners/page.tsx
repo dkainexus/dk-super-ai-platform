@@ -1,188 +1,167 @@
-import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
-import {
-  createCountryField,
-  updateCountryField,
-  deleteCountryField,
-} from "@/modules/owners/actions";
+import { createCountryField, updateCountryField, deleteCountryField } from "@/modules/owners/actions";
+import { requireCountryScope } from "@/modules/countries/lib";
 import { ErrorBanner } from "@/components/error-banner";
-import { ActiveTag } from "@/components/status-tag";
-import { ActionButton, SaveButton, SubmitButton } from "@/components/action-buttons";
-import type { Country, CountryField } from "@/lib/types";
+import { ActionButton, SaveButton } from "@/components/action-buttons";
+import { Table, TableToolbar } from "@/components/data-table";
+import type { CountryField } from "@/lib/types";
 
-const FIELD_TYPE_LABEL: Record<string, string> = {
-  text: "Text",
-  number: "Number",
-  date: "Date",
-  select: "Dropdown",
-  multiselect: "Multiple select",
-  file: "Upload",
-};
+const FIELD_TYPES = [
+  { value: "text", label: "Text" },
+  { value: "number", label: "Number" },
+  { value: "date", label: "Date" },
+  { value: "select", label: "Dropdown" },
+  { value: "multiselect", label: "Multiple select" },
+  { value: "file", label: "Upload" },
+];
 
-// Owners module settings: the extra fields collected per country.
-// Text, number, date, dropdown, multiple select or upload.
-export default async function OwnersModuleSettingsPage({
+// Extra questions the owner form asks in this country, on top of the built-in
+// name / ID / photos / bank / occupation / contact fields.
+export default async function OwnerExtraFieldsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; country?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { cu } = await requirePerm("settings", "view");
-  const { error, country: countryParam } = await searchParams;
-  const canEdit = can(cu, "settings", "edit");
+  const { error } = await searchParams;
+  const { active } = await requireCountryScope();
+  if (!active) return null;
 
-  const [{ data: countries }] = await Promise.all([
-    db().from("countries").select("*").order("sort").order("name"),
-  ]);
-  const countryList = (countries ?? []) as Country[];
-  const selected = countryList.find((c) => c.id === countryParam) ?? countryList[0] ?? null;
-
-  const { data: fields } = selected
-    ? await db().from("country_fields").select("*").eq("country_id", selected.id).order("sort")
-    : { data: [] };
+  const { data } = await db()
+    .from("country_fields")
+    .select("*")
+    .eq("country_id", active.id)
+    .order("sort")
+    .order("created_at");
+  const fields = (data ?? []) as CountryField[];
+  const canEdit = Boolean(can(cu, "settings", "edit"));
+  const back = "/admin/settings/owners";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <Link href="/admin/settings" className="text-xs text-muted hover:text-foreground">
-          ← Settings
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">Owners Module Settings</h1>
-        <p className="mt-1 text-sm text-muted">Custom form fields per country and the global occupations list.</p>
+        <h1 className="text-xl font-semibold">Owner Extra Fields</h1>
+        <p className="mt-1 text-sm text-muted">
+          Extra questions the owner form asks in {active.name}. Already built in: name, ID number, ID photos,
+          full-body photo, bank, occupation and contact.
+        </p>
       </div>
       <ErrorBanner message={error} />
 
-      {/* ---------- Custom fields (per country) ---------- */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Owner Custom Fields</h2>
-        <p className="text-xs text-muted">
-          Built-in fields: name, ID number, ID photos, full-body photo, bank, occupation, contact. Fields added here
-          appear on every owner form of the selected country — e.g. Tabien Baan for Thailand.
-        </p>
-
-        {countryList.length === 0 ? (
-          <p className="card px-5 py-6 text-sm text-muted">Create a country first (Countries page).</p>
-        ) : (
-          <>
-            <div className="flex flex-wrap gap-2">
-              {countryList.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/admin/settings/owners?country=${c.id}`}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                    selected?.id === c.id
-                      ? "border-accent bg-accent-soft text-accent-strong"
-                      : "border-border text-muted hover:border-accent hover:text-foreground"
-                  }`}
-                >
-                  {c.flag || "🌐"} {c.name}
-                </Link>
+      {canEdit && (
+        <form
+          action={createCountryField}
+          className="card grid gap-3 p-5 sm:grid-cols-[1fr_9rem_1fr_auto_auto] sm:items-end"
+        >
+          <input type="hidden" name="country_id" value={active.id} />
+          <input type="hidden" name="back" value={back} />
+          <div>
+            <label className="mb-1 block text-xs text-muted">New Field</label>
+            <input name="label" className="input" placeholder="e.g. LINE ID" required />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Type</label>
+            <select name="field_type" className="input">
+              {FIELD_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
-            </div>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Choices (comma separated)</label>
+            <input name="options" className="input" placeholder="dropdown / multiple select only" />
+          </div>
+          <label className="flex items-center gap-2 pb-2 text-xs text-muted">
+            <input type="checkbox" name="required" /> Required
+          </label>
+          <ActionButton icon="plus" tip="Add this field" label="Add" variant="primary" />
+        </form>
+      )}
 
-            <div className="space-y-3">
-              {((fields ?? []) as CountryField[]).length === 0 && (
-                <p className="card px-5 py-6 text-sm text-muted">
-                  No custom fields for {selected?.name} yet.
-                </p>
-              )}
-              {((fields ?? []) as CountryField[]).map((f) =>
-                canEdit ? (
-                  <div key={f.id} className="card p-4">
-                    <form
-                      action={updateCountryField}
-                      className="grid items-end gap-3 sm:grid-cols-[1fr_7rem_5rem_5rem_auto_auto]"
-                    >
-                      <input type="hidden" name="id" value={f.id} />
-                      <input type="hidden" name="country_id" value={selected!.id} />
-                      <div>
-                        <label className="mb-1 block text-xs text-muted">
-                          Label{" "}
-                          <span className="mono-num">
-                            ({f.field_key} · {FIELD_TYPE_LABEL[f.field_type]})
-                          </span>
-                        </label>
-                        <input name="label" defaultValue={f.label} className="input" />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs text-muted">Sort</label>
-                        <input name="sort" type="number" defaultValue={f.sort} className="input mono-num" />
-                      </div>
-                      <label className="flex items-center gap-2 pb-2 text-xs text-muted">
-                        <input type="checkbox" name="required" defaultChecked={f.required} /> Required
-                      </label>
-                      <label className="flex items-center gap-2 pb-2 text-xs text-muted">
-                        <input type="checkbox" name="active" defaultChecked={f.active} /> Enabled
-                      </label>
-                      <SaveButton tip="Save this field" />
-                      <button
-                        type="submit"
-                        formAction={deleteCountryField}
-                        title="Delete this field (fields already holding data are deactivated instead)"
-                        className="rounded-md border border-danger/40 px-3 py-1.5 text-sm text-danger transition-colors hover:bg-danger/10"
-                      >
-                        Delete
-                      </button>
-                    </form>
-                    {f.field_type === "select" && (
-                      <p className="mt-2 text-xs text-muted">Options: {(f.options ?? []).join(" / ")}</p>
-                    )}
-                  </div>
-                ) : (
-                  <div key={f.id} className="card flex items-center justify-between p-4">
-                    <p className="text-sm font-medium">
-                      {f.label}{" "}
-                      <span className="mono-num text-xs text-muted">
-                        ({f.field_key} · {FIELD_TYPE_LABEL[f.field_type]}
-                        {f.required ? " · required" : ""})
-                      </span>
-                    </p>
-                    <ActiveTag active={f.active} />
-                  </div>
-                )
-              )}
-            </div>
+      <TableToolbar count={fields.length} noun="field" />
 
-            {canEdit && selected && (
-              <div className="card p-5">
-                <h3 className="mb-4 text-sm font-semibold">
-                  Add Field to {selected.flag || "🌐"} {selected.name}
-                </h3>
-                <form action={createCountryField} className="grid gap-4 sm:grid-cols-2">
-                  <input type="hidden" name="country_id" value={selected.id} />
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Field Label (shown on the form)</label>
-                    <input name="label" placeholder="Tabien Baan" className="input" required />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Field key (optional, auto-generated)</label>
-                    <input name="field_key" placeholder="tabien_baan" className="input mono-num" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Type</label>
-                    <select name="field_type" className="input">
-                      {Object.entries(FIELD_TYPE_LABEL).map(([v, label]) => (
-                        <option key={v} value={v}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Options (select type only, comma separated)</label>
-                    <input name="options" placeholder="Option A, Option B" className="input" />
-                  </div>
-                  <label className="flex items-center gap-2 text-sm text-muted">
-                    <input type="checkbox" name="required" /> Required field
-                  </label>
-                  <div className="sm:col-span-2">
-                    <SubmitButton label="Add Field" />
-                  </div>
-                </form>
-              </div>
-            )}
-          </>
+      <Table head={["Field", "Type", "Choices", "Required", "Active", ""]}>
+        {fields.length === 0 && (
+          <tr>
+            <td colSpan={6} className="px-4 py-6 text-sm text-muted">No extra fields in {active.name} yet.</td>
+          </tr>
         )}
-      </section>
-
+        {fields.map((f) => (
+          <tr key={f.id} className="transition-colors hover:bg-surface-raised">
+            <td className="px-4 py-2">
+              {canEdit ? (
+                <>
+                  <form action={updateCountryField} id={`f-${f.id}`}>
+                    <input type="hidden" name="id" value={f.id} />
+                    <input type="hidden" name="country_id" value={active.id} />
+                    <input type="hidden" name="back" value={back} />
+                    <input type="hidden" name="sort" value={f.sort} />
+                  </form>
+                  <input
+                    form={`f-${f.id}`}
+                    name="label"
+                    defaultValue={f.label}
+                    className="input w-full max-w-xs py-1.5 text-sm"
+                  />
+                </>
+              ) : (
+                f.label
+              )}
+            </td>
+            <td className="px-4 py-2 text-muted">
+              {FIELD_TYPES.find((t) => t.value === f.field_type)?.label ?? f.field_type}
+            </td>
+            <td className="px-4 py-2">
+              {canEdit ? (
+                <input
+                  form={`f-${f.id}`}
+                  name="options"
+                  defaultValue={(f.options ?? []).join(", ")}
+                  placeholder="—"
+                  className="input w-full max-w-xs py-1.5 text-sm"
+                />
+              ) : (
+                (f.options ?? []).join(", ") || "—"
+              )}
+            </td>
+            <td className="px-4 py-2">
+              {canEdit ? (
+                <input form={`f-${f.id}`} type="checkbox" name="required" defaultChecked={f.required} />
+              ) : (
+                f.required ? "Yes" : "No"
+              )}
+            </td>
+            <td className="px-4 py-2">
+              {canEdit ? (
+                <input form={`f-${f.id}`} type="checkbox" name="active" defaultChecked={f.active} />
+              ) : (
+                f.active ? "Yes" : "No"
+              )}
+            </td>
+            <td className="px-4 py-2">
+              {canEdit && (
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="submit"
+                    form={`f-${f.id}`}
+                    title={`Save ${f.label}`}
+                    className="rounded-md border border-border px-3 py-1.5 text-xs transition-colors hover:border-accent"
+                  >
+                    Save
+                  </button>
+                  <form action={deleteCountryField}>
+                    <input type="hidden" name="id" value={f.id} />
+                    <input type="hidden" name="country_id" value={active.id} />
+                    <input type="hidden" name="back" value={back} />
+                    <ActionButton icon="trash" tip={`Delete ${f.label}`} variant="danger" />
+                  </form>
+                </div>
+              )}
+            </td>
+          </tr>
+        ))}
+      </Table>
     </div>
   );
 }

@@ -32,12 +32,14 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     const item: NavItem = { ...nav };
     // Per-country module settings hang off their module, inside a country only.
     if (!isMerchant && !isGlobal && m.settingsHref && canSettings) {
-      item.children = [{ href: m.settingsHref, label: "Settings" }];
+      const label =
+        m.key === "owners" ? "Owner Extra Fields" : m.key === "companies" ? "Shareholder Settings" : "Settings";
+      item.children = [{ href: m.settingsHref, label }];
     }
     if (!isMerchant && !isGlobal && m.key === "banks") {
       item.children = [
         { href: "/admin/banks/channels", label: "Payment Channels" },
-        { href: "/admin/banks/fields", label: "Extra Fields" },
+        { href: "/admin/banks/fields", label: "Bank Account Extra Fields" },
       ];
     }
     if (!isMerchant && !isGlobal && m.key === "wallet") {
