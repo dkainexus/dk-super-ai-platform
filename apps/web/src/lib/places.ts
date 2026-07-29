@@ -29,6 +29,8 @@ export async function placeAutocomplete(input: string, regionCode?: string | nul
     headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey() },
     body: JSON.stringify({
       input,
+      // Branches, not ATMs (a few ATMs are still typed as banks — filtered below)
+      includedPrimaryTypes: ["bank"],
       ...(regionCode ? { includedRegionCodes: [regionCode.toLowerCase()] } : {}),
     }),
   });
@@ -49,7 +51,8 @@ export async function placeAutocomplete(input: string, regionCode?: string | nul
       place_id: p.placeId!,
       name: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
       address: p.structuredFormat?.secondaryText?.text ?? p.text?.text ?? "",
-    }));
+    }))
+    .filter((p) => !/\bATM\b|ตู้เอทีเอ็ม/i.test(p.name));
 }
 
 /** Standardised name + full address + coordinates for a chosen place. */

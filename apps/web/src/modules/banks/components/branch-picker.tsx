@@ -11,7 +11,7 @@ export function BranchPicker({
   regionCode,
   bankName,
   defaultValue,
-  label = "Branch — search Google Maps",
+  label = "Branch — type the area to find the nearest branch",
   compact,
 }: {
   /** ISO-3166 alpha-2 of the bank's country, e.g. TH */
@@ -97,7 +97,7 @@ export function BranchPicker({
           setQuery(e.target.value);
           setPicked(null);
         }}
-        placeholder={bankName ? `Search ${bankName} branches…` : "Search a branch…"}
+        placeholder="Type the area or district — e.g. Silom"
         className={inputClass}
         autoComplete="off"
       />
@@ -116,8 +116,8 @@ export function BranchPicker({
                 onClick={() => choose(s)}
                 className="block w-full px-3 py-2 text-left transition-colors hover:bg-accent-soft"
               >
-                <span className="block text-sm">{s.name}</span>
-                <span className="block text-[11px] text-muted">{s.address}</span>
+                <span className="block text-sm font-medium">{s.name}</span>
+                <span className="block text-[11px] leading-snug text-muted">{s.address}</span>
               </button>
             </li>
           ))}

@@ -133,35 +133,15 @@ export default async function BanksPage({
                         </div>
                         <div>
                           <label className="mb-1 block text-xs text-muted">
-                            Extra account fields asked by this bank
+                            Extra account fields — one per line (e.g. Company ID, App PIN)
                           </label>
-                          {(selected.account_fields ?? []).length === 0 ? (
-                            <p className="text-xs text-muted">
-                              No extra fields defined for {selected.name} yet —{" "}
-                              <Link href={`/admin/countries/${selected.id}`} className="text-accent hover:underline">
-                                add them on the country page
-                              </Link>
-                              .
-                            </p>
-                          ) : (
-                            <div className="flex flex-wrap gap-2 pt-1">
-                              {(selected.account_fields ?? []).map((f) => (
-                                <label
-                                  key={f.key}
-                                  className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:border-accent"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    name="account_fields"
-                                    value={f.key}
-                                    defaultChecked={(b.account_fields ?? []).some((x) => x.key === f.key)}
-                                    className="h-4 w-4"
-                                  />
-                                  {f.label}
-                                </label>
-                              ))}
-                            </div>
-                          )}
+                          <textarea
+                            name="account_fields"
+                            rows={2}
+                            defaultValue={(b.account_fields ?? []).map((f) => f.label).join("\n")}
+                            className="input"
+                            placeholder={"Company ID\nApp PIN"}
+                          />
                         </div>
                         <div>
                           <label className="mb-1 block text-xs text-muted">

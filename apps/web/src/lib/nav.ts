@@ -1,5 +1,6 @@
 import "server-only";
 import { can, type CurrentUser } from "./auth";
+import { db } from "./supabase";
 import { globalModuleToggles, moduleEnabledFor } from "./settings";
 import { activeCountry } from "@/modules/merchants/lib";
 import { MODULES } from "@/modules/registry";
@@ -18,7 +19,41 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     if (!nav) continue;
     if (!m.core && !moduleEnabledFor(m.key, toggles, cu.merchant, country)) continue;
     if (!can(cu, m.key, "view")) continue;
-    items.push({ ...nav });
+    const item: NavItem = { ...nav };
+    // Module settings live under their own module, not buried in Settings.
+    if (!isMerchant && m.settingsHref && canSettings) {
+      item.children = [{ href: m.settingsHref, label: "Settings" }];
+    }
+    items.push(item);
+  }
+
+  // Entity sub-menus: the things that live inside each module, so you can jump
+  // straight to the one you want instead of hunting through the list page.
+  if (!isMerchant) {
+    const [countries, merchants] = await Promise.all([
+      db().from("countries").select("id, name, flag").eq("active", true).order("sort").order("name"),
+      db().from("merchants").select("id, name").eq("status", "active").order("name"),
+    ]);
+    const countryItems = ((countries.data ?? []) as { id: string; name: string; flag: string | null }[]).map((c) => ({
+      id: c.id,
+      label: `${c.flag ?? ""} ${c.name}`.trim(),
+    }));
+
+    const attach = (href: string, children: NavItem[]) => {
+      const item = items.find((i) => i.href === href);
+      if (item && children.length) item.children = [...(item.children ?? []), ...children];
+    };
+
+    attach("/admin/training", [{ href: "/admin/settings/app", label: "App Releases" }]);
+    attach("/admin/countries", countryItems.map((c) => ({ href: `/admin/countries/${c.id}`, label: c.label })));
+    attach("/admin/banks", countryItems.map((c) => ({ href: `/admin/banks?country=${c.id}`, label: c.label })));
+    attach(
+      "/admin/merchants",
+      ((merchants.data ?? []) as { id: string; name: string }[]).map((m) => ({
+        href: `/admin/merchants/${m.id}`,
+        label: m.name,
+      }))
+    );
   }
 
   const home = isMerchant ? "/m" : "/admin";

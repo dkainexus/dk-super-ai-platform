@@ -8,6 +8,11 @@ import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
 import { ASSETS_BUCKET, fileExt, uploadFile } from "@/lib/storage";
 
+/** "App PIN" → "app_pin" — stable keys for per-bank extra account fields. */
+function slugKey(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "field";
+}
+
 
 function fail(path: string, message: string): never {
   const sep = path.includes("?") ? "&" : "?";
@@ -48,15 +53,13 @@ export async function updateBank(formData: FormData): Promise<void> {
   const active = formData.get("active") === "on";
   if (!name) fail(back, "Bank name cannot be empty");
 
-  // Ticked subsets of the country's pools (extra account fields + payment channels)
-  const { data: country } = await db()
-    .from("countries")
-    .select("account_fields")
-    .eq("id", countryId)
-    .maybeSingle();
-  const pool = (country?.account_fields ?? []) as { key: string; label: string }[];
-  const ticked = new Set(formData.getAll("account_fields").map(String));
-  const accountFields = pool.filter((f) => ticked.has(f.key));
+  // Extra account fields are this bank's own (one label per line); payment
+  // channels are ticked from the country's list.
+  const accountFields = String(formData.get("account_fields") ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((label) => ({ key: slugKey(label), label }));
   const channels = formData.getAll("channels").map(String).filter(Boolean);
 
   const patch: Record<string, unknown> = { name, code, sort, active, account_fields: accountFields, channels };
