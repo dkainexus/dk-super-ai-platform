@@ -24,7 +24,7 @@ export default async function ContractPolicyPage({
   const [policy, template, { data: banks }, { data: country }] = await Promise.all([
     contractPolicy(cu.merchant.id, active.id),
     conditionRows(cu.merchant.id, active.id, null),
-    db().from("banks").select("id, name").eq("country_id", active.id).eq("active", true).order("sort"),
+    db().from("banks").select("id, name, code").eq("country_id", active.id).eq("active", true).order("sort"),
     db().from("countries").select("payment_channels").eq("id", active.id).maybeSingle(),
   ]);
   const canEdit = Boolean(can(cu, "contracts", "edit"));
@@ -120,7 +120,7 @@ export default async function ContractPolicyPage({
         </p>
         <ConditionTable
           rows={template}
-          banks={(banks ?? []) as { id: string; name: string }[]}
+          banks={(banks ?? []) as { id: string; name: string; code?: string | null }[]}
           channels={channels}
           canEdit={canEdit}
           hidden={{ back }}

@@ -108,7 +108,7 @@ export async function AgentDetail({
 
       {conditions && (
         <section className="card p-5">
-          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Their Conditions</h2>
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Conditions</h2>
           <p className="mb-4 text-xs text-muted">
             This agent&apos;s own deal, bank by bank. An account freezes its row on activation day — edits here
             only touch accounts activated afterwards.

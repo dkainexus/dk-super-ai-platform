@@ -41,7 +41,7 @@ export type ConditionRow = {
   renewal_months: number | null;
   deposit: number;
   sort: number;
-  bank?: { name: string } | null;
+  bank?: { name: string; code?: string | null } | null;
 };
 
 export async function contractPolicy(merchantId: string, countryId: string): Promise<ContractPolicy | null> {
@@ -89,7 +89,7 @@ export async function conditionRows(
 ): Promise<ConditionRow[]> {
   let q = db()
     .from("agent_condition_rows")
-    .select("*, bank:banks(name)")
+    .select("*, bank:banks(name, code)")
     .eq("merchant_id", merchantId)
     .eq("country_id", countryId)
     .order("sort", { ascending: true })

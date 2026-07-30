@@ -24,13 +24,13 @@ export default async function MerchantAgentDetailPage({
   if (a.country_id && can(cu, "contracts", "view")) {
     const [rows, { data: banks }, { data: country }] = await Promise.all([
       conditionRows(a.merchant_id, a.country_id, a.id),
-      db().from("banks").select("id, name").eq("country_id", a.country_id).eq("active", true).order("sort"),
+      db().from("banks").select("id, name, code").eq("country_id", a.country_id).eq("active", true).order("sort"),
       db().from("countries").select("payment_channels").eq("id", a.country_id).maybeSingle(),
     ]);
     conditions = (
       <ConditionTable
         rows={rows}
-        banks={(banks ?? []) as { id: string; name: string }[]}
+        banks={(banks ?? []) as { id: string; name: string; code?: string | null }[]}
         channels={((country?.payment_channels as string[] | null) ?? []).filter(Boolean)}
         canEdit={Boolean(can(cu, "contracts", "edit"))}
         hidden={{ back: `/m/agents/${a.id}` }}

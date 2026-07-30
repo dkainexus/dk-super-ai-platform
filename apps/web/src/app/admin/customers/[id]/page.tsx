@@ -192,7 +192,7 @@ export default async function CustomerDetailPage({
 
       {c.country_id && can(cu, "contracts", "view") && (
         <section className="card p-5">
-          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Their Conditions</h2>
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Conditions</h2>
           <p className="mb-4 text-xs text-muted">
             This customer&apos;s own pricing, bank by bank — assignments always price from here. Edits only
             touch accounts assigned from now on.
@@ -201,8 +201,8 @@ export default async function CustomerDetailPage({
             kind="customer"
             rows={await customerConditionRows(c.country_id, c.id)}
             banks={
-              ((await db().from("banks").select("id, name").eq("country_id", c.country_id).eq("active", true).order("sort")).data ??
-                []) as { id: string; name: string }[]
+              ((await db().from("banks").select("id, name, code").eq("country_id", c.country_id).eq("active", true).order("sort")).data ??
+                []) as { id: string; name: string; code?: string | null }[]
             }
             channels={
               (((await db().from("countries").select("payment_channels").eq("id", c.country_id).maybeSingle()).data

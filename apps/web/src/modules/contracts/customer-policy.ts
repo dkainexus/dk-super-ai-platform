@@ -45,7 +45,7 @@ export async function customerConditionRows(
 ): Promise<CustomerConditionRow[]> {
   let q = db()
     .from("customer_condition_rows")
-    .select("*, bank:banks(name)")
+    .select("*, bank:banks(name, code)")
     .eq("country_id", countryId)
     .order("sort", { ascending: true })
     .order("created_at", { ascending: true });

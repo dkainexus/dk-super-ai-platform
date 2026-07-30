@@ -20,7 +20,7 @@ export default async function CustomerDefaultsPage({
 
   const [rows, { data: banks }, { data: country }] = await Promise.all([
     customerConditionRows(active.id, null),
-    db().from("banks").select("id, name").eq("country_id", active.id).eq("active", true).order("sort"),
+    db().from("banks").select("id, name, code").eq("country_id", active.id).eq("active", true).order("sort"),
     db().from("countries").select("payment_channels").eq("id", active.id).maybeSingle(),
   ]);
 
@@ -44,7 +44,7 @@ export default async function CustomerDefaultsPage({
         <ConditionTable
           kind="customer"
           rows={rows}
-          banks={(banks ?? []) as { id: string; name: string }[]}
+          banks={(banks ?? []) as { id: string; name: string; code?: string | null }[]}
           channels={((country?.payment_channels as string[] | null) ?? []).filter(Boolean)}
           canEdit={Boolean(can(cu, "contracts", "edit"))}
           hidden={{ back: "/admin/contracts/customer-defaults", country_id: active.id }}

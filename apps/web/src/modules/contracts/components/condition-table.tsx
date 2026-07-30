@@ -23,7 +23,7 @@ function RowForm({
   kind,
 }: {
   row: Row | null;
-  banks: { id: string; name: string }[];
+  banks: { id: string; name: string; code?: string | null }[];
   channels: string[];
   hidden: Record<string, string>;
   kind: "agent" | "customer";
@@ -46,7 +46,7 @@ function RowForm({
         <select name="bank_id" defaultValue={row?.bank_id ?? ""} className="input py-1.5 text-sm" required>
           <option value="">— Bank —</option>
           {banks.map((b) => (
-            <option key={b.id} value={b.id}>{b.name}</option>
+            <option key={b.id} value={b.id}>{b.code || b.name}</option>
           ))}
         </select>
       </div>
@@ -124,7 +124,7 @@ export function ConditionTable({
   showCopy,
 }: {
   rows: Row[];
-  banks: { id: string; name: string }[];
+  banks: { id: string; name: string; code?: string | null }[];
   channels: string[];
   canEdit: boolean;
   /** Context fields every form posts back: back, and merchant/country on admin. */
@@ -174,7 +174,7 @@ export function ConditionTable({
             <tbody className="divide-y divide-border">
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td className="px-3 py-2">{r.bank?.name ?? "?"}</td>
+                  <td className="mono-num px-3 py-2">{r.bank?.code || r.bank?.name || "?"}</td>
                   <td className="px-3 py-2 text-muted">{r.channel ?? "default"}</td>
                   <td className="px-3 py-2">{MODE_LABEL[r.mode]}</td>
                   <td className="mono-num px-3 py-2 text-right">{r.mode === "turnover" ? "—" : fmtNum(r.rent)}</td>
