@@ -10,22 +10,9 @@ import {
   renewalState,
   today,
 } from "@/modules/contracts/lib";
-import {
-  updateContract,
-  activateContract,
-  addContractAccount,
-  changeTerms,
-  startAccountEarly,
-  endContractAccount,
-  removeContractAccount,
-  renewContract,
-  terminateContract,
-  deleteContract,
-} from "@/modules/contracts/actions";
-import { addDays } from "@/modules/billing/engine";
+import { endContractAccount, renewContract, terminateContract } from "@/modules/contracts/actions";
 import { ErrorBanner } from "@/components/error-banner";
-import { ActionButton, SaveButton } from "@/components/action-buttons";
-import { MoneyInput } from "@/components/money-input";
+import { ActionButton } from "@/components/action-buttons";
 import { RowSettings } from "@/components/row-actions";
 import { Table } from "@/components/data-table";
 import { AuditLine } from "@/components/audit-line";
@@ -38,6 +25,9 @@ const STATUS_STYLE: Record<string, string> = {
   terminated: "border-danger/40 bg-danger/10 text-danger",
 };
 
+// The registry view of a contract the system wrote. Terms and accounts are
+// frozen records — the levers left to a human are renewing, terminating, and
+// ending one account's billing.
 export default async function ContractDetailPage({
   params,
   searchParams,
@@ -51,7 +41,7 @@ export default async function ContractDetailPage({
   const c = await contract(id);
   if (!c) notFound();
 
-  const [lines, { data: invoices }, { data: freeAccounts }] = await Promise.all([
+  const [lines, { data: invoices }] = await Promise.all([
     contractAccounts(c.id),
     db()
       .from("invoices")
@@ -66,27 +56,12 @@ export default async function ContractDetailPage({
       .neq("status", "draft")
       .order("period_month", { ascending: false })
       .limit(12),
-    db()
-      .from("bank_accounts")
-      .select("id, ref, account_no, bank:banks(name, code)")
-      .eq("merchant_id", c.merchant_id)
-      .eq("status", "active")
-      .order("created_at", { ascending: false }),
   ]);
-
-  const onLines = new Set(lines.map((l) => l.bank_account_id));
-  const addable = ((freeAccounts ?? []) as unknown as {
-    id: string;
-    ref: string | null;
-    account_no: string;
-    bank: { name: string; code: string | null } | null;
-  }[]).filter((a) => !onLines.has(a.id));
 
   const day = today();
   const renewal = renewalState(c, day);
   const isExpired = c.status === "active" && c.ends_on !== null && c.ends_on < day;
   const canEdit = Boolean(can(cu, "contracts", "edit"));
-  const defaultStart = addDays(day, c.lead_days);
 
   return (
     <div className="space-y-5">
@@ -110,72 +85,55 @@ export default async function ContractDetailPage({
         </p>
       </div>
       <ErrorBanner message={error} />
-      {saved === "active" && (
-        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
-          Contract activated — the term is fixed from the earliest account start.
-        </p>
-      )}
       {saved === "renewed" && (
         <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
           Renewed — the new end date is {c.ends_on}.
         </p>
       )}
-      {saved === "terms" && (
-        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
-          New terms saved — they take effect from the 1st of next month; this month stays on the old price.
-        </p>
-      )}
 
-      {/* ---------- header terms ---------- */}
+      {/* ---------- header terms (written at activation, read here) ---------- */}
       <section className="card p-5">
-        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">Terms</h2>
-        <form action={updateContract} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <input type="hidden" name="id" value={c.id} />
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Terms</h2>
+        <p className="mb-4 text-xs text-muted">
+          Written by the system when the account was activated or the customer confirmed — change the owner&apos;s
+          terms or the condition tables to affect future contracts.
+        </p>
+        <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <label className="mb-1 block text-xs text-muted">Minimum Term (months)</label>
-            <input
-              name="min_term_months"
-              type="number"
-              min={1}
-              defaultValue={c.min_term_months}
-              className="input mono-num"
-              disabled={!canEdit || c.status !== "draft"}
-            />
+            <p className="text-[10px] uppercase tracking-wide text-muted">Minimum Term</p>
+            <p className="mono-num">{c.min_term_months} months</p>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">Renewal Minimum (months)</label>
-            <input name="renewal_min_months" type="number" min={1} defaultValue={c.renewal_min_months} className="input mono-num" disabled={!canEdit} />
+            <p className="text-[10px] uppercase tracking-wide text-muted">Renewal Minimum</p>
+            <p className="mono-num">{c.renewal_min_months} months</p>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">Renewal Window (days)</label>
-            <input name="renewal_window_days" type="number" min={1} defaultValue={c.renewal_window_days} className="input mono-num" disabled={!canEdit} />
+            <p className="text-[10px] uppercase tracking-wide text-muted">Renewal Window</p>
+            <p className="mono-num">{c.renewal_window_days} days</p>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">Lead Days</label>
-            <input name="lead_days" type="number" min={0} defaultValue={c.lead_days} className="input mono-num" disabled={!canEdit} />
+            <p className="text-[10px] uppercase tracking-wide text-muted">Lead Days</p>
+            <p className="mono-num">{c.lead_days}</p>
           </div>
           {c.party_type !== "owner" && (
             <div>
-              <label className="mb-1 block text-xs text-muted">Insurance (written, not collected)</label>
-              <MoneyInput name="deposit" defaultValue={c.deposit} />
+              <p className="text-[10px] uppercase tracking-wide text-muted">Insurance (written, not collected)</p>
+              <p className="mono-num">{fmtNum(c.deposit)}</p>
             </div>
           )}
           {c.party_type === "agent" && (
             <div>
-              <label className="mb-1 block text-xs text-muted">Theft Liability Window (months)</label>
-              <input name="theft_window_months" type="number" min={0} defaultValue={c.theft_window_months ?? 6} className="input mono-num" disabled={!canEdit} />
+              <p className="text-[10px] uppercase tracking-wide text-muted">Theft Liability Window</p>
+              <p className="mono-num">{c.theft_window_months ?? 0} months</p>
             </div>
           )}
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs text-muted">Notes</label>
-            <textarea name="notes" defaultValue={c.notes ?? ""} rows={2} className="input" disabled={!canEdit} />
-          </div>
-          {canEdit && (
-            <div className="sm:col-span-full">
-              <SaveButton tip="Save the contract terms" />
+          {c.notes && (
+            <div className="sm:col-span-2">
+              <p className="text-[10px] uppercase tracking-wide text-muted">Notes</p>
+              <p className="text-muted">{c.notes}</p>
             </div>
           )}
-        </form>
+        </div>
       </section>
 
       {/* ---------- accounts ---------- */}
@@ -183,12 +141,12 @@ export default async function ContractDetailPage({
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Accounts on this contract</h2>
           <p className="mt-1 text-xs text-muted">
-            Each account carries its own rent. Changing terms takes effect from the 1st of next month — history is
-            kept, and old invoices never move.
+            Each account carries the terms frozen when it was wired on. Ending one stops its billing on that
+            day; the last month prorates.
           </p>
         </div>
 
-        {lines.length === 0 && <p className="text-sm text-muted">No accounts yet — add the first one below.</p>}
+        {lines.length === 0 && <p className="text-sm text-muted">No accounts on this contract.</p>}
 
         {lines.map((l) => {
           const t = currentTerms(l.contract_terms, day);
@@ -233,57 +191,16 @@ export default async function ContractDetailPage({
                 </div>
               </div>
 
-              {canEdit && (
-                <div className="flex flex-wrap items-end gap-4 border-t border-border pt-3">
-                  {/* New terms from next month */}
-                  <form action={changeTerms} className="flex flex-wrap items-end gap-2">
-                    <input type="hidden" name="contract_id" value={c.id} />
-                    <input type="hidden" name="contract_account_id" value={l.id} />
-                    <div>
-                      <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">New base rent</label>
-                      <MoneyInput name="base_rent" defaultValue={t?.base_rent ?? 0} />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">New turnover %</label>
-                      <input
-                        name="turnover_rate"
-                        defaultValue={t?.turnover_rate ?? ""}
-                        placeholder="none"
-                        className="input w-24 mono-num"
-                      />
-                    </div>
-                    <ActionButton icon="check" tip="Save — takes effect from the 1st of next month" label="Change Terms" />
-                  </form>
-
-                  {/* Start early, until it has been billed */}
-                  {!l.setup_fee_invoiced_at && (
-                    <form action={startAccountEarly} className="flex items-end gap-2">
-                      <input type="hidden" name="contract_id" value={c.id} />
-                      <input type="hidden" name="contract_account_id" value={l.id} />
-                      <div>
-                        <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Billing starts</label>
-                        <input name="starts_on" type="date" defaultValue={l.starts_on ?? ""} className="input mono-num" />
-                      </div>
-                      <ActionButton icon="check" tip="The customer confirmed early — move the start" label="Start Early" />
-                    </form>
-                  )}
-
-                  {/* End or remove */}
-                  <form action={endContractAccount} className="flex items-end gap-2">
-                    <input type="hidden" name="contract_id" value={c.id} />
-                    <input type="hidden" name="contract_account_id" value={l.id} />
-                    <div>
-                      <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Ends on</label>
-                      <input name="ends_on" type="date" defaultValue={l.ends_on ?? ""} className="input mono-num" />
-                    </div>
-                    <ActionButton icon="power" tip="The account leaves the contract on this day; the last month prorates" label="End" />
-                  </form>
-                  <form action={removeContractAccount} className="ml-auto">
-                    <input type="hidden" name="contract_id" value={c.id} />
-                    <input type="hidden" name="contract_account_id" value={l.id} />
-                    <ActionButton icon="trash" tip="Remove (only while nothing has been billed)" variant="danger" />
-                  </form>
-                </div>
+              {canEdit && !l.ends_on && c.status !== "terminated" && (
+                <form action={endContractAccount} className="flex items-end gap-2 border-t border-border pt-3">
+                  <input type="hidden" name="contract_id" value={c.id} />
+                  <input type="hidden" name="contract_account_id" value={l.id} />
+                  <div>
+                    <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Ends on</label>
+                    <input name="ends_on" type="date" defaultValue={day} className="input mono-num" />
+                  </div>
+                  <ActionButton icon="power" tip="The account leaves the contract on this day; the last month prorates" label="End" />
+                </form>
               )}
 
               {history.length > 1 && (
@@ -304,61 +221,11 @@ export default async function ContractDetailPage({
             </div>
           );
         })}
-
-        {canEdit && c.status !== "terminated" && (
-          <form action={addContractAccount} className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
-            <input type="hidden" name="contract_id" value={c.id} />
-            <div className="lg:col-span-2">
-              <label className="mb-1 block text-xs text-muted">Add Account</label>
-              <select name="bank_account_id" className="input" required>
-                <option value="">— Select an account —</option>
-                {addable.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.bank?.name ?? "?"} {a.account_no}
-                    {a.ref ? ` · ${a.ref}` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Base Rent / month</label>
-              <MoneyInput name="base_rent" defaultValue={0} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted">Turnover % (blank = none)</label>
-              <input name="turnover_rate" placeholder="e.g. 0.30" className="input mono-num" />
-            </div>
-            {c.party_type === "customer" && (
-              <div>
-                <label className="mb-1 block text-xs text-muted">Setup Fee</label>
-                <MoneyInput name="setup_fee" defaultValue={0} />
-              </div>
-            )}
-            <div>
-              <label className="mb-1 block text-xs text-muted">Billing starts</label>
-              <input name="starts_on" type="date" defaultValue={defaultStart} className="input mono-num" />
-            </div>
-            <div>
-              <ActionButton icon="plus" tip="Add this account with these terms" label="Add" variant="primary" />
-            </div>
-          </form>
-        )}
       </section>
 
       {/* ---------- lifecycle ---------- */}
       {canEdit && (
         <section className="card flex flex-wrap items-end gap-4 p-5">
-          {c.status === "draft" && (
-            <form action={activateContract}>
-              <input type="hidden" name="id" value={c.id} />
-              <ActionButton
-                icon="check"
-                tip="Fix the term from the earliest account start and make the contract live"
-                label="Activate"
-                variant="success"
-              />
-            </form>
-          )}
           {c.status === "active" && (renewal === "open" || renewal === "closed") && (
             <form action={renewContract} className="flex items-end gap-2">
               <input type="hidden" name="id" value={c.id} />
@@ -385,7 +252,7 @@ export default async function ContractDetailPage({
               Renewal opens {c.ends_on ? `${c.renewal_window_days} days before ${c.ends_on}` : "later"}.
             </p>
           )}
-          {c.status !== "terminated" && c.status !== "draft" && (
+          {c.status !== "terminated" && (
             <form action={terminateContract} className="ml-auto flex items-end gap-2">
               <input type="hidden" name="id" value={c.id} />
               <div>
@@ -393,12 +260,6 @@ export default async function ContractDetailPage({
                 <input name="ends_on" type="date" defaultValue={day} className="input mono-num" />
               </div>
               <ActionButton icon="x" tip="Terminate — every account stops billing on this day" label="Terminate" variant="danger" />
-            </form>
-          )}
-          {c.status === "draft" && can(cu, "contracts", "delete") && (
-            <form action={deleteContract} className="ml-auto">
-              <input type="hidden" name="id" value={c.id} />
-              <ActionButton icon="trash" tip="Delete this draft" variant="danger" />
             </form>
           )}
         </section>

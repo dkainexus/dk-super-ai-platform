@@ -222,17 +222,7 @@ export default async function CustomerDetailPage({
       )}
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Contracts</h2>
-          {can(cu, "contracts", "add") && (
-            <Link
-              href="/admin/contracts/new"
-              className="rounded-md border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:border-accent hover:text-foreground"
-            >
-              + New Contract
-            </Link>
-          )}
-        </div>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Contracts</h2>
         <Table head={["ID", "Term", "Accounts", "Status", ""]}>
           {theirContracts.length === 0 && (
             <tr>

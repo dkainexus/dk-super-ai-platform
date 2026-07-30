@@ -9,11 +9,10 @@ import { MoneyInput } from "@/components/money-input";
 import { Table, TableToolbar } from "@/components/data-table";
 import { fmtNum } from "@/lib/format";
 
-const CATEGORIES = ["Company registration", "Legal", "Device", "Travel", "Escort", "Other"];
-
 type Row = {
   id: string;
   category: string;
+  item: string | null;
   amount: number;
   currency: string;
   spent_on: string;
@@ -36,7 +35,7 @@ export default async function ExpensesPage({
   const { error } = await searchParams;
   const { active } = await requireCountryScope();
 
-  const [{ data: rows }, { data: companies }, { data: devices }] = await Promise.all([
+  const [{ data: rows }, { data: companies }, { data: categories }] = await Promise.all([
     db()
       .from("expenses")
       .select("*, company:companies(name), staff:users!expenses_staff_user_id_fkey(name, username)")
@@ -44,7 +43,12 @@ export default async function ExpensesPage({
       .order("spent_on", { ascending: false })
       .limit(200),
     db().from("companies").select("id, name").eq("country_id", active?.id ?? "").order("name"),
-    db().from("device_models").select("id, name").eq("active", true).order("name"),
+    db()
+      .from("expense_categories")
+      .select("id, name")
+      .eq("country_id", active?.id ?? "")
+      .eq("active", true)
+      .order("name"),
   ]);
   const list = (rows ?? []) as unknown as Row[];
   const canEdit = Boolean(can(cu, "expenses", "edit"));
@@ -71,10 +75,14 @@ export default async function ExpensesPage({
           <div>
             <label className="mb-1 block text-xs text-muted">Category</label>
             <select name="category" className="input" required>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {((categories ?? []) as { id: string; name: string }[]).map((c) => (
+                <option key={c.id} value={c.name}>{c.name}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Item (what was bought)</label>
+            <input name="item" className="input" placeholder="e.g. iPhone 15, notary fee" />
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted">Amount</label>
@@ -90,15 +98,6 @@ export default async function ExpensesPage({
               <option value="">— none —</option>
               {((companies ?? []) as { id: string; name: string }[]).map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Device model</label>
-            <select name="device_model_id" className="input">
-              <option value="">— none —</option>
-              {((devices ?? []) as { id: string; name: string }[]).map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
           </div>
@@ -125,16 +124,17 @@ export default async function ExpensesPage({
         </p>
       </TableToolbar>
 
-      <Table head={["Date", "Category", "Tagged To", "Note", "Amount", "Claim", ""]}>
+      <Table head={["Date", "Category", "Item", "Tagged To", "Note", "Amount", "Claim", ""]}>
         {list.length === 0 && (
           <tr>
-            <td colSpan={7} className="px-4 py-6 text-sm text-muted">Nothing recorded yet.</td>
+            <td colSpan={8} className="px-4 py-6 text-sm text-muted">Nothing recorded yet.</td>
           </tr>
         )}
         {list.map((r) => (
           <tr key={r.id} className="transition-colors hover:bg-surface-raised">
             <td className="mono-num px-4 py-2.5 text-muted">{r.spent_on}</td>
             <td className="px-4 py-2.5">{r.category}</td>
+            <td className="px-4 py-2.5">{r.item ?? "—"}</td>
             <td className="px-4 py-2.5 text-muted">
               {[r.company?.name, r.staff ? r.staff.name || r.staff.username : null].filter(Boolean).join(" · ") || "—"}
             </td>

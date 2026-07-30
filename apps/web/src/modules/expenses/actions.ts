@@ -1,7 +1,7 @@
 "use server";
 
-// The spending ledger: company costs, staff claims, devices. A claim only
-// counts as real cost once someone with the permission approves it.
+// The spending ledger: company costs, staff claims, anything bought. A claim
+// only counts as real cost once someone with the permission approves it.
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -39,7 +39,7 @@ export async function createExpense(formData: FormData): Promise<void> {
     company_id: String(formData.get("company_id") ?? "") || null,
     merchant_id: String(formData.get("merchant_id") ?? "") || null,
     staff_user_id: isClaim ? cu.user.id : String(formData.get("staff_user_id") ?? "") || null,
-    device_model_id: String(formData.get("device_model_id") ?? "") || null,
+    item: String(formData.get("item") ?? "").trim() || null,
     category,
     amount,
     currency: active?.currency ?? "THB",
@@ -75,26 +75,37 @@ export async function deleteExpense(formData: FormData): Promise<void> {
   redirect("/admin/expenses");
 }
 
-// ---------- Device models ----------
+// ---------- Categories ----------
 
-export async function saveDeviceModel(formData: FormData): Promise<void> {
+export async function saveExpenseCategory(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("expenses", "edit");
   if (cu.merchant) redirect("/m");
-  const back = "/admin/expenses/devices";
+  const back = "/admin/expenses/categories";
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
-  const price = parseFloat(String(formData.get("price") ?? "").replace(/,/g, "")) || 0;
-  if (!name) fail(back, "Name the model");
+  if (!name) fail(back, "Name the category");
 
-  if (formData.get("__delete")) {
-    await requirePerm("expenses", "delete");
-    await db().from("device_models").delete().eq("id", id);
-  } else if (id) {
-    await db().from("device_models").update({ name, price, active: formData.get("active") === "on" }).eq("id", id);
+  if (id) {
+    const { error } = await db().from("expense_categories").update({ name }).eq("id", id);
+    if (error) fail(back, error.message.includes("duplicate") ? "That category already exists" : `Failed: ${error.message}`);
   } else {
-    const { error } = await db().from("device_models").insert({ name, price });
-    if (error) fail(back, error.message.includes("duplicate") ? "That model already exists" : `Failed: ${error.message}`);
+    const { error } = await db().from("expense_categories").insert({
+      country_id: String(formData.get("country_id") ?? ""),
+      name,
+    });
+    if (error) fail(back, error.message.includes("duplicate") ? "That category already exists" : `Failed: ${error.message}`);
   }
   revalidatePath(back);
-  redirect(back);
+  redirect(`${back}?saved=1`);
+}
+
+export async function toggleExpenseCategory(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("expenses", "edit");
+  if (cu.merchant) redirect("/m");
+  await db()
+    .from("expense_categories")
+    .update({ active: String(formData.get("active") ?? "") === "true" })
+    .eq("id", String(formData.get("id") ?? ""));
+  revalidatePath("/admin/expenses/categories");
+  redirect("/admin/expenses/categories");
 }

@@ -34,22 +34,12 @@ export default async function ContractsPage({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Contracts</h1>
-          <p className="mt-1 text-sm text-muted">
-            {active ? `${active.name} only.` : "All countries."} A contract fixes the term; each account on it
-            carries its own rent.
-          </p>
-        </div>
-        {can(cu, "contracts", "add") && (
-          <Link
-            href="/admin/contracts/new"
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background hover:bg-accent-strong"
-          >
-            + New Contract
-          </Link>
-        )}
+      <div>
+        <h1 className="text-xl font-semibold">Contracts</h1>
+        <p className="mt-1 text-sm text-muted">
+          {active ? `${active.name} only.` : "All countries."} Contracts are written by the system when accounts
+          activate and customers confirm; each account carries its own frozen terms.
+        </p>
       </div>
       <ErrorBanner message={error} />
 
