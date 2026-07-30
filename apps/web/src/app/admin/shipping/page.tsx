@@ -1,6 +1,6 @@
 import { requirePerm, can } from "@/lib/auth";
 import { requireCountryScope } from "@/modules/countries/lib";
-import { shipmentsFor, shipmentStage } from "@/modules/shipping/lib";
+import { shipmentsFor, shipmentStage, couriersFor, trackingUrl } from "@/modules/shipping/lib";
 import { markShipped, updateTracking } from "@/modules/shipping/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
@@ -34,7 +34,10 @@ export default async function ShippingPage({
   const { active } = await requireCountryScope();
   if (!active) return null;
 
-  const rows = await shipmentsFor({ countryId: active.id, stage: stage || undefined });
+  const [rows, couriers] = await Promise.all([
+    shipmentsFor({ countryId: active.id, stage: stage || undefined }),
+    couriersFor(active.id),
+  ]);
   const canEdit = Boolean(can(cu, "shipping", "edit"));
   const back = "/admin/shipping";
 
@@ -100,7 +103,12 @@ export default async function ShippingPage({
                   <form action={markShipped} className="flex items-center gap-1.5">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="back" value={back} />
-                    <input name="courier" className="input w-24 py-1 text-xs" placeholder="Courier" />
+                    <select name="courier_id" className="input w-32 py-1 text-xs" required>
+                      <option value="">— Courier —</option>
+                      {couriers.map((co) => (
+                        <option key={co.id} value={co.id}>{co.name}</option>
+                      ))}
+                    </select>
                     <input name="tracking_no" className="input mono-num w-32 py-1 text-xs" placeholder="Tracking no." />
                     <ActionButton icon="send" tip="Record the shipment — the customer sees the tracking number" label="Mark Shipped" variant="primary" />
                   </form>
@@ -108,19 +116,47 @@ export default async function ShippingPage({
                   <form action={updateTracking} className="flex items-center gap-1.5">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="back" value={back} />
-                    <input name="courier" defaultValue={s.courier ?? ""} className="input w-24 py-1 text-xs" />
+                    <select name="courier_id" defaultValue={s.courier_id ?? ""} className="input w-32 py-1 text-xs" required>
+                      <option value="">— Courier —</option>
+                      {couriers.map((co) => (
+                        <option key={co.id} value={co.id}>{co.name}</option>
+                      ))}
+                    </select>
                     <input name="tracking_no" defaultValue={s.tracking_no ?? ""} className="input mono-num w-32 py-1 text-xs" />
                     <ActionButton icon="save" tip="Fix the courier or tracking number" label="Update" variant="outline" />
                   </form>
                 ) : (
                   <span className="mono-num text-xs text-muted">
-                    {s.courier ? `${s.courier} · ${s.tracking_no}` : "—"}
+                    {s.courier ? `${s.courier} · ` : "—"}
+                    {s.tracking_no &&
+                      (trackingUrl(s.courier_rec?.url_template, s.tracking_no) ? (
+                        <a
+                          href={trackingUrl(s.courier_rec?.url_template, s.tracking_no)!}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-accent-strong hover:underline"
+                        >
+                          {s.tracking_no}
+                        </a>
+                      ) : (
+                        s.tracking_no
+                      ))}
                   </span>
                 )}
                 {s.shipped_at && (
                   <p className="mt-1 text-[11px] text-muted">
                     shipped {s.shipped_at.slice(0, 10)}
                     {s.received_at ? ` · received ${s.received_at.slice(0, 10)}` : ""}
+                    {trackingUrl(s.courier_rec?.url_template, s.tracking_no) && (
+                      <a
+                        href={trackingUrl(s.courier_rec?.url_template, s.tracking_no)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ml-2 text-accent-strong hover:underline"
+                      >
+                        Track ↗
+                      </a>
+                    )}
                   </p>
                 )}
               </td>

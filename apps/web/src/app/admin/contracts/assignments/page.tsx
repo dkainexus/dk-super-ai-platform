@@ -3,7 +3,8 @@ import { requirePerm, can } from "@/lib/auth";
 import { requireCountryScope } from "@/modules/countries/lib";
 import { assignmentsFor, assignmentDeadline } from "@/modules/contracts/customer-policy";
 import { markAssignmentReady, cancelAssignment, setAssignmentDelivery } from "@/modules/contracts/policy-actions";
-import { shipmentForAssignment } from "@/modules/shipping/lib";
+import { shipmentForAssignment, trackingUrl } from "@/modules/shipping/lib";
+import { db } from "@/lib/supabase";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import { Table, TableToolbar, FilterSelect } from "@/components/data-table";
@@ -90,6 +91,11 @@ export default async function AssignmentsPage({
           const ship = a.delivery_method === "shipping" && a.status !== "awaiting_confirmation"
             ? await shipmentForAssignment(a.id)
             : null;
+          const addressBook =
+            canEdit && a.status === "confirmed" && a.delivery_method === "direct"
+              ? (((await db().from("customer_addresses").select("id, name, phone, address").eq("customer_id", a.customer_id)).data ??
+                  []) as { id: string; name: string; phone: string; address: string }[])
+              : [];
           return (
             <tr key={a.id} className="align-top transition-colors hover:bg-surface-raised">
               <td className="mono-num px-4 py-2.5 text-xs text-muted">{a.ref ?? "—"}</td>
@@ -114,11 +120,27 @@ export default async function AssignmentsPage({
                 )}
                 {ship && (
                   <p className="mono-num mt-1 text-[11px] text-muted">
-                    {ship.shipped_at
-                      ? `${ship.courier} · ${ship.tracking_no} · shipped ${ship.shipped_at.slice(0, 10)}${
-                          ship.received_at ? ` · received ${ship.received_at.slice(0, 10)}` : ""
-                        }`
-                      : "waiting in the Shipping queue"}
+                    {ship.shipped_at ? (
+                      <>
+                        {ship.courier} ·{" "}
+                        {trackingUrl(ship.courier_rec?.url_template, ship.tracking_no) ? (
+                          <a
+                            href={trackingUrl(ship.courier_rec?.url_template, ship.tracking_no)!}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-accent-strong hover:underline"
+                          >
+                            {ship.tracking_no} ↗
+                          </a>
+                        ) : (
+                          ship.tracking_no
+                        )}{" "}
+                        · shipped {ship.shipped_at.slice(0, 10)}
+                        {ship.received_at ? ` · received ${ship.received_at.slice(0, 10)}` : ""}
+                      </>
+                    ) : (
+                      "waiting in the Shipping queue"
+                    )}
                   </p>
                 )}
                 {canEdit && a.status === "confirmed" && !ship?.shipped_at && (
@@ -130,6 +152,14 @@ export default async function AssignmentsPage({
                       <input type="hidden" name="delivery_method" value={a.delivery_method === "shipping" ? "direct" : "shipping"} />
                       {a.delivery_method === "direct" && (
                         <>
+                          {addressBook.length > 0 && (
+                            <select name="address_id" className="input w-52 py-1 text-xs" defaultValue="">
+                              <option value="">— New address (fill below) —</option>
+                              {addressBook.map((ad) => (
+                                <option key={ad.id} value={ad.id}>{ad.name} · {ad.address}</option>
+                              ))}
+                            </select>
+                          )}
                           <input name="addr_name" className="input w-40 py-1 text-xs" placeholder="Recipient name" />
                           <input name="addr_phone" className="input w-40 py-1 text-xs" placeholder="Phone" />
                           <input name="addr_address" className="input w-52 py-1 text-xs" placeholder="Full address" />

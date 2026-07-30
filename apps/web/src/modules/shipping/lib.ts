@@ -1,6 +1,28 @@
 import "server-only";
 import { db } from "@/lib/supabase";
 
+export type Courier = {
+  id: string;
+  country_id: string;
+  name: string;
+  url_template: string | null;
+  active: boolean;
+  sort: number;
+};
+
+/** The courier's own tracking page for this number, if a template is set. */
+export function trackingUrl(template: string | null | undefined, trackingNo: string | null | undefined): string | null {
+  if (!template || !trackingNo) return null;
+  return template.replace("{tracking}", encodeURIComponent(trackingNo));
+}
+
+export async function couriersFor(countryId: string, activeOnly = true): Promise<Courier[]> {
+  let q = db().from("couriers").select("*").eq("country_id", countryId).order("sort").order("name");
+  if (activeOnly) q = q.eq("active", true);
+  const { data } = await q;
+  return (data ?? []) as Courier[];
+}
+
 export type Shipment = {
   id: string;
   ref: string | null;
@@ -11,6 +33,7 @@ export type Shipment = {
   assignment_id: string | null;
   address: { name: string; phone: string; address: string };
   courier: string | null;
+  courier_id: string | null;
   tracking_no: string | null;
   shipped_at: string | null;
   received_at: string | null;
@@ -20,6 +43,7 @@ export type Shipment = {
 
 export type ShipmentRow = Shipment & {
   customer: { name: string; ref: string | null } | null;
+  courier_rec: { url_template: string | null } | null;
   assignment: {
     ref: string | null;
     status: string;
@@ -28,7 +52,7 @@ export type ShipmentRow = Shipment & {
 };
 
 export const SHIPMENT_SELECT =
-  "*, customer:customers(name, ref), assignment:account_assignments(ref, status, bank_account:bank_accounts(account_no, bank:banks(name)))";
+  "*, customer:customers(name, ref), courier_rec:couriers(url_template), assignment:account_assignments(ref, status, bank_account:bank_accounts(account_no, bank:banks(name)))";
 
 /** Where a shipment stands, derived — one truth, no second status column. */
 export function shipmentStage(s: Shipment): "to_ship" | "in_transit" | "received" | "cancelled" {
@@ -47,13 +71,15 @@ export async function shipmentsFor(opts: { countryId?: string; stage?: string })
   return rows;
 }
 
-export async function shipmentForAssignment(assignmentId: string): Promise<Shipment | null> {
+export async function shipmentForAssignment(
+  assignmentId: string
+): Promise<(Shipment & { courier_rec: { url_template: string | null } | null }) | null> {
   const { data } = await db()
     .from("shipments")
-    .select("*")
+    .select("*, courier_rec:couriers(url_template)")
     .eq("assignment_id", assignmentId)
     .is("cancelled_at", null)
     .order("created_at", { ascending: false })
     .limit(1);
-  return ((data ?? [])[0] ?? null) as Shipment | null;
+  return ((data ?? [])[0] ?? null) as (Shipment & { courier_rec: { url_template: string | null } | null }) | null;
 }

@@ -327,10 +327,21 @@ export async function setAssignmentDelivery(formData: FormData): Promise<void> {
 
   let address: { name: string; phone: string; address: string } | null = null;
   if (to === "shipping") {
-    const name = String(formData.get("addr_name") ?? "").trim();
-    const phone = String(formData.get("addr_phone") ?? "").trim();
-    const addr = String(formData.get("addr_address") ?? "").trim();
-    if (name && phone && addr) address = { name, phone, address: addr };
+    const addrId = String(formData.get("address_id") ?? "");
+    if (addrId) {
+      const { data: saved } = await db()
+        .from("customer_addresses")
+        .select("name, phone, address")
+        .eq("id", addrId)
+        .maybeSingle();
+      if (saved) address = saved as { name: string; phone: string; address: string };
+    }
+    if (!address) {
+      const name = String(formData.get("addr_name") ?? "").trim();
+      const phone = String(formData.get("addr_phone") ?? "").trim();
+      const addr = String(formData.get("addr_address") ?? "").trim();
+      if (name && phone && addr) address = { name, phone, address: addr };
+    }
   }
   const { switchDelivery } = await import("./customer-policy");
   const err = await switchDelivery(id, to, address, cu.user.id);

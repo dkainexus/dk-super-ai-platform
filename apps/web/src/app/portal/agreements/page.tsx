@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { customerForUser } from "@/modules/customers/lib";
 import { assignmentsFor, assignmentDeadline } from "@/modules/contracts/customer-policy";
-import { shipmentForAssignment, type Shipment } from "@/modules/shipping/lib";
+import { shipmentForAssignment, trackingUrl, type Shipment } from "@/modules/shipping/lib";
 import { confirmAssignment, confirmReceived, customerAccountTested, changeDelivery } from "@/app/portal/actions";
 import { logoutAction } from "@/app/actions/auth";
 import { ErrorBanner } from "@/components/error-banner";
@@ -52,7 +52,7 @@ export default async function AgreementsPage({
 
   const viewingTnc = view ? tncById.get(view) ?? null : null;
 
-  const shipments = new Map<string, Shipment>();
+  const shipments = new Map<string, Shipment & { courier_rec: { url_template: string | null } | null }>();
   for (const a of done) {
     if (a.delivery_method !== "shipping") continue;
     const ship = await shipmentForAssignment(a.id);
@@ -231,7 +231,22 @@ export default async function AgreementsPage({
                         <>
                           {isShipping && !ship?.shipped_at && <span className="text-xs text-muted">preparing shipment</span>}
                           {isShipping && ship?.shipped_at && (
-                            <span className="mono-num text-xs text-muted">{ship.courier} · {ship.tracking_no}</span>
+                            <span className="mono-num text-xs text-muted">
+                              {ship.courier} ·{" "}
+                              {trackingUrl(ship.courier_rec?.url_template, ship.tracking_no) ? (
+                                <a
+                                  href={trackingUrl(ship.courier_rec?.url_template, ship.tracking_no)!}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-accent-strong hover:underline"
+                                  title="Open the courier's live tracking"
+                                >
+                                  {ship.tracking_no} ↗
+                                </a>
+                              ) : (
+                                ship.tracking_no
+                              )}
+                            </span>
                           )}
                           {isShipping && ship?.shipped_at && !ship?.received_at && (
                             <form action={confirmReceived}>
