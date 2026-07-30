@@ -296,8 +296,23 @@ export async function switchDelivery(
   const { data } = await db().from("account_assignments").select("*").eq("id", assignmentId).maybeSingle();
   const a = data as Assignment | null;
   if (!a) return "Assignment not found";
-  if (a.status !== "confirmed") return "Delivery can only change while the account is being handed over";
+  if (a.status === "live" || a.status === "cancelled") return "This handover is finished";
   if (a.delivery_method === to) return null;
+
+  // Before the customer confirms there is nothing to unwind — the choice is
+  // just a preset their confirmation page will open on.
+  if (a.status === "awaiting_confirmation") {
+    await db()
+      .from("account_assignments")
+      .update({
+        delivery_method: to,
+        ...(to === "shipping" && address ? { address } : {}),
+        updated_at: new Date().toISOString(),
+        updated_by: byUserId,
+      })
+      .eq("id", assignmentId);
+    return null;
+  }
 
   if (to === "direct") {
     const { data: ship } = await db()

@@ -92,7 +92,7 @@ export default async function AssignmentsPage({
             ? await shipmentForAssignment(a.id)
             : null;
           const addressBook =
-            canEdit && a.status === "confirmed" && a.delivery_method === "direct"
+            canEdit && (a.status === "confirmed" || a.status === "awaiting_confirmation") && a.delivery_method === "direct"
               ? (((await db().from("customer_addresses").select("id, name, phone, address").eq("customer_id", a.customer_id)).data ??
                   []) as { id: string; name: string; phone: string; address: string }[])
               : [];
@@ -107,11 +107,10 @@ export default async function AssignmentsPage({
               <td className="mono-num px-4 py-2.5">{c.rent != null ? fmtNum(c.rent) : "—"}</td>
               <td className="px-4 py-2.5">
                 <span className="text-muted">
-                  {a.status === "awaiting_confirmation"
-                    ? "customer picks on confirmation"
-                    : a.delivery_method === "shipping"
-                      ? "Shipping"
-                      : "Direct binding"}
+                  {a.delivery_method === "shipping" ? "Shipping" : "Direct binding"}
+                  {a.status === "awaiting_confirmation" && (
+                    <span className="block text-[10px]">preset — the customer can still change it when confirming</span>
+                  )}
                 </span>
                 {a.address && (
                   <p className="mt-1 max-w-[14rem] text-[11px] text-muted">
@@ -143,7 +142,7 @@ export default async function AssignmentsPage({
                     )}
                   </p>
                 )}
-                {canEdit && a.status === "confirmed" && !ship?.shipped_at && (
+                {canEdit && (a.status === "confirmed" || a.status === "awaiting_confirmation") && !ship?.shipped_at && (
                   <details className="mt-1 text-[11px]">
                     <summary className="cursor-pointer text-muted hover:text-foreground">Switch delivery</summary>
                     <form action={setAssignmentDelivery} className="mt-1.5 space-y-1">

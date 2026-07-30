@@ -161,11 +161,11 @@ export default async function AgreementsPage({
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">How do you want to take delivery?</h3>
                 <div className="flex flex-wrap gap-4 text-sm">
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="delivery_method" value="direct" defaultChecked />
+                    <input type="radio" name="delivery_method" value="direct" defaultChecked={a.delivery_method !== "shipping"} />
                     <span>Direct binding — our support walks you through it online</span>
                   </label>
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="delivery_method" value="shipping" />
+                    <input type="radio" name="delivery_method" value="shipping" defaultChecked={a.delivery_method === "shipping"} />
                     <span>Shipping — we send everything to your address</span>
                   </label>
                 </div>
