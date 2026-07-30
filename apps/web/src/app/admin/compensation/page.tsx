@@ -18,7 +18,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 // Money stolen from a rented account. Recording it computes who owes whom;
 // nothing moves until the computation is confirmed.
-export default async function ClaimsPage({
+export default async function CompensationPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
@@ -39,7 +39,7 @@ export default async function ClaimsPage({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold">Claims</h1>
+        <h1 className="text-xl font-semibold">Compensation</h1>
         <p className="mt-1 text-sm text-muted">
           Compensation is capped at each party&apos;s own written deposit; the shortfall is written off. The
           owner&apos;s rent is never touched.
@@ -71,15 +71,15 @@ export default async function ClaimsPage({
             <label className="mb-1 block text-xs text-muted">What Happened</label>
             <input name="description" className="input" />
           </div>
-          <ActionButton icon="plus" tip="Record the theft and compute the compensation" label="Record Claim" variant="danger" />
+          <ActionButton icon="plus" tip="Record the theft and compute the compensation" label="Record Theft" variant="danger" />
         </form>
       )}
 
-      <TableToolbar count={rows.length} noun="claim" />
+      <TableToolbar count={rows.length} noun="case" />
       <Table head={["ID", "Account", "Company", "Stolen", "Customer Gets", "Agent Owes", "Status", ""]}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={8} className="px-4 py-6 text-sm text-muted">No claims on record.</td>
+            <td colSpan={8} className="px-4 py-6 text-sm text-muted">No thefts on record.</td>
           </tr>
         )}
         {rows.map((c) => (
@@ -99,7 +99,7 @@ export default async function ClaimsPage({
               </span>
             </td>
             <td className="px-4 py-2.5 text-right">
-              <RowSettings href={`/admin/claims/${c.id}`} tip="Open this claim" />
+              <RowSettings href={`/admin/compensation/${c.id}`} tip="Open this case" />
             </td>
           </tr>
         ))}

@@ -16,13 +16,13 @@ function fail(path: string, message: string): never {
 }
 
 function revalidate(id?: string) {
-  revalidatePath("/admin/claims");
-  if (id) revalidatePath(`/admin/claims/${id}`);
+  revalidatePath("/admin/compensation");
+  if (id) revalidatePath(`/admin/compensation/${id}`);
 }
 
 export async function createClaim(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("claims", "add");
-  const back = "/admin/claims";
+  const back = "/admin/compensation";
   const bankAccountId = String(formData.get("bank_account_id") ?? "");
   const amount = parseFloat(String(formData.get("amount") ?? "").replace(/,/g, ""));
   if (!bankAccountId) fail(back, "Pick the account the money was taken from");
@@ -49,7 +49,7 @@ export async function createClaim(formData: FormData): Promise<void> {
     .single();
   if (error || !data) fail(back, `Failed to record: ${error?.message}`);
   revalidate();
-  redirect(`/admin/claims/${data.id}`);
+  redirect(`/admin/compensation/${data.id}`);
 }
 
 /**
@@ -59,10 +59,10 @@ export async function createClaim(formData: FormData): Promise<void> {
 export async function confirmClaim(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("claims", "edit");
   const id = String(formData.get("id") ?? "");
-  const back = `/admin/claims/${id}`;
+  const back = `/admin/compensation/${id}`;
 
   const c = await loadClaim(id);
-  if (!c) fail(back, "Claim not found");
+  if (!c) fail(back, "Case not found");
   if (c.status !== "open") fail(back, "Already confirmed");
 
   const ctx = await buildClaimContext(c);
@@ -131,11 +131,11 @@ export async function confirmClaim(formData: FormData): Promise<void> {
 export async function blacklistCompany(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("claims", "edit");
   const id = String(formData.get("id") ?? "");
-  const back = `/admin/claims/${id}`;
+  const back = `/admin/compensation/${id}`;
   const today = new Date().toISOString().slice(0, 10);
 
   const c = await loadClaim(id);
-  if (!c) fail(back, "Claim not found");
+  if (!c) fail(back, "Case not found");
   const companyId = c.bank_account?.company_id;
   if (!companyId) fail(back, "The account has no company to blacklist");
 
@@ -150,7 +150,7 @@ export async function blacklistCompany(formData: FormData): Promise<void> {
       suspended_at: new Date().toISOString(),
       billing_frozen: true,
       frozen_at: new Date().toISOString(),
-      frozen_reason: `Company blacklisted (claim ${c.ref ?? c.id})`,
+      frozen_reason: `Company blacklisted (compensation ${c.ref ?? c.id})`,
     })
     .in("id", accountIds);
 
@@ -193,7 +193,7 @@ export async function blacklistCompany(formData: FormData): Promise<void> {
         currency: "THB",
         amount: credit,
         kind: "adjustment",
-        note: `Refund — company blacklisted (claim ${c.ref ?? c.id}): unused rent ${rentBack}${
+        note: `Refund — company blacklisted (compensation ${c.ref ?? c.id}): unused rent ${rentBack}${
           feeBack > 0 ? ` + setup fee ${feeBack}` : ""
         }`,
         created_by: cu.user.id,
@@ -214,5 +214,5 @@ export async function closeClaim(formData: FormData): Promise<void> {
     .eq("id", id)
     .eq("status", "confirmed");
   revalidate(id);
-  redirect(`/admin/claims/${id}`);
+  redirect(`/admin/compensation/${id}`);
 }

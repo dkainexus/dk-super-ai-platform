@@ -41,7 +41,7 @@ export default async function ClaimDetailPage({
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
-        <Link href="/admin/claims" className="text-xs text-muted hover:text-foreground">← Claims</Link>
+        <Link href="/admin/compensation" className="text-xs text-muted hover:text-foreground">← Compensation</Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold">
             {fmtNum(c.amount)} taken from {c.bank_account?.bank?.name ?? "?"} {c.bank_account?.account_no}

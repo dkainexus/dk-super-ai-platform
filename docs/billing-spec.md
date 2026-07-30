@@ -324,11 +324,11 @@ renewal window has closed.
 | Ticket detail | Timeline of messages and evidence, account balance and last transaction as the customer filed them | `Assign to Owner` · `Assign to Phone CS` · `Assign to Customer` · `Upload Evidence` · `Mark Handled (still unusable)` · `Mark Resolved` · `Waive Charge` · `Freeze Account` · `Unfreeze` · `Needs Escort` |
 | Ticket Types (settings) | name · default assignee · window days · phone price · visit price, per country × white label | `+ Add Type` · ✎ · 🗑 |
 
-**Claims** (theft)
+**Compensation** (theft — the word "claim" belongs to expense claims only)
 
 | Screen | What is on it | Buttons |
 |---|---|---|
-| Claims list | ref · account · company · amount · recovered · status | `+ Record Claim` · ⚙ |
+| Compensation list | ref · account · company · amount · recovered · status | `+ Record Theft` · ⚙ |
 | Claim detail | The compensation table from section 8, computed and shown before anything is committed | `Confirm Compensation` · `Blacklist Company` · `Recover from Agent` · `Close` |
 
 **White labels** — added to the existing page
@@ -432,7 +432,7 @@ query a view that does not contain those columns at all.
 
 **Money goes missing**
 
-17. `+ Record Claim` on the account with the amount and evidence.
+17. `+ Record Theft` on the account with the amount and evidence.
 18. The claim shows the whole calculation before you commit: capped at the
     customer's deposit for what we pay them, capped at the agent's deposit for what
     they owe us, plus — inside the agent's window — the company contribution and
