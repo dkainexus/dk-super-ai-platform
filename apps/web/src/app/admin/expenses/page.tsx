@@ -7,6 +7,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import { MoneyInput } from "@/components/money-input";
 import { Table, TableToolbar } from "@/components/data-table";
+import { CategoryItemFields } from "@/modules/expenses/components/category-item-fields";
 import { fmtNum } from "@/lib/format";
 
 type Row = {
@@ -45,11 +46,17 @@ export default async function ExpensesPage({
     db().from("companies").select("id, name").eq("country_id", active?.id ?? "").order("name"),
     db()
       .from("expense_categories")
-      .select("id, name")
+      .select("id, name, items:expense_items(category_id, name, active)")
       .eq("country_id", active?.id ?? "")
       .eq("active", true)
       .order("name"),
   ]);
+  const catList = (categories ?? []) as unknown as {
+    id: string;
+    name: string;
+    items: { category_id: string; name: string; active: boolean }[];
+  }[];
+  const presetItems = catList.flatMap((c) => c.items.filter((i) => i.active));
   const list = (rows ?? []) as unknown as Row[];
   const canEdit = Boolean(can(cu, "expenses", "edit"));
   const receipts = new Map<string, string | null>();
@@ -72,18 +79,10 @@ export default async function ExpensesPage({
 
       {can(cu, "expenses", "add") && (
         <form action={createExpense} className="card grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
-          <div>
-            <label className="mb-1 block text-xs text-muted">Category</label>
-            <select name="category" className="input" required>
-              {((categories ?? []) as { id: string; name: string }[]).map((c) => (
-                <option key={c.id} value={c.name}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted">Item (what was bought)</label>
-            <input name="item" className="input" placeholder="e.g. iPhone 15, notary fee" />
-          </div>
+          <CategoryItemFields
+            categories={catList.map((c) => ({ id: c.id, name: c.name }))}
+            items={presetItems}
+          />
           <div>
             <label className="mb-1 block text-xs text-muted">Amount</label>
             <MoneyInput name="amount" required />

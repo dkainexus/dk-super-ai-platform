@@ -109,3 +109,32 @@ export async function toggleExpenseCategory(formData: FormData): Promise<void> {
   revalidatePath("/admin/expenses/categories");
   redirect("/admin/expenses/categories");
 }
+
+// ---------- Preset items ----------
+
+export async function saveExpenseItem(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("expenses", "edit");
+  if (cu.merchant) redirect("/m");
+  const back = "/admin/expenses/categories";
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) fail(back, "Name the item");
+
+  const { error } = await db().from("expense_items").insert({
+    category_id: String(formData.get("category_id") ?? ""),
+    name,
+  });
+  if (error) fail(back, error.message.includes("duplicate") ? "That item already exists" : `Failed: ${error.message}`);
+  revalidatePath(back);
+  redirect(`${back}?saved=1`);
+}
+
+export async function toggleExpenseItem(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("expenses", "edit");
+  if (cu.merchant) redirect("/m");
+  await db()
+    .from("expense_items")
+    .update({ active: String(formData.get("active") ?? "") === "true" })
+    .eq("id", String(formData.get("id") ?? ""));
+  revalidatePath("/admin/expenses/categories");
+  redirect("/admin/expenses/categories");
+}
