@@ -53,7 +53,7 @@ function RowForm({
       <div>
         <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Channel</label>
         <select name="channel" defaultValue={row?.channel ?? ""} className="input py-1.5 text-sm">
-          <option value="">Default (any)</option>
+          <option value="">Default</option>
           {channels.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
