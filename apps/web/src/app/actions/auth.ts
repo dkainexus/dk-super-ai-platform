@@ -11,11 +11,21 @@ import type { Merchant, User } from "@/lib/types";
 
 export type AuthState = { error?: string };
 
+// Each audience has its own door; an account only gets through its own.
+const DOORS = {
+  admin: { home: "/admin", login: "/login", label: "the platform sign-in" },
+  merchant: { home: "/m", login: "/m/login", label: "the white label sign-in at /m/login" },
+  portal: { home: "/portal", login: "/portal/login", label: "the customer portal at /portal/login" },
+} as const;
+type Audience = keyof typeof DOORS;
+
 export async function loginAction(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const raw = String(formData.get("audience") ?? "admin");
+  const audience: Audience = raw === "merchant" || raw === "portal" ? raw : "admin";
   if (!username || !password) return { error: "Please enter username and password" };
-  console.log(`[auth] login attempt: ${username}`);
+  console.log(`[auth] login attempt: ${username} (${audience})`);
 
   const { data } = await db()
     .from("users")
@@ -32,11 +42,16 @@ export async function loginAction(_prev: AuthState, formData: FormData): Promise
   const ok = await verifyPassword(password, u.password_hash);
   if (!ok) return { error: "Invalid username or password" };
 
+  // Who this account belongs to decides which door lets it in.
+  const { data: customerLink } = await db().from("customers").select("id").eq("user_id", u.id).maybeSingle();
+  const kind: Audience = customerLink ? "portal" : u.merchant_id ? "merchant" : "admin";
+  if (kind !== audience) {
+    return { error: `This account doesn't sign in here — use ${DOORS[kind].label}` };
+  }
+
   await createSession(u.id, u.merchant_id ? "merchant" : "staff");
   if (u.must_change_password) redirect("/change-password");
-  // A customer sign-in goes to the portal, not the back office.
-  const { data: customerLink } = await db().from("customers").select("id").eq("user_id", u.id).maybeSingle();
-  redirect(customerLink ? "/portal" : u.merchant_id ? "/m" : "/admin");
+  redirect(DOORS[kind].home);
 }
 
 export async function changePasswordAction(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -107,6 +122,13 @@ export async function updateProfileAction(_prev: ProfileState, formData: FormDat
 }
 
 export async function logoutAction(): Promise<void> {
+  // Land back on the door they came in through.
+  const cu = await getCurrentUser();
+  let login: string = DOORS.admin.login;
+  if (cu) {
+    const { data: customerLink } = await db().from("customers").select("id").eq("user_id", cu.user.id).maybeSingle();
+    login = customerLink ? DOORS.portal.login : cu.merchant ? DOORS.merchant.login : DOORS.admin.login;
+  }
   await destroySession();
-  redirect("/login");
+  redirect(login);
 }

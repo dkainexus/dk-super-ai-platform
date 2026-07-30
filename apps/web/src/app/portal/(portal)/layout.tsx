@@ -11,10 +11,10 @@ export const metadata: Metadata = { title: "Customer Portal" };
 // and nothing else. Anyone signed in without a customer record is sent home.
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const cu = await getCurrentUser();
-  if (!cu) redirect("/login");
+  if (!cu) redirect("/portal/login");
   const c = await customerForUser(cu.user.id);
   if (!c) redirect(cu.merchant ? "/m" : "/admin");
-  if (c.status !== "active") redirect("/login");
+  if (c.status !== "active") redirect("/portal/login");
 
   return (
     <AppShell

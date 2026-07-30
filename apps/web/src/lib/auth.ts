@@ -69,7 +69,9 @@ export async function requirePlatformUser(): Promise<CurrentUser> {
 
 /** Merchant portal pages under /m. */
 export async function requireMerchantUser(): Promise<CurrentUser & { merchant: Merchant }> {
-  const cu = await requireUser();
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/m/login");
+  if (cu.user.must_change_password) redirect("/change-password");
   if (!cu.merchant) redirect("/admin");
   return cu as CurrentUser & { merchant: Merchant };
 }

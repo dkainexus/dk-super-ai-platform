@@ -13,11 +13,12 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ audience = "admin" }: { audience?: "admin" | "merchant" | "portal" }) {
   const [state, action] = useActionState<AuthState, FormData>(loginAction, {});
 
   return (
     <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="audience" value={audience} />
       <div>
         <label className="block text-sm mb-1" htmlFor="username">
           Username

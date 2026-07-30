@@ -17,9 +17,9 @@ function fail(message: string): never {
 /** Declare one account's turnover for one month, with the statement to prove it. */
 export async function submitTurnover(formData: FormData): Promise<void> {
   const cu = await getCurrentUser();
-  if (!cu) redirect("/login");
+  if (!cu) redirect("/portal/login");
   const customer = await customerForUser(cu.user.id);
-  if (!customer) redirect("/login");
+  if (!customer) redirect("/portal/login");
 
   const bankAccountId = String(formData.get("bank_account_id") ?? "");
   const periodMonth = String(formData.get("period_month") ?? "");
@@ -86,9 +86,9 @@ function failTo(path: string, message: string): never {
 /** Report a problem on a rented account — balance and last transaction included. */
 export async function submitTicket(formData: FormData): Promise<void> {
   const cu = await getCurrentUser();
-  if (!cu) redirect("/login");
+  if (!cu) redirect("/portal/login");
   const customer = await customerForUser(cu.user.id);
-  if (!customer) redirect("/login");
+  if (!customer) redirect("/portal/login");
 
   const bankAccountId = String(formData.get("bank_account_id") ?? "");
   const typeId = String(formData.get("type_id") ?? "");
@@ -144,9 +144,9 @@ export async function submitTicket(formData: FormData): Promise<void> {
 /** A reply (or requested document) from the customer on their own ticket. */
 export async function replyTicket(formData: FormData): Promise<void> {
   const cu = await getCurrentUser();
-  if (!cu) redirect("/login");
+  if (!cu) redirect("/portal/login");
   const customer = await customerForUser(cu.user.id);
-  if (!customer) redirect("/login");
+  if (!customer) redirect("/portal/login");
 
   const ticketId = String(formData.get("ticket_id") ?? "");
   const back = `/portal/support/${ticketId}`;
