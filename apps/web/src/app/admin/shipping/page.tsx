@@ -111,7 +111,7 @@ export default async function ShippingPage({
                       ))}
                     </select>
                     <input name="tracking_no" className="input mono-num w-32 py-1 text-xs" placeholder="Tracking no." />
-                    <ActionButton icon="send" tip="Mark shipped — the customer sees the tracking number" variant="primary" />
+                    <ActionButton icon="send" tip="The parcel left — the customer sees the tracking number" label="Shipped" variant="primary" />
                   </form>
                 ) : st === "in_transit" && canEdit ? (
                   <form action={updateTracking} className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
