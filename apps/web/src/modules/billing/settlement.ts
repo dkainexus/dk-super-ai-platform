@@ -11,8 +11,7 @@ export type SettlementAccountRow = {
   label: string;
   own_use: boolean;
   asking_price: number | null;
-  days: number;
-  days_in_month: number;
+  fraction: number;
   customer_billed: number;
   owner_paid: number;
   agent_paid: number;
@@ -111,7 +110,7 @@ export async function computeSettlements(countryId: string, periodMonth: string)
     // Group this merchant's lines per bank account.
     type Acc = {
       label: string; own_use: boolean; asking_price: number | null;
-      days: number; days_in_month: number; customer_billed: number; owner_paid: number; agent_paid: number;
+      fraction: number; customer_billed: number; owner_paid: number; agent_paid: number;
     };
     const perAccount = new Map<string, Acc>();
     let setupFees = 0;
@@ -129,18 +128,17 @@ export async function computeSettlements(countryId: string, periodMonth: string)
         label: `${acc.bank?.name ?? "?"} ${acc.account_no}`,
         own_use: acc.own_use,
         asking_price: acc.asking_price == null ? null : Number(acc.asking_price),
-        days: 0,
-        days_in_month: 30,
+        fraction: 0,
         customer_billed: 0,
         owner_paid: 0,
         agent_paid: 0,
       };
       if (l.invoice.party_type === "customer") {
         cur.customer_billed += Number(l.amount);
-        // The month's coverage is the customer's base line, stub or whole.
+        // Every base line adds its own slice: a stub plus a full month means
+        // the invoice covers more than one month of asking price.
         if (l.kind === "base_rent" && l.days != null && l.days_in_month != null) {
-          cur.days = Math.max(cur.days, l.days);
-          cur.days_in_month = l.days_in_month;
+          cur.fraction += l.days / l.days_in_month;
         }
       }
       if (l.invoice.party_type === "owner") cur.owner_paid += Number(l.amount);
@@ -158,8 +156,11 @@ export async function computeSettlements(countryId: string, periodMonth: string)
         : settleAccount(
             {
               askingPrice: a.asking_price ?? 0,
-              days: a.days || a.days_in_month,
-              daysInMonth: a.days_in_month,
+              // An account with only payouts this month (owner/agent stubs
+              // before the customer starts) still settles on a full month? No —
+              // with no customer billing there is nothing to settle against,
+              // so the fraction stays 0 and the loss shows plainly.
+              fraction: a.fraction,
               ownerPaid: a.owner_paid,
               agentPaid: a.agent_paid,
               ownUse: a.own_use,
@@ -172,8 +173,7 @@ export async function computeSettlements(countryId: string, periodMonth: string)
         label: a.label,
         own_use: a.own_use,
         asking_price: a.asking_price,
-        days: a.days || a.days_in_month,
-        days_in_month: a.days_in_month,
+        fraction: Math.round(a.fraction * 1000) / 1000,
         customer_billed: money(a.customer_billed),
         owner_paid: money(a.owner_paid),
         agent_paid: money(a.agent_paid),

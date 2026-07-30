@@ -113,8 +113,8 @@ export default async function SettlementsPage({
                         {a.label}
                         {a.own_use && <span className="ml-2 text-[10px] text-muted">(own use — flat fee)</span>}
                         {a.warning && <span className="ml-2 text-[10px] text-danger">{a.warning}</span>}
-                        {a.days < a.days_in_month && (
-                          <span className="mono-num ml-2 text-[10px] text-muted">{a.days}/{a.days_in_month} days</span>
+                        {a.fraction !== 1 && a.fraction > 0 && (
+                          <span className="mono-num ml-2 text-[10px] text-muted">×{a.fraction} months</span>
                         )}
                       </td>
                       <td className="mono-num px-3 py-2 text-right">{fmtNum(a.asking_revenue)}</td>

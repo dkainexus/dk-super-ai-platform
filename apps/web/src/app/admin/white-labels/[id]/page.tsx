@@ -31,13 +31,19 @@ export default async function ConsoleWhiteLabelPage({
   const [{ data: merchant }, { data: allCountries }, { data: links }, { data: users }] = await Promise.all([
     db().from("merchants").select("*").eq("id", id).maybeSingle(),
     db().from("countries").select("*").order("sort").order("name"),
-    db().from("merchant_countries").select("country_id").eq("merchant_id", id),
+    db().from("merchant_countries").select("country_id, escort_threshold").eq("merchant_id", id),
     db().from("users").select("*, role:roles(*)").eq("merchant_id", id).order("username"),
   ]);
   if (!merchant) notFound();
   const m = merchant as Merchant;
 
   const enabledIds = new Set(((links ?? []) as { country_id: string }[]).map((l) => l.country_id));
+  const thresholds = new Map(
+    ((links ?? []) as { country_id: string; escort_threshold: number | null }[]).map((l) => [
+      l.country_id,
+      l.escort_threshold,
+    ])
+  );
   const wallet = await ledgerFor("merchant", m.id);
   const quote = Number((m as Merchant & { company_quote?: number }).company_quote ?? 0);
   const minCompanies = Number((m as Merchant & { min_prepaid_companies?: number }).min_prepaid_companies ?? 0);
@@ -80,13 +86,25 @@ export default async function ConsoleWhiteLabelPage({
                 <span className="text-sm">
                   {c.flag || "🌐"} {c.name} <span className="mono-num text-xs text-muted">{c.code}</span>
                 </span>
-                <input
-                  type="checkbox"
-                  name={`mc_${c.id}`}
-                  defaultChecked={enabledIds.has(c.id)}
-                  disabled={!canEdit}
-                  className="h-4 w-4"
-                />
+                <span className="flex items-center gap-3">
+                  {enabledIds.has(c.id) && (
+                    <input
+                      name={`et_${c.id}`}
+                      defaultValue={thresholds.get(c.id) ?? ""}
+                      placeholder="Escort threshold"
+                      title="Above this account balance the owner is never sent to the bank alone"
+                      className="input w-36 py-1 text-xs mono-num"
+                      disabled={!canEdit}
+                    />
+                  )}
+                  <input
+                    type="checkbox"
+                    name={`mc_${c.id}`}
+                    defaultChecked={enabledIds.has(c.id)}
+                    disabled={!canEdit}
+                    className="h-4 w-4"
+                  />
+                </span>
               </label>
             ))}
           </div>

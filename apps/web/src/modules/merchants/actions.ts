@@ -207,8 +207,21 @@ export async function saveMerchantCountries(formData: FormData): Promise<void> {
   for (const id of wanted.filter((id) => !currentIds.includes(id))) {
     await db().from("merchant_countries").insert({ merchant_id: merchantId, country_id: id });
   }
-  revalidatePath(back);
-  redirect(back);
+
+  // The escort threshold rides the same form: above this balance an owner is
+  // never sent to the bank alone.
+  for (const id of wanted) {
+    const raw = String(formData.get(`et_${id}`) ?? "").replace(/,/g, "").trim();
+    await db()
+      .from("merchant_countries")
+      .update({ escort_threshold: raw ? parseFloat(raw) || null : null })
+      .eq("merchant_id", merchantId)
+      .eq("country_id", id);
+  }
+
+  const realBack = String(formData.get("back") ?? back);
+  revalidatePath(realBack);
+  redirect(realBack);
 }
 
 /**

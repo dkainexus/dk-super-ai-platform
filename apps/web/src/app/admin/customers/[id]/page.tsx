@@ -170,7 +170,11 @@ export default async function CustomerDetailPage({
           {wallet.entries.slice(0, 10).map((e) => (
             <div key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span className="text-muted">
-                {e.kind === "topup" ? "Top-up" : e.kind === "invoice_payment" ? `Paid ${e.note ?? "invoice"}` : e.kind}
+                {e.kind === "topup"
+                  ? "Top-up"
+                  : e.kind === "invoice_payment"
+                    ? `Paid ${e.note ?? "invoice"}`
+                    : e.note ?? e.kind}
                 {e.usdt_amount != null && (
                   <span className="mono-num ml-2 text-xs">({fmtNum(e.usdt_amount)} USDT @ {e.usdt_rate})</span>
                 )}

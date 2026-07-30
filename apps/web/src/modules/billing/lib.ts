@@ -287,9 +287,12 @@ export async function buildDraft(countryId: string, periodMonth: string, userId:
     if (linesError) throw new Error(linesError.message);
 
     // The safety net may have dropped duplicates — the total is what landed.
+    // An invoice with lines but a zero total stays: a payout fully consumed by
+    // a recovery deduction must still issue, or the debt never shrinks.
     const { data: landed } = await db().from("invoice_lines").select("amount").eq("invoice_id", inv.id);
-    const total = ((landed ?? []) as { amount: number }[]).reduce((s, l) => s + Number(l.amount), 0);
-    if (total === 0) await db().from("invoices").delete().eq("id", inv.id);
+    const rows = (landed ?? []) as { amount: number }[];
+    const total = rows.reduce((s, l) => s + Number(l.amount), 0);
+    if (rows.length === 0) await db().from("invoices").delete().eq("id", inv.id);
     else await db().from("invoices").update({ total }).eq("id", inv.id);
   }
 

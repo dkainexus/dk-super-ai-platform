@@ -360,9 +360,12 @@ export function computeClaim(input: ClaimInput): ClaimComputation {
 export type SettlementAccount = {
   /** The white label's asking price for a month of this account. */
   askingPrice: number;
-  /** Billed-days ratio, so a part-month settles on the same fraction. */
-  days: number;
-  daysInMonth: number;
+  /**
+   * How much billed time the invoice covers, in months: a whole month is 1, a
+   * stub is its fraction, and an invoice carrying last month's stub plus this
+   * month in advance exceeds 1 — the asking revenue covers both.
+   */
+  fraction: number;
   ownerPaid: number;
   agentPaid: number;
   ownUse: boolean;
@@ -384,8 +387,10 @@ export function settleAccount(a: SettlementAccount, sharePct: number, ownUseFee:
   if (a.ownUse) {
     return { asking_revenue: 0, profit: 0, we_take: money(ownUseFee), wl_takes: money(-ownUseFee) };
   }
-  const revenue = money((a.askingPrice * a.days) / a.daysInMonth);
+  const revenue = money(a.askingPrice * a.fraction);
   const profit = money(revenue - a.ownerPaid - a.agentPaid);
-  const weTake = money((profit * sharePct) / 100);
+  // We take a dividend, never a loss: a loss-making account is entirely the
+  // white label's — they set the asking price.
+  const weTake = money(Math.max(0, (profit * sharePct) / 100));
   return { asking_revenue: revenue, profit, we_take: weTake, wl_takes: money(profit - weTake) };
 }

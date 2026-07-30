@@ -264,7 +264,7 @@ test("§8 — outside the window only the deposit comes back", async () => {
 test("§5 — the four-way split settles on the asking price", async () => {
   const { settleAccount } = await import("./engine.ts");
   const line = settleAccount(
-    { askingPrice: 80_000, days: 30, daysInMonth: 30, ownerPaid: 30_000, agentPaid: 10_000, ownUse: false },
+    { askingPrice: 80_000, fraction: 1, ownerPaid: 30_000, agentPaid: 10_000, ownUse: false },
     50,
     0
   );
@@ -274,7 +274,7 @@ test("§5 — the four-way split settles on the asking price", async () => {
 
   // A part month settles on the same fraction the customer was billed.
   const stub = settleAccount(
-    { askingPrice: 80_000, days: 11, daysInMonth: 31, ownerPaid: 7_741.94, agentPaid: 2_580.65, ownUse: false },
+    { askingPrice: 80_000, fraction: 11 / 31, ownerPaid: 7_741.94, agentPaid: 2_580.65, ownUse: false },
     50,
     0
   );
@@ -286,10 +286,172 @@ test("§5 — the four-way split settles on the asking price", async () => {
 
   // Own use: the flat fee, nothing else.
   const own = settleAccount(
-    { askingPrice: 80_000, days: 30, daysInMonth: 30, ownerPaid: 30_000, agentPaid: 0, ownUse: true },
+    { askingPrice: 80_000, fraction: 1, ownerPaid: 30_000, agentPaid: 0, ownUse: true },
     50,
     15_000
   );
   assert.equal(own.we_take, 15_000);
   assert.equal(own.wl_takes, -15_000);
+});
+
+// ------------------------------------------------ full condition sweep
+
+test("conditions — a loss-making account is entirely the white label's", async () => {
+  const { settleAccount } = await import("./engine.ts");
+  const r = settleAccount(
+    { askingPrice: 30_000, fraction: 1, ownerPaid: 35_000, agentPaid: 5_000, ownUse: false },
+    50,
+    0
+  );
+  assert.equal(r.profit, -10_000);
+  assert.equal(r.we_take, 0, "we take dividends, never losses");
+  assert.equal(r.wl_takes, -10_000, "the whole loss is theirs");
+});
+
+test("conditions — February and leap years prorate on the real month length", () => {
+  const feb = line("c-feb", "2026-02-15", 130_000);
+  const r = rentForMonth(feb, "2026-02-01");
+  assert.equal(r.days, 14);
+  assert.equal(r.inMonth, 28);
+  assert.equal(r.amount, 65_000, "130,000 × 14/28");
+
+  const leap = line("c-leap", "2024-02-15", 130_000);
+  const l = rentForMonth(leap, "2024-02-01");
+  assert.equal(l.inMonth, 29);
+  assert.equal(l.amount, 67_241.38, "130,000 × 15/29");
+});
+
+test("conditions — starting on the 1st bills the full month with no stub later", () => {
+  const c = line("c-first", "2026-04-01", 130_000, { setup_fee: 20_000 });
+  const april = linesForAccount(c, "2026-04-01");
+  assert.deepEqual(april.map((l) => [l.kind, l.amount]), [
+    ["setup_fee", 20_000],
+    ["base_rent", 130_000],
+  ]);
+  const may = linesForAccount(c, "2026-05-01");
+  // The engine re-offers the setup fee until the DB stamps it invoiced — but
+  // its dedupe key never changes, so the unique index blocks a second charge.
+  const fees = [...april, ...may].filter((l) => l.kind === "setup_fee");
+  assert.equal(new Set(fees.map((l) => l.dedupe_key)).size, 1, "one key, one possible charge");
+  assert.deepEqual(
+    may.filter((l) => l.kind === "base_rent").map((l) => l.amount),
+    [130_000],
+    "no stub for a clean start"
+  );
+});
+
+test("conditions — start and end inside the same month bills that slice once", () => {
+  const c = line("c-slice", "2026-04-10", 130_000, { ends_on: "2026-04-20" });
+  // April's run: the account starts mid-month, so nothing yet.
+  assert.deepEqual(linesForAccount(c, "2026-04-01"), []);
+  // May's run: the 10–20 April stub, 11 days.
+  const may = linesForAccount(c, "2026-05-01");
+  assert.equal(may.length, 1);
+  assert.equal(may[0].amount, 47_666.67, "130,000 × 11/30");
+  // June: gone.
+  assert.deepEqual(linesForAccount(c, "2026-06-01"), []);
+});
+
+test("conditions — the last month of a contract prorates to its end date", () => {
+  const c = line("c-last", "2026-01-01", 130_000, { ends_on: "2026-04-15" });
+  const april = rentForMonth(c, "2026-04-01");
+  assert.equal(april.amount, 65_000, "130,000 × 15/30");
+});
+
+test("conditions — a top-up on a stub month uses the stub as the floor", async () => {
+  const { turnoverTopup } = await import("./engine.ts");
+  const c = line("c-stubfloor", "2026-03-21", 130_000, { rate: 0.3 });
+  // Stub billed 46,129.03. Turnover 20M × 0.30% = 60,000 → top-up the difference.
+  const t = turnoverTopup(c, "2026-03-01", 20_000_000);
+  assert.equal(t.amount, 13_870.97, "60,000 − 46,129.03");
+});
+
+test("conditions — a top-up reads the terms of the month it belongs to", async () => {
+  const { turnoverTopup } = await import("./engine.ts");
+  const c = line("c-ratechange", "2026-01-01", 0, {
+    terms: [
+      { base_rent: 100_000, turnover_rate: 0.2, effective_from: "2026-01-01", effective_to: "2026-03-31" },
+      { base_rent: 130_000, turnover_rate: 0.3, effective_from: "2026-04-01", effective_to: null },
+    ],
+  });
+  // March turnover uses the old 0.20%: 60M × 0.20% = 120,000 vs 100,000 → 20,000.
+  assert.equal(turnoverTopup(c, "2026-03-01", 60_000_000).amount, 20_000);
+  // April uses the new 0.30%: 60M × 0.30% = 180,000 vs 130,000 → 50,000.
+  assert.equal(turnoverTopup(c, "2026-04-01", 60_000_000).amount, 50_000);
+});
+
+test("conditions — zero turnover, zero rate, exact-equal turnover: no top-up", async () => {
+  const { turnoverTopup } = await import("./engine.ts");
+  const c = line("c-zero", "2026-03-01", 130_000, { rate: 0.3 });
+  assert.equal(turnoverTopup(c, "2026-03-01", 0), null, "zero turnover");
+  // exactly the floor → nothing
+  const exact = 130_000 / 0.003;
+  assert.equal(turnoverTopup(c, "2026-03-01", exact), null, "exactly the floor");
+  const flat = line("c-norate", "2026-03-01", 130_000);
+  assert.equal(turnoverTopup(flat, "2026-03-01", 1e9), null, "no rate on the line");
+});
+
+test("conditions — claims at the exact boundaries", async () => {
+  const { computeClaim } = await import("./engine.ts");
+  const base = {
+    stolen: 50_000,
+    customerDeposit: 100_000,
+    agentDeposit: 200_000,
+    agentWindowMonths: 6,
+    companyRegisteredOn: "2026-01-29",
+    claimedOn: "2026-07-29", // exactly 6 months later
+    companyContribution: 30_000,
+    rentPaidBase: 10_000,
+    rentPaidTurnover: 0,
+    setupFee: 0,
+    customerStartedOn: null,
+  };
+  // Stolen less than the deposit → compensation is the stolen amount, nothing written off.
+  const small = computeClaim(base);
+  assert.equal(small.customer_compensation, 50_000);
+  assert.equal(small.written_off, 0);
+  // The window closes at the end of the exact day, not before.
+  assert.equal(small.inside_agent_window, true, "the boundary day is inside");
+  assert.equal(computeClaim({ ...base, claimedOn: "2026-07-30" }).inside_agent_window, false);
+  // Zero deposits mean zero liability either way.
+  const zero = computeClaim({ ...base, customerDeposit: 0, agentDeposit: 0 });
+  assert.equal(zero.customer_compensation, 0);
+  assert.equal(zero.agent_deposit_due, 0);
+  assert.equal(zero.written_off, 50_000);
+  // No window configured → never inside.
+  assert.equal(computeClaim({ ...base, agentWindowMonths: null }).inside_agent_window, false);
+});
+
+test("conditions — refunds at their edges", () => {
+  assert.equal(setupFeeRefund(20_000, "2026-03-01", "2026-03-01"), 19_333.33, "one day used, 29 back");
+  assert.equal(rentRefund(130_000, "2026-04-30", "2026-04-30"), 0, "nothing unused");
+  assert.equal(rentRefund(130_000, "2026-03-31", "2026-04-30"), 130_000, "the whole month back");
+});
+
+test("conditions — a terms gap bills nothing rather than guessing", () => {
+  const c = line("c-gap", "2026-01-01", 0, {
+    terms: [{ base_rent: 100_000, turnover_rate: null, effective_from: "2026-02-01", effective_to: null }],
+  });
+  assert.equal(rentForMonth(c, "2026-01-01"), null, "no terms in force in January");
+  assert.equal(rentForMonth(c, "2026-02-01").amount, 100_000);
+});
+
+
+test("conditions — an invoice carrying a stub plus a month settles on both", async () => {
+  const { settleAccount } = await import("./engine.ts");
+  // April's invoice: the 11-day March stub plus April in full → 1.3548 months.
+  const r = settleAccount(
+    {
+      askingPrice: 80_000,
+      fraction: 11 / 31 + 1,
+      ownerPaid: 37_741.94, // owner's stub + April
+      agentPaid: 12_580.65, // agent's stub + April
+      ownUse: false,
+    },
+    50,
+    0
+  );
+  assert.equal(r.asking_revenue, 108_387.1, "80,000 × (11/31 + 1)");
+  assert.equal(r.profit, 58_064.51);
+  assert.ok(Math.abs(r.we_take + r.wl_takes - r.profit) < 0.005);
 });

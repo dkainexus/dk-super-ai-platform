@@ -135,6 +135,24 @@ export function BankAccountDetail({
               <MoneyInput name="account_limit" defaultValue={a.account_limit} />
             </div>
             <div>
+              <label className="mb-1 block text-xs text-muted">Asking Price (settlement basis)</label>
+              <MoneyInput
+                name="asking_price"
+                defaultValue={(a as BankAccountRow & { asking_price?: number | null }).asking_price ?? ""}
+              />
+            </div>
+            <label
+              className="flex items-center gap-2 self-end pb-2 text-xs text-muted"
+              title="The white label uses this account themselves — settled at their flat fee"
+            >
+              <input
+                type="checkbox"
+                name="own_use"
+                defaultChecked={(a as BankAccountRow & { own_use?: boolean }).own_use}
+              />{" "}
+              Own use
+            </label>
+            <div>
               <label className="mb-1 block text-xs text-muted">Condition</label>
               <select name="condition" defaultValue={a.condition} className="input">
                 <option value="New">New</option>
