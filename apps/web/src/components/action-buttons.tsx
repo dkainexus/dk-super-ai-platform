@@ -80,7 +80,7 @@ function WithTip({ tip, children }: { tip: string; children: React.ReactNode }) 
   return (
     <span className="group/tip relative inline-flex">
       {children}
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-surface-raised px-2 py-1 text-xs text-foreground opacity-0 shadow-lg transition-opacity group-hover/tip:opacity-100">
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden max-w-80 -translate-x-1/2 whitespace-normal rounded-md border border-border bg-surface-raised px-2 py-1 text-center text-xs text-foreground shadow-lg group-hover/tip:block">
         {tip}
       </span>
     </span>

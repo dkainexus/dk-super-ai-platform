@@ -18,8 +18,8 @@ const STATUS_STYLE: Record<string, string> = {
   cancelled: "border-border text-muted",
 };
 const STATUS_LABEL: Record<string, string> = {
-  awaiting_confirmation: "awaiting customer",
-  confirmed: "confirmed — binding",
+  awaiting_confirmation: "awaiting",
+  confirmed: "handover",
   live: "live",
   cancelled: "cancelled",
 };
@@ -80,10 +80,10 @@ export default async function AssignmentsPage({
         </FilterForm>
       </TableToolbar>
 
-      <Table head={["ID", "Account", "Customer", "Price", "Delivery", "Assigned", "Deadline", "Status", ""]}>
+      <Table head={["Account", "Price", "Delivery", "Dates", "Status", ""]}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={9} className="px-4 py-6 text-sm text-muted">Nothing here.</td>
+            <td colSpan={6} className="px-4 py-6 text-sm text-muted">Nothing here.</td>
           </tr>
         )}
         {await Promise.all(rows.map(async (a) => {
@@ -98,12 +98,13 @@ export default async function AssignmentsPage({
               : [];
           return (
             <tr key={a.id} className="align-top transition-colors hover:bg-surface-raised">
-              <td className="mono-num px-4 py-2.5 text-xs text-muted">{a.ref ?? "—"}</td>
               <td className="px-4 py-2.5">
                 {a.bank_account?.bank?.name ?? "?"}{" "}
                 <span className="mono-num text-xs text-muted">{a.bank_account?.account_no}</span>
+                <span className="mono-num block text-[11px] text-muted">
+                  {a.ref ?? ""} · {a.customer?.name ?? "?"}
+                </span>
               </td>
-              <td className="px-4 py-2.5">{a.customer?.name ?? "?"}</td>
               <td className="mono-num px-4 py-2.5">{c.rent != null ? fmtNum(c.rent) : "—"}</td>
               <td className="px-4 py-2.5">
                 <span className="text-muted">
@@ -113,7 +114,7 @@ export default async function AssignmentsPage({
                   )}
                 </span>
                 {a.address && (
-                  <p className="mt-1 max-w-[14rem] text-[11px] text-muted">
+                  <p className="mt-1 max-w-[12rem] text-[11px] text-muted">
                     {a.address.name} · {a.address.phone} · {a.address.address}
                   </p>
                 )}
@@ -171,9 +172,11 @@ export default async function AssignmentsPage({
                   </details>
                 )}
               </td>
-              <td className="px-4 py-2.5 text-xs text-muted">{a.assigned_on}</td>
               <td className="mono-num px-4 py-2.5 text-xs text-muted">
-                {a.status === "live" ? (a.live_on ?? "—") : assignmentDeadline(a.assigned_on)}
+                {a.assigned_on}
+                <span className="block">
+                  {a.status === "live" ? `live ${a.live_on ?? ""}` : `by ${assignmentDeadline(a.assigned_on)}`}
+                </span>
               </td>
               <td className="px-4 py-2.5">
                 <span className={`rounded-full border px-2.5 py-0.5 text-[11px] ${STATUS_STYLE[a.status]}`}>
@@ -199,7 +202,7 @@ export default async function AssignmentsPage({
                   <form action={cancelAssignment} className="mt-2 text-right">
                     <input type="hidden" name="id" value={a.id} />
                     <input type="hidden" name="back" value={back} />
-                    <ActionButton icon="x" tip="Withdraw this offer" label="Cancel" variant="danger" />
+                    <ActionButton icon="x" tip="Withdraw this offer" variant="danger" />
                   </form>
                 )}
               </td>

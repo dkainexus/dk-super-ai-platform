@@ -74,33 +74,34 @@ export default async function ShippingPage({
         </FilterForm>
       </TableToolbar>
 
-      <Table head={["ID", "Customer", "Ship To", "For", "Courier / Tracking", "Stage", ""]}>
+      <Table head={["Customer", "Courier / Tracking", "Stage"]}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={7} className="px-4 py-6 text-sm text-muted">Nothing here.</td>
+            <td colSpan={3} className="px-4 py-6 text-sm text-muted">Nothing here.</td>
           </tr>
         )}
         {rows.map((s) => {
           const st = shipmentStage(s);
           return (
             <tr key={s.id} className="align-top transition-colors hover:bg-surface-raised">
-              <td className="mono-num px-4 py-2.5 text-xs text-muted">{s.ref ?? "—"}</td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2.5 text-sm">
                 {s.customer?.name ?? "?"}
-                <span className="mono-num block text-xs text-muted">{s.customer?.ref ?? ""}</span>
-              </td>
-              <td className="max-w-[16rem] px-4 py-2.5 text-sm">
-                {s.address.name} · {s.address.phone}
-                <span className="block text-xs text-muted">{s.address.address}</span>
-              </td>
-              <td className="px-4 py-2.5 text-sm text-muted">
-                {s.assignment?.bank_account?.bank?.name ?? "?"}{" "}
-                <span className="mono-num text-xs">{s.assignment?.bank_account?.account_no ?? ""}</span>
-                <span className="mono-num block text-xs">{s.assignment?.ref ?? ""}</span>
+                <span className="mono-num block text-[11px] text-muted">{s.ref ?? ""}</span>
+                <details className="mt-0.5 text-xs text-muted">
+                  <summary className="cursor-pointer hover:text-foreground">details</summary>
+                  <p className="mt-1">
+                    {s.address.name} · {s.address.phone}
+                    <span className="block">{s.address.address}</span>
+                    <span className="mono-num block">
+                      {s.assignment?.bank_account?.bank?.name ?? "?"} {s.assignment?.bank_account?.account_no ?? ""} ·{" "}
+                      {s.assignment?.ref ?? ""}
+                    </span>
+                  </p>
+                </details>
               </td>
               <td className="px-4 py-2.5">
                 {st === "to_ship" && canEdit ? (
-                  <form action={markShipped} className="flex items-center gap-1.5">
+                  <form action={markShipped} className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="back" value={back} />
                     <select name="courier_id" className="input w-32 py-1 text-xs" required>
@@ -110,10 +111,10 @@ export default async function ShippingPage({
                       ))}
                     </select>
                     <input name="tracking_no" className="input mono-num w-32 py-1 text-xs" placeholder="Tracking no." />
-                    <ActionButton icon="send" tip="Record the shipment — the customer sees the tracking number" label="Mark Shipped" variant="primary" />
+                    <ActionButton icon="send" tip="Mark shipped — the customer sees the tracking number" variant="primary" />
                   </form>
                 ) : st === "in_transit" && canEdit ? (
-                  <form action={updateTracking} className="flex items-center gap-1.5">
+                  <form action={updateTracking} className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="back" value={back} />
                     <select name="courier_id" defaultValue={s.courier_id ?? ""} className="input w-32 py-1 text-xs" required>
@@ -123,7 +124,7 @@ export default async function ShippingPage({
                       ))}
                     </select>
                     <input name="tracking_no" defaultValue={s.tracking_no ?? ""} className="input mono-num w-32 py-1 text-xs" />
-                    <ActionButton icon="save" tip="Fix the courier or tracking number" label="Update" variant="outline" />
+                    <ActionButton icon="save" tip="Fix the courier or tracking number" variant="outline" />
                   </form>
                 ) : (
                   <span className="mono-num text-xs text-muted">
@@ -163,7 +164,6 @@ export default async function ShippingPage({
               <td className="px-4 py-2.5">
                 <span className={`rounded-full border px-2.5 py-0.5 text-[11px] ${STAGE_STYLE[st]}`}>{STAGE_LABEL[st]}</span>
               </td>
-              <td className="px-4 py-2.5" />
             </tr>
           );
         })}
