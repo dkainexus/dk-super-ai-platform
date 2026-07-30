@@ -133,6 +133,21 @@ export async function copyTemplateToAgent(
 }
 
 /**
+ * An account's enabled channel names. The column holds an object keyed by
+ * channel ({ PromptPay: { enabled: true, value } }) — older test data used a
+ * plain array, so both shapes read.
+ */
+export function enabledChannelNames(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((x): x is string => typeof x === "string");
+  if (raw && typeof raw === "object") {
+    return Object.entries(raw as Record<string, { enabled?: boolean } | null>)
+      .filter(([, v]) => Boolean(v && (v as { enabled?: boolean }).enabled))
+      .map(([k]) => k);
+  }
+  return [];
+}
+
+/**
  * The row an account falls under: the first exact bank + channel match in the
  * table's order, else the bank's default row (no channel). No row, no guess.
  */
@@ -402,7 +417,7 @@ export async function wireAccountContracts(bankAccountId: string, byUserId: stri
   if (existingAgent) return null;
 
   const rows = await conditionRows(acc.merchant_id, acc.country_id ?? "", agentRow.id);
-  const row = resolveConditionRow(rows, acc.bank_id, (acc.channels as string[] | null) ?? []);
+  const row = resolveConditionRow(rows, acc.bank_id, enabledChannelNames(acc.channels));
   const bankName = (acc.bank as { name?: string } | null)?.name ?? "this bank";
   if (!row) return `This agent has no conditions for ${bankName} — add a row on the agent's page first`;
 

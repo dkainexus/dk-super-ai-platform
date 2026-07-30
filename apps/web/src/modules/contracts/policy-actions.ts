@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
-import { copyTemplateToAgent } from "./policy";
+import { copyTemplateToAgent, enabledChannelNames } from "./policy";
 import { copyTemplateToCustomer, customerConditionRows, currentTnc, goLive, assignmentDeadline } from "./customer-policy";
 import { addDays } from "@/modules/billing/engine";
 
@@ -277,7 +277,7 @@ export async function assignAccount(formData: FormData): Promise<void> {
 
   const rows = await customerConditionRows(acc.country_id ?? "", customerId);
   const bankName = (acc.bank as { name?: string } | null)?.name ?? "this bank";
-  const channels = (acc.channels as string[] | null) ?? [];
+  const channels = enabledChannelNames(acc.channels);
   const row =
     rows.find((r) => r.bank_id === acc.bank_id && r.channel != null && channels.includes(r.channel)) ??
     rows.find((r) => r.bank_id === acc.bank_id && r.channel == null) ??
