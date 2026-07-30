@@ -78,3 +78,98 @@ export async function submitTurnover(formData: FormData): Promise<void> {
   revalidatePath("/portal/turnover");
   redirect("/portal/turnover?saved=1");
 }
+
+function failTo(path: string, message: string): never {
+  redirect(`${path}?error=${encodeURIComponent(message)}`);
+}
+
+/** Report a problem on a rented account — balance and last transaction included. */
+export async function submitTicket(formData: FormData): Promise<void> {
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/login");
+  const customer = await customerForUser(cu.user.id);
+  if (!customer) redirect("/login");
+
+  const bankAccountId = String(formData.get("bank_account_id") ?? "");
+  const typeId = String(formData.get("type_id") ?? "");
+  const description = String(formData.get("description") ?? "").trim();
+  const balance = parseFloat(String(formData.get("reported_balance") ?? "").replace(/,/g, ""));
+  const lastTx = String(formData.get("last_transaction") ?? "").trim();
+  if (!description) failTo("/portal/support", "Describe the problem");
+  if (!Number.isFinite(balance)) failTo("/portal/support", "Enter the account's current balance");
+  if (!lastTx) failTo("/portal/support", "Describe the last transaction (date and amount)");
+
+  const { data: line } = await db()
+    .from("contract_accounts")
+    .select("id, contract:contracts!inner(customer_id, merchant_id, country_id)")
+    .eq("bank_account_id", bankAccountId)
+    .eq("contract.customer_id", customer.id)
+    .limit(1)
+    .maybeSingle();
+  if (!line) failTo("/portal/support", "That account is not on your contracts");
+  const contract = line.contract as unknown as { merchant_id: string; country_id: string | null };
+
+  const { data: ticketRow, error } = await db()
+    .from("tickets")
+    .insert({
+      merchant_id: contract.merchant_id,
+      country_id: contract.country_id,
+      bank_account_id: bankAccountId,
+      customer_id: customer.id,
+      type_id: typeId || null,
+      description,
+      reported_balance: balance,
+      last_transaction: lastTx,
+    })
+    .select("id")
+    .single();
+  if (error || !ticketRow) failTo("/portal/support", `Failed to report: ${error?.message}`);
+
+  const file = formData.get("screenshot");
+  if (file instanceof File && file.size > 0 && file.size <= 20 * 1024 * 1024) {
+    const path = await uploadFile(DOCS_BUCKET, `tickets/${ticketRow.id}/report.${fileExt(file)}`, file);
+    await db().from("ticket_messages").insert({
+      ticket_id: ticketRow.id,
+      author_type: "customer",
+      author_id: customer.id,
+      body: null,
+      attachment_path: path,
+    });
+  }
+
+  revalidatePath("/portal/support");
+  redirect(`/portal/support/${ticketRow.id}?saved=1`);
+}
+
+/** A reply (or requested document) from the customer on their own ticket. */
+export async function replyTicket(formData: FormData): Promise<void> {
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/login");
+  const customer = await customerForUser(cu.user.id);
+  if (!customer) redirect("/login");
+
+  const ticketId = String(formData.get("ticket_id") ?? "");
+  const back = `/portal/support/${ticketId}`;
+  const body = String(formData.get("body") ?? "").trim();
+
+  const { data: t } = await db().from("tickets").select("customer_id").eq("id", ticketId).maybeSingle();
+  if (!t || t.customer_id !== customer.id) redirect("/portal/support");
+
+  const file = formData.get("attachment");
+  let path: string | null = null;
+  if (file instanceof File && file.size > 0) {
+    if (file.size > 20 * 1024 * 1024) failTo(back, "Attachments must be under 20MB");
+    path = await uploadFile(DOCS_BUCKET, `tickets/${ticketId}/${Date.now()}.${fileExt(file)}`, file);
+  }
+  if (!body && !path) failTo(back, "Write something or attach a file");
+
+  await db().from("ticket_messages").insert({
+    ticket_id: ticketId,
+    author_type: "customer",
+    author_id: customer.id,
+    body: body || null,
+    attachment_path: path,
+  });
+  revalidatePath(back);
+  redirect(back);
+}

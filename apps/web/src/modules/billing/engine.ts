@@ -24,8 +24,8 @@ export type AccountLine = {
 };
 
 export type BilledLine = {
-  contract_account_id: string;
-  kind: "base_rent" | "setup_fee" | "turnover_topup";
+  contract_account_id: string | null;
+  kind: "base_rent" | "setup_fee" | "turnover_topup" | "service";
   description: string;
   period_start: string | null;
   period_end: string | null;

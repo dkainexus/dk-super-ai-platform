@@ -26,6 +26,7 @@ export default async function PortalLayout({ children }: { children: React.React
             { href: "/portal/contracts", label: "My Contracts" },
             { href: "/portal/turnover", label: "Monthly Turnover" },
             { href: "/portal/invoices", label: "Invoices" },
+            { href: "/portal/support", label: "Support" },
           ],
         },
       ]}

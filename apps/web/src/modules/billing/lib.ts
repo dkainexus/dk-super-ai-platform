@@ -76,6 +76,11 @@ type LoadedContract = Contract & {
  * is missing, never bill twice.
  */
 export async function buildDraft(countryId: string, periodMonth: string, userId: string): Promise<string> {
+  // The picture must be current before any arithmetic: overdue tickets freeze
+  // their accounts right here, not on some other page visit.
+  const { applyOverdueFreezes } = await import("@/modules/tickets/lib");
+  await applyOverdueFreezes();
+
   // Out with the old draft.
   const { data: existing } = await db()
     .from("billing_runs")
@@ -102,7 +107,7 @@ export async function buildDraft(countryId: string, periodMonth: string, userId:
   const { data: contractRows } = await db()
     .from("contracts")
     .select(
-      "*, contract_accounts(*, bank_account:bank_accounts(account_no, bank:banks(name)), contract_terms(*))"
+      "*, contract_accounts(*, bank_account:bank_accounts(account_no, billing_frozen, bank:banks(name)), contract_terms(*))"
     )
     .eq("country_id", countryId)
     .eq("status", "active");
@@ -131,10 +136,56 @@ export async function buildDraft(countryId: string, periodMonth: string, userId:
     .neq("invoice.status", "draft");
   const alreadyBilled = new Set(((issuedLines ?? []) as { dedupe_key: string }[]).map((l) => l.dedupe_key));
 
+  // Closed, unwaived, uninvoiced ticket charges join the customer's invoice.
+  const { data: chargeRows } = await db()
+    .from("tickets")
+    .select("id, ref, customer_id, charge_amount, charge_kind, type:ticket_types(name)")
+    .eq("country_id", countryId)
+    .in("status", ["handled", "resolved"])
+    .eq("charge_waived", false)
+    .is("charge_invoiced_at", null)
+    .not("charge_amount", "is", null);
+  const chargesByCustomer = new Map<string, { id: string; ref: string | null; amount: number; label: string }[]>();
+  for (const t of (chargeRows ?? []) as unknown as {
+    id: string; ref: string | null; customer_id: string; charge_amount: number; charge_kind: string;
+    type: { name: string } | null;
+  }[]) {
+    const list = chargesByCustomer.get(t.customer_id) ?? [];
+    list.push({
+      id: t.id,
+      ref: t.ref,
+      amount: Number(t.charge_amount),
+      label: `Service — ${t.type?.name ?? "support"} (${t.charge_kind === "phone" ? "phone call" : "bank visit"}, ${t.ref ?? t.id})`,
+    });
+    chargesByCustomer.set(t.customer_id, list);
+  }
+  const chargedCustomers = new Set<string>();
+
   for (const c of loaded) {
     const lines: BilledLine[] = [];
+
+    if (c.party_type === "customer" && c.customer_id && !chargedCustomers.has(c.customer_id)) {
+      chargedCustomers.add(c.customer_id);
+      for (const charge of chargesByCustomer.get(c.customer_id) ?? []) {
+        lines.push({
+          contract_account_id: null,
+          kind: "service",
+          description: charge.label,
+          period_start: null,
+          period_end: null,
+          days: null,
+          days_in_month: null,
+          amount: charge.amount,
+          dedupe_key: `service|${charge.id}`,
+          snapshot: { ticket_id: charge.id, ticket_ref: charge.ref },
+        });
+      }
+    }
     for (const acc of c.contract_accounts) {
       if (!acc.starts_on) continue;
+      // A frozen account bills nobody — customer, owner and agent alike. The
+      // term keeps running; only the money stops.
+      if ((acc.bank_account as { billing_frozen?: boolean } | null)?.billing_frozen) continue;
       // An account never bills past its contract: no renewal, no rent.
       const contractEnd = c.ends_on;
       const effectiveEnd =
@@ -312,6 +363,23 @@ export async function issueRun(runId: string, userId: string): Promise<number> {
       .update({ setup_fee_invoiced_at: now })
       .in("id", feeAccounts)
       .is("setup_fee_invoiced_at", null);
+  }
+
+  // Service charges that just went out never join another run.
+  const { data: serviceLines } = await db()
+    .from("invoice_lines")
+    .select("dedupe_key")
+    .in("invoice_id", ids)
+    .eq("kind", "service");
+  const ticketIds = ((serviceLines ?? []) as { dedupe_key: string }[])
+    .map((l) => l.dedupe_key.split("|")[1])
+    .filter(Boolean);
+  if (ticketIds.length > 0) {
+    await db()
+      .from("tickets")
+      .update({ charge_invoiced_at: now })
+      .in("id", ticketIds)
+      .is("charge_invoiced_at", null);
   }
 
   await db().from("billing_runs").update({ status: "issued", issued_at: now, issued_by: userId }).eq("id", runId);

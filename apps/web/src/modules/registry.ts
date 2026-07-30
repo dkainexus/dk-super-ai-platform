@@ -32,6 +32,7 @@ import { agentsModule } from "@/modules/agents";
 import { customersModule } from "@/modules/customers";
 import { contractsModule } from "@/modules/contracts";
 import { billingModule } from "@/modules/billing";
+import { ticketsModule } from "@/modules/tickets";
 
 export type ModuleDef = {
   key: string;
@@ -82,6 +83,7 @@ export const MODULES: ModuleDef[] = [
   customersModule,
   contractsModule,
   billingModule,
+  ticketsModule,
   ownersModule,
   companiesModule,
   walletModule,
