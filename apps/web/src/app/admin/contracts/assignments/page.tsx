@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { requireCountryScope } from "@/modules/countries/lib";
 import { assignmentsFor, assignmentDeadline } from "@/modules/contracts/customer-policy";
-import { markAssignmentReady, cancelAssignment, setAssignmentDelivery } from "@/modules/contracts/policy-actions";
+import { markAssignmentReady, cancelAssignment, setAssignmentDelivery, markAssignmentShipped } from "@/modules/contracts/policy-actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
 import { Table, TableToolbar, FilterSelect } from "@/components/data-table";
@@ -50,6 +50,11 @@ export default async function AssignmentsPage({
         </p>
       </div>
       <ErrorBanner message={error} />
+      {saved === "shipped" && (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
+          Marked shipped — the customer sees the courier and tracking number in their portal.
+        </p>
+      )}
       {saved === "live" && (
         <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
           Live — billing starts tomorrow (or on the day-14 cap if that is sooner).
@@ -108,6 +113,12 @@ export default async function AssignmentsPage({
                     {a.address.name} · {a.address.phone} · {a.address.address}
                   </p>
                 )}
+                {a.shipped_at && (
+                  <p className="mono-num mt-1 text-[11px] text-muted">
+                    {a.courier} · {a.tracking_no} · shipped {a.shipped_at.slice(0, 10)}
+                    {a.received_at ? ` · received ${a.received_at.slice(0, 10)}` : ""}
+                  </p>
+                )}
               </td>
               <td className="px-4 py-2.5 text-xs text-muted">{a.assigned_on}</td>
               <td className="mono-num px-4 py-2.5 text-xs text-muted">
@@ -121,6 +132,15 @@ export default async function AssignmentsPage({
               <td className="px-4 py-2.5">
                 {canEdit && a.status === "confirmed" && (
                   <div className="flex flex-col items-end gap-2">
+                    {a.delivery_method === "shipping" && !a.shipped_at && (
+                      <form action={markAssignmentShipped} className="flex items-center gap-1.5">
+                        <input type="hidden" name="id" value={a.id} />
+                        <input type="hidden" name="back" value={back} />
+                        <input name="courier" className="input w-24 py-1 text-xs" placeholder="Courier" />
+                        <input name="tracking_no" className="input mono-num w-32 py-1 text-xs" placeholder="Tracking no." />
+                        <ActionButton icon="send" tip="Record the shipment — the customer sees the tracking number" label="Mark Shipped" variant="primary" />
+                      </form>
+                    )}
                     <form action={markAssignmentReady}>
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="back" value={back} />

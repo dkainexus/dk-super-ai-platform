@@ -20,6 +20,10 @@ export type Assignment = {
   conditions: Record<string, unknown>;
   tnc_id: string | null;
   address: { name: string; phone: string; address: string } | null;
+  courier: string | null;
+  tracking_no: string | null;
+  shipped_at: string | null;
+  received_at: string | null;
   assigned_on: string;
   confirmed_at: string | null;
   live_on: string | null;

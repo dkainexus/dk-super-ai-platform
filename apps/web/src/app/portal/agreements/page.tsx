@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { customerForUser } from "@/modules/customers/lib";
 import { assignmentsFor, assignmentDeadline } from "@/modules/contracts/customer-policy";
-import { confirmAssignment } from "@/app/portal/actions";
+import { confirmAssignment, confirmReceived } from "@/app/portal/actions";
 import { logoutAction } from "@/app/actions/auth";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
@@ -76,6 +76,11 @@ export default async function AgreementsPage({
         </div>
       </div>
       <ErrorBanner message={error} />
+      {saved === "received" && (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
+          Noted — our support will contact you to test the account. Billing starts the day after it works.
+        </p>
+      )}
       {saved === "confirmed" && (
         <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
           Confirmed. {pending.length > 0 ? "One more to go below." : "You're all set."}
@@ -187,6 +192,25 @@ export default async function AgreementsPage({
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
+                    {a.status === "confirmed" && a.delivery_method === "shipping" && !a.shipped_at && (
+                      <span className="text-xs text-muted">preparing shipment</span>
+                    )}
+                    {a.status === "confirmed" && a.shipped_at && (
+                      <span className="mono-num text-xs text-muted">
+                        {a.courier} · {a.tracking_no}
+                      </span>
+                    )}
+                    {a.status === "confirmed" && a.shipped_at && !a.received_at && (
+                      <form action={confirmReceived}>
+                        <input type="hidden" name="id" value={a.id} />
+                        <button className="rounded-md border border-accent/50 px-2.5 py-1 text-xs text-accent-strong hover:bg-accent-soft">
+                          I&apos;ve received it
+                        </button>
+                      </form>
+                    )}
+                    {a.status === "confirmed" && a.received_at && (
+                      <span className="text-xs text-success">received — testing next</span>
+                    )}
                     {tnc && (
                       <Link href={`/portal/agreements?view=${tnc.id}`} className="text-xs text-muted hover:text-foreground">
                         View terms

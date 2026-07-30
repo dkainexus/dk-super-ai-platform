@@ -453,3 +453,30 @@ export async function decideTermination(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(`${back}?saved=${decision}`);
 }
+
+/** The parcel left: courier and tracking number onto the record. */
+export async function markAssignmentShipped(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("contracts", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = String(formData.get("back") ?? "/admin/contracts/assignments");
+  const courier = String(formData.get("courier") ?? "").trim();
+  const trackingNo = String(formData.get("tracking_no") ?? "").trim();
+  if (!courier || !trackingNo) fail(back, "Enter the courier and the tracking number");
+
+  const { data } = await db()
+    .from("account_assignments")
+    .update({
+      courier,
+      tracking_no: trackingNo,
+      shipped_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      updated_by: cu.user.id,
+    })
+    .eq("id", id)
+    .eq("status", "confirmed")
+    .eq("delivery_method", "shipping")
+    .select("id");
+  if (!data || data.length === 0) fail(back, "Only a confirmed shipping assignment can be marked shipped");
+  revalidatePath(back);
+  redirect(`${back}?saved=shipped`);
+}

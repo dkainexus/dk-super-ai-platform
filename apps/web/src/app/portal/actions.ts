@@ -338,3 +338,24 @@ export async function renewMyContract(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(`${back}?saved=renewed`);
 }
+
+/** The customer says the parcel arrived — support then tests it with them. */
+export async function confirmReceived(formData: FormData): Promise<void> {
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/portal/login");
+  const customer = await customerForUser(cu.user.id);
+  if (!customer) redirect("/portal/login");
+  const id = String(formData.get("id") ?? "");
+  const back = "/portal/agreements";
+
+  await db()
+    .from("account_assignments")
+    .update({ received_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("customer_id", customer.id)
+    .eq("status", "confirmed")
+    .not("shipped_at", "is", null)
+    .is("received_at", null);
+  revalidatePath(back);
+  redirect(`${back}?saved=received`);
+}
