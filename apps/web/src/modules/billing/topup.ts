@@ -16,6 +16,7 @@ export type TopupRequest = {
   tx_hash: string;
   amount_usdt: number | null;
   chain_usdt: number | null;
+  chain_time: string | null;
   status: "pending" | "credited" | "rejected";
   verify_note: string | null;
   verified: unknown;
@@ -29,6 +30,11 @@ export type TopupRequestRow = TopupRequest & {
 };
 
 export const TOPUP_SELECT = "*, customer:customers(name, ref)";
+
+// A transfer must have happened within this window before it was reported.
+// Older ones are real money on chain, but likely money already accounted for
+// some other way — those need a human, not an automatic credit.
+export const MAX_TX_AGE_DAYS = 7;
 
 export async function topupRequestsFor(opts: { countryId?: string; customerId?: string; status?: string }) {
   let q = db().from("topup_requests").select(TOPUP_SELECT).order("created_at", { ascending: false });
@@ -44,7 +50,13 @@ export async function topupRequestsFor(opts: { countryId?: string; customerId?: 
  * The status flip is the lock: only the caller that moves pending → credited
  * gets to write the ledger entry, so a hash can never be credited twice.
  */
-async function credit(req: TopupRequest, usdt: number, note: string, byUserId: string | null): Promise<string | null> {
+async function credit(
+  req: TopupRequest,
+  usdt: number,
+  note: string,
+  byUserId: string | null,
+  chainTime?: string | null
+): Promise<string | null> {
   const { data: country } = await db()
     .from("countries")
     .select("currency, usdt_markup_pct, usdt_markup_flat")
@@ -64,6 +76,7 @@ async function credit(req: TopupRequest, usdt: number, note: string, byUserId: s
     .update({
       status: "credited",
       chain_usdt: usdt,
+      chain_time: chainTime ?? null,
       verify_note: note,
       reviewed_by: byUserId,
       reviewed_at: new Date().toISOString(),
@@ -120,7 +133,25 @@ export async function verifyTopupRequest(
 
   const check = await checkTrc20Payment(req.tx_hash, (country?.usdt_address_trc20 as string | null) ?? "");
   if (check.ok) {
-    const err = await credit(req, check.usdt, `Confirmed on chain from ${check.from}`, byUserId);
+    // Age gate: measured against when it was REPORTED, not when we got to
+    // verifying it — a report that sat pending for a while stays honest.
+    // Fail closed: no readable time on chain also means no automatic credit.
+    const ageDays = check.at
+      ? (new Date(req.created_at).getTime() - new Date(check.at).getTime()) / 86_400_000
+      : null;
+    if (ageDays === null || ageDays > MAX_TX_AGE_DAYS) {
+      const reason =
+        ageDays === null
+          ? "Transfer confirmed but its time couldn't be read — needs a manual decision"
+          : `Transfer is real but happened ${Math.floor(ageDays)} days before it was reported (limit ${MAX_TX_AGE_DAYS}) — needs a manual decision`;
+      await db()
+        .from("topup_requests")
+        .update({ chain_usdt: check.usdt, chain_time: check.at, verify_note: reason })
+        .eq("id", id)
+        .eq("status", "pending");
+      return { status: "pending", note: reason };
+    }
+    const err = await credit(req, check.usdt, `Confirmed on chain from ${check.from}`, byUserId, check.at);
     if (err) {
       await db().from("topup_requests").update({ verify_note: err }).eq("id", id).eq("status", "pending");
       return { status: "pending", note: err };

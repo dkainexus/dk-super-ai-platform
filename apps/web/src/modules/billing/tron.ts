@@ -7,7 +7,9 @@ import "server-only";
 const USDT_TRC20 = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 
 export type ChainCheck =
-  | { ok: true; usdt: number; from: string }
+  // at: when the transfer actually happened on chain, ISO — the age policy
+  // lives with the caller, the chain just states the fact.
+  | { ok: true; usdt: number; from: string; at: string | null }
   // final: the chain has definitively ruled it out (wrong token, wrong
   // address, failed tx). Not final: unreachable or still confirming — retry.
   | { ok: false; final: boolean; reason: string };
@@ -27,6 +29,7 @@ export async function checkTrc20Payment(txHash: string, depositAddress: string):
     hash?: string;
     confirmed?: boolean;
     contractRet?: string;
+    timestamp?: number;
     trc20TransferInfo?: Transfer[];
     tokenTransferInfo?: Transfer;
   };
@@ -64,5 +67,10 @@ export async function checkTrc20Payment(txHash: string, depositAddress: string):
   const usdt = Number(hit.amount_str) / 10 ** Number(hit.decimals ?? 6);
   if (!Number.isFinite(usdt) || usdt <= 0)
     return { ok: false, final: true, reason: "Could not read the transfer amount" };
-  return { ok: true, usdt: Math.round(usdt * 100) / 100, from: hit.from_address ?? "" };
+  return {
+    ok: true,
+    usdt: Math.round(usdt * 100) / 100,
+    from: hit.from_address ?? "",
+    at: body.timestamp ? new Date(body.timestamp).toISOString() : null,
+  };
 }

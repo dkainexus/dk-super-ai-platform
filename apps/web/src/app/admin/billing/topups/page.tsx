@@ -94,7 +94,12 @@ export default async function TopUpQueuePage({
               </a>
             </td>
             <td className="mono-num px-4 py-2.5 text-sm">{r.amount_usdt != null ? `${fmtNum(r.amount_usdt)} USDT` : "—"}</td>
-            <td className="mono-num px-4 py-2.5 text-sm">{r.chain_usdt != null ? `${fmtNum(r.chain_usdt)} USDT` : "—"}</td>
+            <td className="px-4 py-2.5">
+              <p className="mono-num text-sm">{r.chain_usdt != null ? `${fmtNum(r.chain_usdt)} USDT` : "—"}</p>
+              {r.chain_time && (
+                <p className="text-[11px] text-muted">{new Date(r.chain_time).toLocaleString()}</p>
+              )}
+            </td>
             <td className="px-4 py-2.5">
               <span className={`rounded-full border px-2.5 py-0.5 text-[11px] capitalize ${STATUS_STYLE[r.status] ?? ""}`}>
                 {r.status}
