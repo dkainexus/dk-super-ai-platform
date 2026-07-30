@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { customerForUser } from "@/modules/customers/lib";
 import { shipmentStage, type ShipmentRow, SHIPMENT_SELECT } from "@/modules/shipping/lib";
-import { liveTracking, trackingApiKey, type TrackResult } from "@/modules/shipping/track17";
+import { liveTracking, trackingApiKey, type TrackResult } from "@/modules/shipping/tracking";
 import { confirmReceived } from "@/app/portal/actions";
 import { ErrorBanner } from "@/components/error-banner";
 

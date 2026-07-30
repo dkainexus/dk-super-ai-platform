@@ -60,16 +60,16 @@ export async function saveMerchantModules(formData: FormData): Promise<void> {
 }
 
 
-/** The 17TRACK token — masked values keep the stored key. */
+/** The TrackingMore key — masked values keep the stored key. */
 export async function saveTrackingKey(formData: FormData): Promise<void> {
   await requirePerm("settings", "edit");
-  const raw = String(formData.get("track17_key") ?? "").trim();
+  const raw = String(formData.get("trackingmore_key") ?? "").trim();
   const { getSetting, setSetting } = await import("@/lib/settings");
-  const current = await getSetting<{ track17_key?: string }>("shipping", {});
+  const current = await getSetting<{ trackingmore_key?: string }>("shipping", {});
   if (raw.startsWith("\u2022")) {
     redirect("/admin/settings");
   }
-  await setSetting("shipping", { ...current, track17_key: raw || undefined });
+  await setSetting("shipping", { ...current, trackingmore_key: raw || undefined });
   revalidatePath("/admin/settings");
   redirect("/admin/settings");
 }
