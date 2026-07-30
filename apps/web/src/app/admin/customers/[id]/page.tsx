@@ -109,6 +109,10 @@ export default async function CustomerDetailPage({
             <label className="mb-1 block text-xs text-muted">Insurance (written, not collected)</label>
             <MoneyInput name="deposit" defaultValue={c.deposit} />
           </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Setup Fee (per account, once)</label>
+            <MoneyInput name="setup_fee" defaultValue={Number((c as { setup_fee?: number }).setup_fee ?? 0)} />
+          </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs text-muted">Notes</label>
             <textarea name="notes" defaultValue={c.notes ?? ""} rows={2} className="input" disabled={!canEdit} />

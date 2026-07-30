@@ -86,7 +86,7 @@ async function guardAgent(merchantId: string, agentId: string | null, back: stri
   if (!data) fail(back, "Not your agent");
 }
 
-function readRowFields(formData: FormData, back: string, withSetupFee: boolean) {
+function readRowFields(formData: FormData, back: string, withDeposit: boolean) {
   const bankId = String(formData.get("bank_id") ?? "");
   if (!bankId) fail(back, "Pick the bank");
   const channel = String(formData.get("channel") ?? "").trim() || null;
@@ -96,7 +96,7 @@ function readRowFields(formData: FormData, back: string, withSetupFee: boolean) 
   const pct = num(formData.get("turnover_pct"));
   const contractMonths = mode === "turnover" ? null : int(formData.get("contract_months"));
   const renewalMonths = mode === "turnover" ? null : int(formData.get("renewal_months"));
-  const deposit = num(formData.get("deposit"));
+  const deposit = withDeposit ? num(formData.get("deposit")) : 0;
 
   if (mode !== "turnover" && rent <= 0) fail(back, "This mode needs an amount");
   if (mode !== "rent" && pct <= 0) fail(back, "This mode needs a turnover %");
@@ -110,8 +110,7 @@ function readRowFields(formData: FormData, back: string, withSetupFee: boolean) 
     turnover_pct: mode === "rent" ? null : pct,
     contract_months: contractMonths,
     renewal_months: renewalMonths,
-    deposit,
-    ...(withSetupFee ? { setup_fee: num(formData.get("setup_fee")) } : {}),
+    ...(withDeposit ? { deposit } : {}),
   };
 }
 
@@ -121,7 +120,7 @@ export async function saveConditionRow(formData: FormData): Promise<void> {
 
   if (kind === "customer") {
     const { cu, back, countryId, customerId } = await customerScopeOf(formData);
-    const fields = readRowFields(formData, back, true);
+    const fields = readRowFields(formData, back, false);
 
     let merchantId: string | null = null;
     if (customerId) {
@@ -153,7 +152,7 @@ export async function saveConditionRow(formData: FormData): Promise<void> {
   const { cu, back, merchantId, countryId } = await scopeOf(formData);
   const agentId = String(formData.get("agent_id") ?? "") || null;
   await guardAgent(merchantId, agentId, back);
-  const fields = readRowFields(formData, back, false);
+  const fields = readRowFields(formData, back, true);
 
   let clash = db()
     .from("agent_condition_rows")
@@ -271,7 +270,7 @@ export async function assignAccount(formData: FormData): Promise<void> {
 
   const { data: customer } = await db()
     .from("customers")
-    .select("id, name, status, country_id")
+    .select("id, name, status, country_id, deposit, setup_fee")
     .eq("id", customerId)
     .maybeSingle();
   if (!customer || customer.status !== "active") fail(back, "Customer not found or suspended");
@@ -300,8 +299,9 @@ export async function assignAccount(formData: FormData): Promise<void> {
       mode: row.mode,
       rent: Number(row.rent),
       turnover_pct: row.turnover_pct == null ? null : Number(row.turnover_pct),
-      setup_fee: Number(row.setup_fee ?? 0),
-      deposit: Number(row.deposit),
+      // Insurance and the setup fee are the customer's own, not the row's.
+      setup_fee: Number((customer as { setup_fee?: number }).setup_fee ?? 0),
+      deposit: Number((customer as { deposit?: number }).deposit ?? 0),
       contract_months: row.contract_months,
       renewal_months: row.renewal_months,
     },

@@ -6,7 +6,7 @@ import type { ConditionRow } from "./policy";
 // The customer side of the policy layer: default conditions per customer,
 // the assignment lifecycle, and the versioned terms & conditions text.
 
-export type CustomerConditionRow = ConditionRow & { setup_fee: number; customer_id: string | null };
+export type CustomerConditionRow = ConditionRow & { customer_id: string | null };
 
 export type Assignment = {
   id: string;
@@ -77,8 +77,6 @@ export async function copyTemplateToCustomer(
         mode: r.mode,
         rent: r.rent,
         turnover_pct: r.turnover_pct,
-        setup_fee: r.setup_fee,
-        deposit: r.deposit,
         contract_months: r.contract_months,
         renewal_months: r.renewal_months,
         sort: r.sort,

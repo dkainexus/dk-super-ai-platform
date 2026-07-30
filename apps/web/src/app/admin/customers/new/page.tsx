@@ -77,6 +77,10 @@ export default async function NewCustomerPage({
           <label className="mb-1 block text-xs text-muted">Insurance (written, not collected)</label>
           <MoneyInput name="deposit" defaultValue={0} />
         </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted">Setup Fee (per account, once)</label>
+          <MoneyInput name="setup_fee" defaultValue={0} />
+        </div>
         <div className="sm:col-span-2">
           <label className="mb-1 block text-xs text-muted">Notes</label>
           <textarea name="notes" rows={2} className="input" />

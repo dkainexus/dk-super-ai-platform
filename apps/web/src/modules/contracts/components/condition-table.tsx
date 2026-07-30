@@ -33,7 +33,7 @@ function RowForm({
       action={saveConditionRow}
       className={`grid gap-2 sm:grid-cols-2 lg:items-end ${
         kind === "customer"
-          ? "lg:grid-cols-[1fr_1fr_1fr_7rem_5rem_7rem_4.5rem_4.5rem_7rem_auto]"
+          ? "lg:grid-cols-[1fr_1fr_1fr_7rem_5rem_4.5rem_4.5rem_auto]"
           : "lg:grid-cols-[1fr_1fr_1fr_7rem_5rem_4.5rem_4.5rem_7rem_auto]"
       }`}
     >
@@ -77,12 +77,6 @@ function RowForm({
         <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Turnover %</label>
         <input name="turnover_pct" defaultValue={row?.turnover_pct ?? ""} className="input mono-num py-1.5 text-sm" />
       </div>
-      {kind === "customer" && (
-        <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Setup Fee</label>
-          <MoneyInput name="setup_fee" defaultValue={row ? Number(row.setup_fee ?? 0) : 0} />
-        </div>
-      )}
       <div>
         <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Contract</label>
         <input name="contract_months" defaultValue={row?.contract_months ?? ""} className="input mono-num py-1.5 text-sm" placeholder="mo" />
@@ -91,10 +85,12 @@ function RowForm({
         <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Renewal</label>
         <input name="renewal_months" defaultValue={row?.renewal_months ?? ""} className="input mono-num py-1.5 text-sm" placeholder="mo" />
       </div>
-      <div>
-        <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Insurance</label>
-        <MoneyInput name="deposit" defaultValue={row ? Number(row.deposit) : 0} />
-      </div>
+      {kind === "agent" && (
+        <div>
+          <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Insurance</label>
+          <MoneyInput name="deposit" defaultValue={row ? Number(row.deposit) : 0} />
+        </div>
+      )}
       <ActionButton
         icon={row ? "save" : "plus"}
         tip={row ? "Save this row — only affects accounts assigned or activated from now on" : "Add this condition row"}
@@ -165,10 +161,9 @@ export function ConditionTable({
                 <th className="px-3 py-2">Mode</th>
                 <th className="px-3 py-2 text-right">{kind === "customer" ? "Price" : "Rent"}</th>
                 <th className="px-3 py-2 text-right">Turnover %</th>
-                {kind === "customer" && <th className="px-3 py-2 text-right">Setup Fee</th>}
                 <th className="px-3 py-2 text-right">Contract</th>
                 <th className="px-3 py-2 text-right">Renewal</th>
-                <th className="px-3 py-2 text-right">Insurance</th>
+                {kind === "agent" && <th className="px-3 py-2 text-right">Insurance</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -179,10 +174,9 @@ export function ConditionTable({
                   <td className="px-3 py-2">{MODE_LABEL[r.mode]}</td>
                   <td className="mono-num px-3 py-2 text-right">{r.mode === "turnover" ? "—" : fmtNum(r.rent)}</td>
                   <td className="mono-num px-3 py-2 text-right">{r.turnover_pct ?? "—"}</td>
-                  {kind === "customer" && <td className="mono-num px-3 py-2 text-right">{fmtNum(r.setup_fee ?? 0)}</td>}
                   <td className="mono-num px-3 py-2 text-right">{r.contract_months ?? "open"}</td>
                   <td className="mono-num px-3 py-2 text-right">{r.renewal_months ?? "—"}</td>
-                  <td className="mono-num px-3 py-2 text-right">{fmtNum(r.deposit)}</td>
+                  {kind === "agent" && <td className="mono-num px-3 py-2 text-right">{fmtNum(r.deposit)}</td>}
                 </tr>
               ))}
             </tbody>

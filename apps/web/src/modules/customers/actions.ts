@@ -58,7 +58,8 @@ function fields(formData: FormData) {
     contact_name: String(formData.get("contact_name") ?? "").trim() || null,
     email: String(formData.get("email") ?? "").trim() || null,
     belongs_to: String(formData.get("belongs_to") ?? "platform") === "white_label" ? "white_label" : "platform",
-    deposit: parseFloat(String(formData.get("deposit") ?? "0")) || 0,
+    deposit: parseFloat(String(formData.get("deposit") ?? "0").replace(/,/g, "")) || 0,
+    setup_fee: parseFloat(String(formData.get("setup_fee") ?? "0").replace(/,/g, "")) || 0,
     notes: String(formData.get("notes") ?? "").trim() || null,
   };
 }
