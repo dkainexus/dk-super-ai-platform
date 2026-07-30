@@ -88,21 +88,24 @@ body {
 }
 
 /* Shared form controls */
-.input {
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  color: var(--foreground);
-  font-size: 0.875rem;
-  width: 100%;
-}
-.input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-.input::placeholder {
-  color: var(--muted);
+/* Layered so width/padding utilities (w-32, py-1, …) can override per use. */
+@layer components {
+  .input {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--foreground);
+    font-size: 0.875rem;
+    width: 100%;
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .input::placeholder {
+    color: var(--muted);
+  }
 }
 
 .btn {

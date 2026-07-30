@@ -104,26 +104,26 @@ export default async function ShippingPage({
                   <form action={markShipped} className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="back" value={back} />
-                    <select name="courier_id" className="input w-32 py-1 text-xs" required>
+                    <select name="courier_id" className="input w-auto px-2 py-1 text-xs" required>
                       <option value="">— Courier —</option>
                       {couriers.map((co) => (
                         <option key={co.id} value={co.id}>{co.name}</option>
                       ))}
                     </select>
-                    <input name="tracking_no" className="input mono-num w-32 py-1 text-xs" placeholder="Tracking no." />
+                    <input name="tracking_no" className="input mono-num w-36 px-2 py-1 text-xs" placeholder="Tracking no." />
                     <ActionButton icon="send" tip="The parcel left — the customer sees the tracking number" label="Shipped" variant="primary" />
                   </form>
                 ) : st === "in_transit" && canEdit ? (
                   <form action={updateTracking} className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="back" value={back} />
-                    <select name="courier_id" defaultValue={s.courier_id ?? ""} className="input w-32 py-1 text-xs" required>
+                    <select name="courier_id" defaultValue={s.courier_id ?? ""} className="input w-auto px-2 py-1 text-xs" required>
                       <option value="">— Courier —</option>
                       {couriers.map((co) => (
                         <option key={co.id} value={co.id}>{co.name}</option>
                       ))}
                     </select>
-                    <input name="tracking_no" defaultValue={s.tracking_no ?? ""} className="input mono-num w-32 py-1 text-xs" />
+                    <input name="tracking_no" defaultValue={s.tracking_no ?? ""} className="input mono-num w-36 px-2 py-1 text-xs" />
                     <ActionButton icon="save" tip="Fix the courier or tracking number" variant="outline" />
                   </form>
                 ) : (
