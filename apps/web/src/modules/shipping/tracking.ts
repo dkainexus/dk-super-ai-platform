@@ -105,9 +105,13 @@ export async function liveTracking(shipmentId: string, trackingNo: string): Prom
     result = { status: hit.delivery_status ?? null, events, fetched_at: new Date().toISOString() };
   }
 
-  await db()
-    .from("shipments")
-    .update({ track_cache: result, track_cached_at: result.fetched_at })
-    .eq("id", shipmentId);
+  const patch: Record<string, unknown> = { track_cache: result, track_cached_at: result.fetched_at };
+  // The courier's word is enough: a delivered parcel marks itself received,
+  // no button required. The customer can still confirm manually as fallback.
+  if ((result.status ?? "").toLowerCase().includes("delivered")) {
+    const { data: row } = await db().from("shipments").select("received_at").eq("id", shipmentId).maybeSingle();
+    if (row && !row.received_at) patch.received_at = result.fetched_at;
+  }
+  await db().from("shipments").update(patch).eq("id", shipmentId);
   return result;
 }

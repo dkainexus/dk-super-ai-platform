@@ -16,7 +16,7 @@ const STAGE_STYLE: Record<string, string> = {
 const STAGE_LABEL: Record<string, string> = {
   to_ship: "to ship",
   in_transit: "in transit",
-  received: "received",
+  received: "delivered",
   cancelled: "cancelled",
 };
 

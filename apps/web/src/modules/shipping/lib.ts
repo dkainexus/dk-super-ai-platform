@@ -38,6 +38,8 @@ export type Shipment = {
   shipped_at: string | null;
   received_at: string | null;
   cancelled_at: string | null;
+  track_cache: unknown;
+  track_cached_at: string | null;
   created_at: string;
 };
 
