@@ -63,6 +63,7 @@ type LoadedContract = Contract & {
     contract_terms: {
       base_rent: number;
       turnover_rate: number | null;
+      mode?: "rent" | "turnover" | "rent_plus_turnover" | "max";
       effective_from: string;
       effective_to: string | null;
     }[];

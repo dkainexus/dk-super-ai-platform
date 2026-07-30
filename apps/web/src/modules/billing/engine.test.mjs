@@ -455,3 +455,91 @@ test("conditions — an invoice carrying a stub plus a month settles on both", a
   assert.equal(r.profit, 58_064.51);
   assert.ok(Math.abs(r.we_take + r.wl_takes - r.profit) < 0.005);
 });
+
+test("modes — rent only: turnover never enters", async () => {
+  const { turnoverTopup } = await import("./engine.ts");
+  const a = line("rentonly", "2026-04-01", 8_000, {
+    terms: [{ base_rent: 8_000, turnover_rate: 2, mode: "rent", effective_from: "2026-04-01", effective_to: null }],
+  });
+  // Even with a rate on file, mode rent ignores it.
+  assert.equal(turnoverTopup(a, "2026-04-01", 999_000_000), null);
+  const lines = linesForAccount(a, "2026-04-01");
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].amount, 8_000);
+});
+
+test("modes — pure turnover: no base ever, the whole share when it lands", async () => {
+  const { turnoverTopup } = await import("./engine.ts");
+  const a = line("pure", "2026-03-21", 0, {
+    terms: [{ base_rent: 0, turnover_rate: 1.5, mode: "turnover", effective_from: "2026-03-21", effective_to: null }],
+  });
+  // No stub in April's run, no advance for April.
+  assert.equal(linesForAccount(a, "2026-04-01").length, 0);
+  // March turnover 2,000,000 × 1.5% = 30,000 — whole, not prorated by the 11 days.
+  const t = turnoverTopup(a, "2026-03-01", 2_000_000);
+  assert.equal(t.amount, 30_000);
+  assert.equal(t.snapshot.base_billed, 0);
+  // Zero turnover raises nothing.
+  assert.equal(turnoverTopup(a, "2026-04-01", 0), null);
+});
+
+test("modes — rent plus turnover: both, added, the share never offsets the base", async () => {
+  const { turnoverTopup } = await import("./engine.ts");
+  const a = line("both", "2026-04-01", 8_000, {
+    terms: [
+      { base_rent: 8_000, turnover_rate: 1, mode: "rent_plus_turnover", effective_from: "2026-04-01", effective_to: null },
+    ],
+  });
+  // The base still bills in advance.
+  assert.equal(linesForAccount(a, "2026-04-01")[0].amount, 8_000);
+  // Turnover 500,000 × 1% = 5,000 — in full, even though it is below the base.
+  assert.equal(turnoverTopup(a, "2026-04-01", 500_000).amount, 5_000);
+});
+
+test("modes — max keeps its floor behaviour", async () => {
+  const { turnoverTopup } = await import("./engine.ts");
+  const a = line("maxed", "2026-04-01", 8_000, {
+    terms: [{ base_rent: 8_000, turnover_rate: 1, mode: "max", effective_from: "2026-04-01", effective_to: null }],
+  });
+  assert.equal(turnoverTopup(a, "2026-04-01", 500_000), null, "5,000 by turnover < 8,000 base");
+  assert.equal(turnoverTopup(a, "2026-04-01", 1_000_000).amount, 2_000, "10,000 − 8,000");
+});
+
+test("modes — an open window keeps the agent liable for as long as the account runs", async () => {
+  const { computeClaim } = await import("./engine.ts");
+  const r = computeClaim({
+    stolen: 300_000,
+    customerDeposit: 100_000,
+    agentDeposit: 80_000,
+    agentWindowMonths: null,
+    agentWindowOpen: true,
+    companyRegisteredOn: "2024-01-01", // years ago — irrelevant when open
+    claimedOn: "2026-07-30",
+    companyContribution: 30_000,
+    rentPaidBase: 0,
+    rentPaidTurnover: 45_000,
+    setupFee: 0,
+    customerStartedOn: null,
+  });
+  assert.equal(r.inside_agent_window, true);
+  assert.equal(r.agent_total_due, 80_000 + 30_000 + 45_000);
+});
+
+test("modes — no window and not open stays outside, as before", async () => {
+  const { computeClaim } = await import("./engine.ts");
+  const r = computeClaim({
+    stolen: 300_000,
+    customerDeposit: 100_000,
+    agentDeposit: 80_000,
+    agentWindowMonths: null,
+    companyRegisteredOn: "2026-07-01",
+    claimedOn: "2026-07-30",
+    companyContribution: 30_000,
+    rentPaidBase: 10_000,
+    rentPaidTurnover: 0,
+    setupFee: 0,
+    customerStartedOn: null,
+  });
+  assert.equal(r.inside_agent_window, false);
+  assert.equal(r.agent_total_due, 80_000);
+});

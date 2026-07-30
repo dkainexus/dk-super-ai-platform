@@ -62,6 +62,13 @@ export async function createAgent(formData: FormData): Promise<void> {
     .single();
   if (error || !data) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
 
+  // A new agent starts on the white label's default conditions — their own
+  // copy from day one, free to be adjusted on their page afterwards.
+  if (countryId) {
+    const { copyTemplateToAgent } = await import("@/modules/contracts/policy");
+    await copyTemplateToAgent(merchantId, countryId, data.id, cu.user.id).catch(() => {});
+  }
+
   revalidate();
   redirect(`${list}/${data.id}`);
 }

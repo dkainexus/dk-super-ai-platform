@@ -9,7 +9,17 @@ import { IdPhotoInput } from "@/components/id-photo-input";
 import { AddressPicker, type RegionNode } from "@/components/address-picker";
 import { saveOwner } from "@/modules/owners/actions-merchant";
 import { SaveButton } from "@/components/action-buttons";
+import { MoneyInput } from "@/components/money-input";
 import type { Bank, CountryField, Occupation, Owner, OwnerFieldValue } from "@/lib/types";
+
+export type OwnerContractSection = {
+  /** The version applying today, if any. */
+  current: { rent: number; contract_months: number; renewal_months: number } | null;
+  /** Range text shown under the fields, e.g. "Rent 5,000–15,000 · contract ≥ 6 months". */
+  hint: string | null;
+  /** A change already queued for next month, shown as a note. */
+  pendingNote?: string | null;
+};
 
 async function FilePreview({ path }: { path: string | null | undefined }) {
   const url = await signedUrl(DOCS_BUCKET, path ?? null);
@@ -39,6 +49,7 @@ export async function OwnerForm({
   action = saveOwner,
   hidden = {},
   locked: lockedProp,
+  contract = null,
 }: {
   fields: CountryField[];
   banks?: Bank[];
@@ -56,6 +67,8 @@ export async function OwnerForm({
   action?: (formData: FormData) => Promise<void>;
   hidden?: Record<string, string>;
   locked?: boolean;
+  /** The owner-wide contract terms — every account of theirs runs on these. */
+  contract?: OwnerContractSection | null;
 }) {
   const byField = new Map((values ?? []).map((v) => [v.field_id, v]));
   const locked = lockedProp ?? owner?.status === "approved";
@@ -284,6 +297,44 @@ export async function OwnerForm({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {contract && (
+        <div className="border-t border-border pt-4">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Contract</p>
+          <p className="mb-3 text-xs text-muted">
+            One set of terms for this owner — every account they open runs on it.
+            {owner && " Changes take effect on the 1st of next month; months already billed stand."}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs text-muted">Rent per account / month *</label>
+              <MoneyInput name="ct_rent" defaultValue={contract.current?.rent ?? 0} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Contract (months) *</label>
+              <input
+                name="ct_contract_months"
+                defaultValue={contract.current?.contract_months ?? ""}
+                className="input mono-num"
+                disabled={locked}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Renewal (months) *</label>
+              <input
+                name="ct_renewal_months"
+                defaultValue={contract.current?.renewal_months ?? ""}
+                className="input mono-num"
+                disabled={locked}
+                required
+              />
+            </div>
+          </div>
+          {contract.hint && <p className="mt-2 text-xs text-muted">{contract.hint}</p>}
+          {contract.pendingNote && <p className="mt-1 text-xs text-warning">{contract.pendingNote}</p>}
         </div>
       )}
 

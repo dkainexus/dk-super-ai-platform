@@ -91,7 +91,9 @@ export default async function ClaimDetailPage({
         <p className="mb-2 text-xs text-muted">
           {ctx.agent ? ctx.agent.name : "No agent contract covers this account"} —{" "}
           {comp.inside_agent_window
-            ? `inside their ${ctx.agent?.window_months ?? "?"}-month window (company registered ${ctx.company?.registered_on ?? "?"})`
+            ? ctx.agent?.window_open
+              ? "a turnover-only deal: liable for as long as the account is in use"
+              : `inside their ${ctx.agent?.window_months ?? "?"}-month window (company registered ${ctx.company?.registered_on ?? "?"})`
             : "outside their liability window, so only the deposit"}
           .
         </p>

@@ -19,6 +19,7 @@ export async function AgentDetail({
   canDelete,
   error,
   saved,
+  conditions,
 }: {
   a: AgentRow;
   base: string;
@@ -27,6 +28,8 @@ export async function AgentDetail({
   canDelete: boolean;
   error?: string;
   saved?: string;
+  /** This agent's own bank × channel condition table, rendered by the page. */
+  conditions?: React.ReactNode;
 }) {
   const { data: owners } = await db()
     .from("owners")
@@ -100,6 +103,17 @@ export async function AgentDetail({
             </div>
             <ActionButton icon="key" tip="Save this sign-in" label={a.user ? "Reset Password" : "Issue Sign-in"} variant="primary" />
           </form>
+        </section>
+      )}
+
+      {conditions && (
+        <section className="card p-5">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Their Conditions</h2>
+          <p className="mb-4 text-xs text-muted">
+            This agent&apos;s own deal, bank by bank. An account freezes its row on activation day — edits here
+            only touch accounts activated afterwards.
+          </p>
+          {conditions}
         </section>
       )}
 

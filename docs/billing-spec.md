@@ -489,3 +489,38 @@ query a view that does not contain those columns at all.
 
 Section 4's arithmetic goes in as automated tests in batch 1, so later changes
 that break the maths fail loudly rather than quietly.
+
+## §15 Contract policy rework (2026-07-30, batch 6)
+
+The owner and agent sides no longer use hand-written contracts.
+
+**Owner terms hang on the owner.** The agent enters them when creating the
+owner — rent per account, contract months, renewal months — and every account
+the owner opens runs on them. The white label's Contract Policy bounds what an
+agent may enter (rent min–max, minimum contract and renewal months); without a
+policy, agents cannot enter terms at all. Changes are allowed at any time
+(even for approved owners, via the Contract card) but cut in on the 1st of the
+next month; months already billed never move. Platform staff are not bound.
+
+**Agent conditions are a bank × channel table, per agent.** The white label
+keeps a default template on /m/contract-policy; creating an agent copies it
+onto them, and each agent's copy may then diverge (their page → Their
+Conditions). A row: mode (rent only / turnover only / rent + turnover / rent
+or turnover whichever higher), rent, turnover %, contract months (none for
+pure turnover), renewal months, deposit. Liability window = contract months;
+pure turnover has no contract, so the window stays open for as long as the
+account is in use.
+
+**Activation wires everything.** Approving a bank account (or creating one in
+the back office) automatically: joins it to the owner's single billing
+contract at the owner's current terms; and freezes the agent's matching row —
+exact bank+channel first, else the bank's default row — into a per-account
+agent contract with the row stored as a snapshot. No owner terms, or no
+matching agent row → the approval is refused with the reason. Once an account
+runs, its conditions never change; the only exit is terminating the contract.
+
+**Engine modes.** rent = base only; turnover = share only, nothing billed in
+advance; rent_plus_turnover = base in advance plus the whole share;
+max = the customer model (base as floor). Turnover money is never prorated.
+
+Manual contract creation remains for customers only.

@@ -74,6 +74,11 @@ export default async function NewOwnerPage({
             banks={banks}
             occupations={occupations}
             hidden={{ country_id: country.id }}
+            contract={await (await import("@/modules/contracts/policy")).ownerContractSection(
+              cu.merchant.id,
+              country.id,
+              null
+            )}
           />
         </div>
       )}

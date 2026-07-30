@@ -175,6 +175,14 @@ export async function saveOwner(formData: FormData): Promise<void> {
     }
   }
 
+  // The owner's contract terms — checked against the white label's policy.
+  {
+    const { contractPolicy, applyOwnerTermsFromForm } = await import("@/modules/contracts/policy");
+    const policy = await contractPolicy(merchant.id, owner.country_id);
+    const termsError = await applyOwnerTermsFromForm(owner.id, formData, cu.user.id, policy, true);
+    if (termsError) fail(`/m/owners/${owner.id}`, termsError);
+  }
+
   revalidatePath("/m/owners");
   redirect(`/m/owners/${owner.id}`);
 }
@@ -262,4 +270,24 @@ export async function deleteOwner(formData: FormData): Promise<void> {
   await db().from("owners").delete().eq("id", owner.id);
   revalidatePath("/m/owners");
   redirect("/m/owners");
+}
+
+/**
+ * The owner's contract terms, changeable on their own — an approved owner's
+ * identity is locked, their terms are not. Changes cut in on the 1st of next
+ * month; months already billed never move.
+ */
+export async function updateOwnerTerms(formData: FormData): Promise<void> {
+  const cu = await requireMerchantUser();
+  await requirePerm("owners", "edit");
+  const id = String(formData.get("id") ?? "");
+  const back = `/m/owners/${id}`;
+  const owner = await getOwnedOwner(id, cu.merchant.id);
+
+  const { contractPolicy, applyOwnerTermsFromForm } = await import("@/modules/contracts/policy");
+  const policy = await contractPolicy(cu.merchant.id, owner.country_id);
+  const err = await applyOwnerTermsFromForm(owner.id, formData, cu.user.id, policy, true);
+  if (err) fail(back, err);
+  revalidatePath(back);
+  redirect(`${back}?saved=terms`);
 }

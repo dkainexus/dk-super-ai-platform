@@ -10,11 +10,9 @@ import { MoneyInput } from "@/components/money-input";
 
 export type PartyOption = { id: string; label: string; merchant: string };
 
-const KINDS = [
-  { value: "customer", label: "Customer", hint: "they pay us rent" },
-  { value: "agent", label: "Agent", hint: "we pay them rent" },
-  { value: "owner", label: "Owner", hint: "we pay them rent" },
-] as const;
+// Only customer contracts are written by hand now: owner terms live on the
+// owner, agent conditions on the agent, and both wire in at activation.
+const KINDS = [{ value: "customer", label: "Customer", hint: "they pay us rent" }] as const;
 
 export function NewContractForm({
   customers,

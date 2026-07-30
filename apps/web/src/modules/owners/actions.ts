@@ -294,6 +294,13 @@ export async function adminSaveOwner(formData: FormData): Promise<void> {
     }
   }
 
+  // The owner's contract terms — the platform side is not bound by policy.
+  {
+    const { applyOwnerTermsFromForm } = await import("@/modules/contracts/policy");
+    const termsError = await applyOwnerTermsFromForm(owner.id, formData, cu.user.id, null, false);
+    if (termsError) fail(back, termsError);
+  }
+
   revalidatePath("/admin/owners");
   redirect(`/admin/owners/${owner.id}`);
 }

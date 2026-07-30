@@ -67,6 +67,7 @@ export default async function AdminNewOwnerPage({
       {country && (
         <section className="card p-5">
           <OwnerForm
+            contract={{ current: null, hint: "Platform staff are not bound by the white label's limits.", pendingNote: null }}
             levels={levels}
             regions={regions}
             agents={agentOptions}

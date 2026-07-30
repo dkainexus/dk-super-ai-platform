@@ -2,14 +2,26 @@
 // be tested directly. See docs/billing-spec.md §3 and §4 — the worked examples
 // there are the test cases in engine.test.ts.
 
+/**
+ * How a party is paid:
+ *  - rent: the base only; turnover never enters
+ *  - turnover: a share of turnover only — no base, nothing billed in advance
+ *  - rent_plus_turnover: the base in advance plus the whole turnover share
+ *  - max: whichever is higher, base as the floor (the customer model)
+ */
+export type PayMode = "rent" | "turnover" | "rent_plus_turnover" | "max";
+
 export type Terms = {
   /** Rent for a whole month, in the country's currency. */
   base_rent: number;
   /** Percent of turnover, e.g. 0.3 means 0.30%. Null = no turnover component. */
   turnover_rate: number | null;
+  mode?: PayMode;
   effective_from: string;
   effective_to: string | null;
 };
+
+const modeOf = (t: Terms): PayMode => t.mode ?? "max";
 
 export type AccountLine = {
   contract_account_id: string;
@@ -158,8 +170,11 @@ export function linesForAccount(line: AccountLine, periodMonth: string): BilledL
   const stubMonth = firstOfMonth(line.starts_on);
   if (stubMonth === previous) {
     const stub = rentForMonth(line, previous);
-    // Only a genuinely partial month is a stub; a full month was billed in advance.
-    if (stub && stub.days < stub.inMonth) {
+    // Only a genuinely partial month is a stub; a full month was billed in
+    // advance. Pure turnover has no base at all — nothing to bill here.
+    if (stub && modeOf(stub.terms) === "turnover") {
+      // fall through — no base lines for a turnover-only party
+    } else if (stub && stub.days < stub.inMonth) {
       out.push({
         contract_account_id: line.contract_account_id,
         kind: "base_rent",
@@ -182,7 +197,7 @@ export function linesForAccount(line: AccountLine, periodMonth: string): BilledL
   // This month, in advance — unless the account only starts later this month,
   // in which case it is a stub and waits for the month to close.
   const now = rentForMonth(line, month);
-  if (now && now.days === now.inMonth) {
+  if (now && modeOf(now.terms) !== "turnover" && now.days === now.inMonth) {
     out.push({
       contract_account_id: line.contract_account_id,
       kind: "base_rent",
@@ -245,9 +260,16 @@ export type RunWarning = { level: "info" | "warn"; message: string };
 // ---------- turnover ----------
 
 /**
- * The top-up a month's approved turnover produces: the charge is the higher of
- * the base already billed for that month and turnover × rate, so the base is a
- * floor and the turnover only ever adds.
+ * What a month's approved turnover produces, by the terms' mode:
+ *
+ *  - max: the higher of the base already billed and turnover × rate — the base
+ *    is a floor and turnover only ever adds the difference
+ *  - rent_plus_turnover: the whole turnover share on top of the base
+ *  - turnover: the whole turnover share, there was no base
+ *  - rent: nothing — turnover never enters
+ *
+ * Turnover money is never prorated: a partial month's base prorates, the
+ * share of what actually flowed does not.
  *
  * `turnoverMonth` is the month the turnover belongs to — the run raising this
  * line happens the month after, once the figure is in and approved.
@@ -259,17 +281,29 @@ export function turnoverTopup(
 ): BilledLine | null {
   const billed = rentForMonth(line, turnoverMonth);
   if (!billed) return null;
+  const mode = modeOf(billed.terms);
+  if (mode === "rent") return null;
   const rate = billed.terms.turnover_rate;
   if (rate == null || rate <= 0) return null;
 
   const byTurnover = money((turnover * rate) / 100);
-  if (byTurnover <= billed.amount) return null;
+  let amount: number;
+  if (mode === "max") {
+    if (byTurnover <= billed.amount) return null;
+    amount = money(byTurnover - billed.amount);
+  } else {
+    // turnover / rent_plus_turnover: the whole share, additive.
+    if (byTurnover <= 0) return null;
+    amount = byTurnover;
+  }
 
-  const amount = money(byTurnover - billed.amount);
   return {
     contract_account_id: line.contract_account_id,
     kind: "turnover_topup",
-    description: `Turnover top-up for ${firstOfMonth(turnoverMonth).slice(0, 7)}`,
+    description:
+      mode === "max"
+        ? `Turnover top-up for ${firstOfMonth(turnoverMonth).slice(0, 7)}`
+        : `Turnover share for ${firstOfMonth(turnoverMonth).slice(0, 7)}`,
     period_start: billed.start,
     period_end: billed.end,
     days: billed.days,
@@ -279,8 +313,9 @@ export function turnoverTopup(
     snapshot: {
       turnover,
       turnover_rate: rate,
+      mode,
       by_turnover: byTurnover,
-      base_billed: billed.amount,
+      base_billed: mode === "turnover" ? 0 : billed.amount,
     },
   };
 }
@@ -294,6 +329,11 @@ export type ClaimInput = {
   agentDeposit: number;
   /** Months of agent liability, measured from the company's registration. */
   agentWindowMonths: number | null;
+  /**
+   * A pure-turnover agent has no contract months to bound liability — their
+   * window stays open for as long as the account is in use.
+   */
+  agentWindowOpen?: boolean;
   companyRegisteredOn: string | null;
   claimedOn: string;
   /** What the white label put in when the company was registered. */
@@ -334,9 +374,10 @@ export function computeClaim(input: ClaimInput): ClaimComputation {
       : 0;
 
   const inside =
-    input.agentWindowMonths != null &&
-    input.companyRegisteredOn != null &&
-    input.claimedOn <= addMonths(input.companyRegisteredOn, input.agentWindowMonths);
+    input.agentWindowOpen === true ||
+    (input.agentWindowMonths != null &&
+      input.companyRegisteredOn != null &&
+      input.claimedOn <= addMonths(input.companyRegisteredOn, input.agentWindowMonths));
 
   const agentDeposit = money(Math.min(input.stolen, Math.max(0, input.agentDeposit)));
   const agentCompany = inside ? money(input.companyContribution) : 0;

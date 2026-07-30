@@ -65,6 +65,12 @@ export default async function AdminOwnerEditPage({
 
       <div className="card p-5">
         <OwnerForm
+            contract={await (await import("@/modules/contracts/policy")).ownerContractSection(
+              owner.merchant_id,
+              owner.country_id,
+              owner.id,
+              { admin: true }
+            )}
             levels={levels}
             regions={regions}
             agents={agentOptions}

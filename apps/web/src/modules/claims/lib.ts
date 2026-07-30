@@ -45,7 +45,7 @@ export async function claim(id: string): Promise<ClaimRow | null> {
 export type ClaimContext = {
   computation: ClaimComputation;
   customer: { id: string; name: string; contract_deposit: number } | null;
-  agent: { id: string; name: string; deposit: number; window_months: number | null } | null;
+  agent: { id: string; name: string; deposit: number; window_months: number | null; window_open: boolean } | null;
   company: { id: string; name: string; registered_on: string | null; contribution: number } | null;
   rent_paid_base: number;
   rent_paid_turnover: number;
@@ -74,7 +74,7 @@ export async function buildClaimContext(c: Claim): Promise<ClaimContext> {
   const { data: lines } = await db()
     .from("contract_accounts")
     .select(
-      "id, starts_on, setup_fee, contract:contracts!inner(id, party_type, deposit, theft_window_months, customer_id, agent_id, customer:customers(id, name), agent:agents(id, full_name))"
+      "id, starts_on, setup_fee, contract:contracts!inner(id, party_type, deposit, theft_window_months, theft_window_open, customer_id, agent_id, customer:customers(id, name), agent:agents(id, full_name))"
     )
     .eq("bank_account_id", c.bank_account_id);
   type Line = {
@@ -85,6 +85,7 @@ export async function buildClaimContext(c: Claim): Promise<ClaimContext> {
       party_type: string;
       deposit: number;
       theft_window_months: number | null;
+      theft_window_open: boolean | null;
       customer: { id: string; name: string } | null;
       agent: { id: string; full_name: string } | null;
     };
@@ -127,6 +128,7 @@ export async function buildClaimContext(c: Claim): Promise<ClaimContext> {
     customerDeposit: Number(customerLine?.contract.deposit ?? 0),
     agentDeposit: Number(agentLine?.contract.deposit ?? 0),
     agentWindowMonths: agentLine?.contract.theft_window_months ?? null,
+    agentWindowOpen: agentLine?.contract.theft_window_open ?? false,
     companyRegisteredOn: company?.business_start_date ?? company?.created_at?.slice(0, 10) ?? null,
     claimedOn: today,
     companyContribution: contribution,
@@ -151,6 +153,7 @@ export async function buildClaimContext(c: Claim): Promise<ClaimContext> {
           name: agentLine.contract.agent.full_name,
           deposit: Number(agentLine.contract.deposit),
           window_months: agentLine.contract.theft_window_months,
+          window_open: Boolean(agentLine.contract.theft_window_open),
         }
       : null,
     company: company

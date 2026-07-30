@@ -13,6 +13,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { OwnerStatusTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
 import { OwnerForm } from "@/modules/owners/components/owner-form";
+import { OwnerTermsCard } from "@/modules/owners/components/owner-terms-card";
 import { AppAccessCard } from "@/modules/owners/components/app-access";
 import type { CountryField, Owner, OwnerFieldValue } from "@/lib/types";
 
@@ -111,6 +112,8 @@ export default async function MerchantOwnerDetailPage({
       </section>
 
       <AppAccessCard owner={owner} back={`/m/owners/${owner.id}`} />
+
+      <OwnerTermsCard ownerId={owner.id} merchantId={cu.merchant.id} countryId={owner.country_id} />
 
       <div className="card p-5">
         <OwnerForm

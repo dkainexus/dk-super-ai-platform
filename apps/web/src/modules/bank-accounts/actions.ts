@@ -99,7 +99,7 @@ export async function createBankAccount(formData: FormData): Promise<void> {
   const branch = branchFields(formData);
   if (!branch.branch_name) fail(base, "Please search and pick the branch");
 
-  const { error } = await db().from("bank_accounts").insert({
+  const { data: created, error } = await db().from("bank_accounts").insert({
     merchant_id: company.merchant_id,
     country_id: company.country_id,
     company_id: companyId,
@@ -118,7 +118,7 @@ export async function createBankAccount(formData: FormData): Promise<void> {
     status: "active",
     activated_at: new Date().toISOString(),
     created_by: cu.user.id,
-  });
+  }).select("id").single();
   if (error)
     fail(
       base,
@@ -126,6 +126,17 @@ export async function createBankAccount(formData: FormData): Promise<void> {
         ? "That account number is already registered at this bank"
         : `Failed to create: ${error.message}`
     );
+
+  // Going live means contracts: the owner's terms and the agent's frozen
+  // conditions wire in now. If they can't, the account waits as pending.
+  if (created?.id) {
+    const { wireAccountContracts } = await import("@/modules/contracts/policy");
+    const wireError = await wireAccountContracts(created.id, cu.user.id);
+    if (wireError) {
+      await db().from("bank_accounts").update({ status: "pending", activated_at: null }).eq("id", created.id);
+      fail(base, `Saved as pending — ${wireError}`);
+    }
+  }
   revalidate();
   redirect(list);
 }
@@ -149,6 +160,10 @@ export async function reviewBankAccount(formData: FormData): Promise<void> {
   let rewardOnApproval = false;
 
   if (action === "approve") {
+    // Wire the contracts first — an approval that can't bill isn't an approval.
+    const { wireAccountContracts } = await import("@/modules/contracts/policy");
+    const wireError = await wireAccountContracts(id, cu.user.id);
+    if (wireError) fail(back, wireError);
     patch.status = "active";
     patch.activated_at = now;
     rewardOnApproval = true;
