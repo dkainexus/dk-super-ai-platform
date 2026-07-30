@@ -5,4 +5,5 @@ export const customersModule: ModuleDef = {
   name: "Customers",
   description: "The people who rent bank accounts — contracts, invoices and their own sign-in",
   adminNav: { href: "/admin/customers", label: "Customers" },
+  merchantNav: { href: "/m/customers", label: "Customers" },
 };

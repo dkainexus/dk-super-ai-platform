@@ -113,6 +113,17 @@ export default async function CountrySettingsPage({
               disabled={!canEdit}
             />
           </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs text-muted">USDT deposit address (TRC20)</label>
+            <input
+              name="usdt_address_trc20"
+              defaultValue={(c as { usdt_address_trc20?: string | null }).usdt_address_trc20 ?? ""}
+              className="input mono-num"
+              disabled={!canEdit}
+              placeholder="T..."
+              title="Customers send USDT here; reported transactions are verified on chain against this address"
+            />
+          </div>
           <div>
             <label className="mb-1 block text-xs text-muted">New bank account reward</label>
             <MoneyInput name="new_account_reward" defaultValue={(c as { new_account_reward?: number }).new_account_reward ?? 0} />

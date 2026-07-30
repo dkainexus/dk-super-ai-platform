@@ -334,3 +334,84 @@ export async function recordMerchantTopUp(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(`${back}?saved=topup`);
 }
+
+/**
+ * Customer portal: "I've paid" — report a TRC20 transaction hash. The chain
+ * is checked immediately; a confirmed transfer credits the wallet on the
+ * spot, anything unsettled waits for the admin queue.
+ */
+export async function submitTopUpRequest(formData: FormData): Promise<void> {
+  const { getCurrentUser } = await import("@/lib/auth");
+  const cu = await getCurrentUser();
+  const back = "/portal/invoices";
+  if (!cu) redirect("/login");
+  const { customerForUser } = await import("@/modules/customers/lib");
+  const customer = await customerForUser(cu.user.id);
+  if (!customer) redirect("/login");
+
+  const hash = String(formData.get("tx_hash") ?? "").trim().replace(/^0x/i, "");
+  if (!/^[0-9a-fA-F]{64}$/.test(hash)) fail(back, "That doesn't look like a transaction hash (64 hex characters)");
+  const reported = parseFloat(String(formData.get("amount_usdt") ?? "").replace(/,/g, ""));
+
+  const { data, error } = await db()
+    .from("topup_requests")
+    .insert({
+      merchant_id: customer.merchant_id,
+      country_id: customer.country_id,
+      customer_id: customer.id,
+      network: "trc20",
+      tx_hash: hash.toLowerCase(),
+      amount_usdt: Number.isFinite(reported) && reported > 0 ? reported : null,
+    })
+    .select("id")
+    .single();
+  if (error || !data) {
+    fail(back, /duplicate|unique/i.test(error?.message ?? "") ? "That transaction has already been submitted" : `Failed to submit: ${error?.message}`);
+  }
+
+  const { verifyTopupRequest } = await import("./topup");
+  const result = await verifyTopupRequest(data.id, null);
+  revalidatePath(back);
+  redirect(`${back}?saved=${result.status === "credited" ? "credited" : "submitted"}`);
+}
+
+/** Admin queue: ask the chain again about a pending request. */
+export async function recheckTopUpRequest(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("billing", "edit");
+  const back = "/admin/billing/topups";
+  const id = String(formData.get("id") ?? "");
+  const result = await (await import("./topup")).verifyTopupRequest(id, cu.user.id);
+  revalidatePath(back);
+  redirect(`${back}?checked=${encodeURIComponent(result.note)}`);
+}
+
+/** Admin queue: credit by hand when the chain check can't settle it. */
+export async function approveTopUpRequest(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("billing", "edit");
+  const back = "/admin/billing/topups";
+  const id = String(formData.get("id") ?? "");
+  const usdt = parseFloat(String(formData.get("usdt_amount") ?? "").replace(/,/g, ""));
+  if (!Number.isFinite(usdt) || usdt <= 0) fail(back, "Enter the USDT amount to credit");
+  const err = await (await import("./topup")).creditTopupManually(id, usdt, cu.user.id);
+  if (err) fail(back, err);
+  revalidatePath(back);
+  redirect(`${back}?saved=credited`);
+}
+
+export async function rejectTopUpRequest(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("billing", "edit");
+  const back = "/admin/billing/topups";
+  const id = String(formData.get("id") ?? "");
+  await db()
+    .from("topup_requests")
+    .update({
+      status: "rejected",
+      verify_note: String(formData.get("reason") ?? "").trim() || "Rejected by admin",
+      reviewed_by: cu.user.id,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("status", "pending");
+  revalidatePath(back);
+  redirect(back);
+}

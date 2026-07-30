@@ -63,6 +63,7 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
       item.children = [
         { href: "/admin/billing/invoices", label: "Invoices" },
         { href: "/admin/billing/turnover", label: "Turnover Review" },
+        { href: "/admin/billing/topups", label: "USDT Top-Ups" },
         { href: "/admin/billing/settlements", label: "Settlements" },
       ];
     }
@@ -83,6 +84,12 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
       ];
     }
     items.push(item);
+  }
+
+  // Agents signing in to /m get their own page: earnings, debt, their network.
+  if (isMerchant) {
+    const { agentForUser } = await import("@/modules/agents/lib");
+    if (await agentForUser(cu.user.id)) items.push({ href: "/m/earnings", label: "My Business" });
   }
 
   const home = isMerchant ? "/m" : "/admin";

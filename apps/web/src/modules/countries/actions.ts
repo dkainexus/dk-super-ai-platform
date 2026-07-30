@@ -64,6 +64,7 @@ export async function updateCountry(formData: FormData): Promise<void> {
       language: String(formData.get("language") ?? "").trim() || "English",
       usdt_markup_pct: parseFloat(String(formData.get("usdt_markup_pct") ?? "0")) || 0,
       usdt_markup_flat: parseFloat(String(formData.get("usdt_markup_flat") ?? "0")) || 0,
+      usdt_address_trc20: String(formData.get("usdt_address_trc20") ?? "").trim() || null,
       new_account_reward: parseFloat(String(formData.get("new_account_reward") ?? "0")) || 0,
     }).eq("id", id);
   if (error) fail(back, `Failed to save: ${error.message}`);

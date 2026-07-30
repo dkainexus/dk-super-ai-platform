@@ -5,4 +5,5 @@ export const billingModule: ModuleDef = {
   name: "Billing",
   description: "The monthly run that turns contracts into invoices and payouts",
   adminNav: { href: "/admin/billing", label: "Billing" },
+  merchantNav: { href: "/m/settlements", label: "Settlements" },
 };

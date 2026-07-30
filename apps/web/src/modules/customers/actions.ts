@@ -17,6 +17,27 @@ function fail(path: string, message: string): never {
 
 function revalidate() {
   revalidatePath("/admin/customers");
+  revalidatePath("/m/customers");
+}
+
+// The same actions serve both sides. A white label works under /m, is pinned
+// to their own merchant, and their customers are always their own (their
+// customer, their loss) — the platform side keeps the free choice.
+type Cx = { isMerchant: boolean; prefix: string; merchantId: string | null };
+function cx(cu: { merchant: { id: string } | null }): Cx {
+  const isMerchant = Boolean(cu.merchant);
+  return {
+    isMerchant,
+    prefix: isMerchant ? "/m/customers" : "/admin/customers",
+    merchantId: cu.merchant?.id ?? null,
+  };
+}
+
+/** Merchant users may only touch customers of their own merchant — and never ours. */
+async function guardOwn(c: Cx, id: string, back: string): Promise<void> {
+  if (!c.isMerchant) return;
+  const { data } = await db().from("customers").select("merchant_id, belongs_to").eq("id", id).maybeSingle();
+  if (!data || data.merchant_id !== c.merchantId || data.belongs_to !== "white_label") fail(back, "Not your customer");
 }
 
 async function customerRoleId(): Promise<string | null> {
@@ -44,14 +65,22 @@ function fields(formData: FormData) {
 
 export async function createCustomer(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("customers", "add");
-  const back = "/admin/customers/new";
-  const merchantId = String(formData.get("merchant_id") ?? "");
+  const c = cx(cu);
+  const back = `${c.prefix}/new`;
+  const merchantId = c.merchantId ?? String(formData.get("merchant_id") ?? "");
   const f = fields(formData);
+  if (c.isMerchant) f.belongs_to = "white_label";
   if (!merchantId) fail(back, "Please choose a white label");
   if (!f.name) fail(back, "Please enter the customer's name");
 
-  const { adminCountry } = await import("@/modules/countries/lib");
-  const countryId = (await adminCountry()).active?.id ?? null;
+  let countryId: string | null;
+  if (c.isMerchant) {
+    const { activeCountry } = await import("@/modules/merchants/lib");
+    countryId = (await activeCountry(cu as Parameters<typeof activeCountry>[0])).active?.id ?? null;
+  } else {
+    const { adminCountry } = await import("@/modules/countries/lib");
+    countryId = (await adminCountry()).active?.id ?? null;
+  }
 
   const { data, error } = await db()
     .from("customers")
@@ -61,14 +90,17 @@ export async function createCustomer(formData: FormData): Promise<void> {
   if (error || !data) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
 
   revalidate();
-  redirect(`/admin/customers/${data.id}`);
+  redirect(`${c.prefix}/${data.id}`);
 }
 
 export async function updateCustomer(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("customers", "edit");
+  const c = cx(cu);
   const id = String(formData.get("id") ?? "");
-  const back = `/admin/customers/${id}`;
+  const back = `${c.prefix}/${id}`;
+  await guardOwn(c, id, back);
   const f = fields(formData);
+  if (c.isMerchant) f.belongs_to = "white_label";
   if (!f.name) fail(back, "Name cannot be empty");
 
   const { error } = await db()
@@ -86,9 +118,11 @@ export async function updateCustomer(formData: FormData): Promise<void> {
  * same shape owners get in the app.
  */
 export async function issueCustomerLogin(formData: FormData): Promise<void> {
-  await requirePerm("customers", "edit");
+  const { cu } = await requirePerm("customers", "edit");
+  const c = cx(cu);
   const id = String(formData.get("id") ?? "");
-  const back = `/admin/customers/${id}`;
+  const back = `${c.prefix}/${id}`;
+  await guardOwn(c, id, back);
 
   const { data } = await db().from("customers").select("*").eq("id", id).maybeSingle();
   if (!data) fail(back, "Customer not found");
@@ -138,9 +172,11 @@ export async function issueCustomerLogin(formData: FormData): Promise<void> {
 
 /** Suspend or reactivate — a suspended customer cannot sign in. */
 export async function setCustomerStatus(formData: FormData): Promise<void> {
-  await requirePerm("customers", "edit");
+  const { cu } = await requirePerm("customers", "edit");
+  const c = cx(cu);
   const id = String(formData.get("id") ?? "");
-  const back = `/admin/customers/${id}`;
+  const back = `${c.prefix}/${id}`;
+  await guardOwn(c, id, back);
   const status = String(formData.get("status") ?? "active") === "suspended" ? "suspended" : "active";
 
   const { data } = await db().from("customers").select("user_id").eq("id", id).maybeSingle();
@@ -153,19 +189,21 @@ export async function setCustomerStatus(formData: FormData): Promise<void> {
 }
 
 export async function deleteCustomer(formData: FormData): Promise<void> {
-  await requirePerm("customers", "delete");
+  const { cu } = await requirePerm("customers", "delete");
+  const c = cx(cu);
   const id = String(formData.get("id") ?? "");
+  await guardOwn(c, id, `${c.prefix}/${id}`);
 
   const { count } = await db()
     .from("contracts")
     .select("id", { count: "exact", head: true })
     .eq("customer_id", id)
     .neq("status", "draft");
-  if ((count ?? 0) > 0) fail(`/admin/customers/${id}`, "This customer has contracts on record — suspend them instead");
+  if ((count ?? 0) > 0) fail(`${c.prefix}/${id}`, "This customer has contracts on record — suspend them instead");
 
   const { data } = await db().from("customers").select("user_id").eq("id", id).maybeSingle();
   if (data?.user_id) await db().from("users").update({ active: false }).eq("id", data.user_id);
   await db().from("customers").delete().eq("id", id);
   revalidate();
-  redirect("/admin/customers");
+  redirect(c.prefix);
 }
