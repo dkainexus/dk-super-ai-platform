@@ -202,9 +202,12 @@ export async function confirmAssignment(formData: FormData): Promise<void> {
     failTo("Please tick that you have read and accept the terms");
   }
 
-  // Mail needs somewhere to send it.
+  // The customer picks how they take delivery.
+  const delivery = String(formData.get("delivery_method") ?? "") === "shipping" ? "shipping" : "direct";
+
+  // Shipping needs somewhere to send it.
   let address: { name: string; phone: string; address: string } | null = null;
-  if (a.delivery_method === "shipping") {
+  if (delivery === "shipping") {
     const addrId = String(formData.get("address_id") ?? "");
     if (addrId) {
       const { data: saved } = await db()
@@ -229,6 +232,7 @@ export async function confirmAssignment(formData: FormData): Promise<void> {
     .from("account_assignments")
     .update({
       status: "confirmed",
+      delivery_method: delivery,
       confirmed_at: new Date().toISOString(),
       address,
       updated_at: new Date().toISOString(),
@@ -242,8 +246,17 @@ export async function confirmAssignment(formData: FormData): Promise<void> {
   const { wireCustomerContract } = await import("@/modules/contracts/customer-policy");
   await wireCustomerContract({ ...a, status: "confirmed" }, cu.user.id);
 
-  // Direct binding goes through support, free of charge.
-  if (a.delivery_method === "direct") {
+  // Shipping goes into the shipping queue; direct binding through support.
+  if (delivery === "shipping" && address) {
+    await db().from("shipments").insert({
+      merchant_id: a.merchant_id,
+      country_id: a.country_id,
+      customer_id: customer.id,
+      assignment_id: a.id,
+      address,
+    });
+  }
+  if (delivery === "direct") {
     let { data: type } = await db()
       .from("ticket_types")
       .select("id")
@@ -339,7 +352,7 @@ export async function renewMyContract(formData: FormData): Promise<void> {
   redirect(`${back}?saved=renewed`);
 }
 
-/** The customer says the parcel arrived — support then tests it with them. */
+/** The customer says the parcel arrived — then they test the account. */
 export async function confirmReceived(formData: FormData): Promise<void> {
   const cu = await getCurrentUser();
   if (!cu) redirect("/portal/login");
@@ -349,13 +362,53 @@ export async function confirmReceived(formData: FormData): Promise<void> {
   const back = "/portal/agreements";
 
   await db()
-    .from("account_assignments")
-    .update({ received_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("id", id)
+    .from("shipments")
+    .update({ received_at: new Date().toISOString() })
+    .eq("assignment_id", id)
     .eq("customer_id", customer.id)
-    .eq("status", "confirmed")
     .not("shipped_at", "is", null)
-    .is("received_at", null);
+    .is("received_at", null)
+    .is("cancelled_at", null);
   revalidatePath(back);
   redirect(`${back}?saved=received`);
+}
+
+/**
+ * The customer's own acceptance that the account works — billing starts the
+ * next day (never later than day 14). Recorded under their user id.
+ */
+export async function customerAccountTested(formData: FormData): Promise<void> {
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/portal/login");
+  const customer = await customerForUser(cu.user.id);
+  if (!customer) redirect("/portal/login");
+  const id = String(formData.get("id") ?? "");
+  const back = "/portal/agreements";
+  const failTo = (m: string): never => redirect(`${back}?error=${encodeURIComponent(m)}`);
+
+  const { data } = await db()
+    .from("account_assignments")
+    .select("id, status, delivery_method, customer_id")
+    .eq("id", id)
+    .eq("customer_id", customer.id)
+    .maybeSingle();
+  if (!data) throw failTo("Not found");
+  if (data.status !== "confirmed") failTo("This one isn't waiting for a test");
+  if (data.delivery_method === "shipping") {
+    const { data: ship } = await db()
+      .from("shipments")
+      .select("received_at")
+      .eq("assignment_id", id)
+      .is("cancelled_at", null)
+      .maybeSingle();
+    if (!ship?.received_at) failTo("Confirm you received the shipment first");
+  }
+
+  const { goLive } = await import("@/modules/contracts/customer-policy");
+  const { addDays } = await import("@/modules/billing/engine");
+  const today = new Date().toISOString().slice(0, 10);
+  const err = await goLive(id, addDays(today, 1), cu.user.id);
+  if (err) failTo(err);
+  revalidatePath(back);
+  redirect(`${back}?saved=tested`);
 }

@@ -64,9 +64,9 @@ export async function AssignCard({
       <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Assign to Customer</h2>
       <p className="mb-3 text-xs text-muted">
         The price comes from the customer&apos;s own condition table — no price is typed here. The customer
-        confirms the full agreement in their portal before anything proceeds.
+        confirms the agreement in their portal and picks delivery (shipping or direct binding) themselves.
       </p>
-      <form action={assignAccount} className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
+      <form action={assignAccount} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <input type="hidden" name="bank_account_id" value={bankAccountId} />
         <div>
           <label className="mb-1 block text-xs text-muted">Customer</label>
@@ -78,13 +78,6 @@ export async function AssignCard({
                 {c.ref ? ` · ${c.ref}` : ""}
               </option>
             ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted">Delivery</label>
-          <select name="delivery_method" className="input">
-            <option value="direct">Direct binding (via support)</option>
-            <option value="shipping">Shipping</option>
           </select>
         </div>
         <ActionButton icon="send" tip="Offer this account at the customer's own conditions" label="Assign" variant="primary" />

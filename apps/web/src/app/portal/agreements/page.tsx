@@ -4,7 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { customerForUser } from "@/modules/customers/lib";
 import { assignmentsFor, assignmentDeadline } from "@/modules/contracts/customer-policy";
-import { confirmAssignment, confirmReceived } from "@/app/portal/actions";
+import { shipmentForAssignment, type Shipment } from "@/modules/shipping/lib";
+import { confirmAssignment, confirmReceived, customerAccountTested } from "@/app/portal/actions";
 import { logoutAction } from "@/app/actions/auth";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
@@ -51,6 +52,13 @@ export default async function AgreementsPage({
 
   const viewingTnc = view ? tncById.get(view) ?? null : null;
 
+  const shipments = new Map<string, Shipment>();
+  for (const a of done) {
+    if (a.delivery_method !== "shipping") continue;
+    const ship = await shipmentForAssignment(a.id);
+    if (ship) shipments.set(a.id, ship);
+  }
+
   return (
     <main className="mx-auto max-w-3xl space-y-5 px-5 py-8">
       <div className="flex items-start justify-between gap-3">
@@ -76,9 +84,14 @@ export default async function AgreementsPage({
         </div>
       </div>
       <ErrorBanner message={error} />
+      {saved === "tested" && (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
+          Thank you — the account is accepted. Billing starts tomorrow.
+        </p>
+      )}
       {saved === "received" && (
         <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
-          Noted — our support will contact you to test the account. Billing starts the day after it works.
+          Noted — now try the account, and press Account Tested once it works.
         </p>
       )}
       {saved === "confirmed" && (
@@ -113,9 +126,7 @@ export default async function AgreementsPage({
                 <p>Insurance (written, not collected): <span className="mono-num font-medium">{fmtNum(c.deposit ?? 0)}</span></p>
                 <p>Minimum term: <span className="mono-num font-medium">{c.contract_months ?? "—"} months</span></p>
                 <p>Renewal: <span className="mono-num font-medium">{c.renewal_months ?? "—"} months</span></p>
-                <p>
-                  Delivery: <span className="font-medium">{a.delivery_method === "shipping" ? "Shipping" : "Direct binding with our support"}</span>
-                </p>
+
               </div>
               <p className="mt-2 text-xs text-muted">
                 Billing starts the day after binding completes — and no later than {assignmentDeadline(a.assigned_on)}.
@@ -141,9 +152,24 @@ export default async function AgreementsPage({
 
             <form action={confirmAssignment} className="space-y-3 border-t border-border pt-4">
               <input type="hidden" name="id" value={a.id} />
-              {a.delivery_method === "shipping" && (
+              <div>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">How do you want to take delivery?</h3>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="delivery_method" value="direct" defaultChecked />
+                    <span>Direct binding — our support walks you through it online</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="delivery_method" value="shipping" />
+                    <span>Shipping — we send everything to your address</span>
+                  </label>
+                </div>
+              </div>
+              {(
                 <div className="space-y-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">Delivery Address</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                    Delivery Address (only if you chose Shipping)
+                  </h3>
                   {addressBook.length > 0 && (
                     <select name="address_id" className="input" defaultValue="">
                       <option value="">— New address (fill below) —</option>
@@ -192,25 +218,38 @@ export default async function AgreementsPage({
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
-                    {a.status === "confirmed" && a.delivery_method === "shipping" && !a.shipped_at && (
-                      <span className="text-xs text-muted">preparing shipment</span>
-                    )}
-                    {a.status === "confirmed" && a.shipped_at && (
-                      <span className="mono-num text-xs text-muted">
-                        {a.courier} · {a.tracking_no}
-                      </span>
-                    )}
-                    {a.status === "confirmed" && a.shipped_at && !a.received_at && (
-                      <form action={confirmReceived}>
-                        <input type="hidden" name="id" value={a.id} />
-                        <button className="rounded-md border border-accent/50 px-2.5 py-1 text-xs text-accent-strong hover:bg-accent-soft">
-                          I&apos;ve received it
-                        </button>
-                      </form>
-                    )}
-                    {a.status === "confirmed" && a.received_at && (
-                      <span className="text-xs text-success">received — testing next</span>
-                    )}
+                    {(() => {
+                      const ship = shipments.get(a.id);
+                      const isShipping = a.delivery_method === "shipping";
+                      if (a.status !== "confirmed") return null;
+                      return (
+                        <>
+                          {isShipping && !ship?.shipped_at && <span className="text-xs text-muted">preparing shipment</span>}
+                          {isShipping && ship?.shipped_at && (
+                            <span className="mono-num text-xs text-muted">{ship.courier} · {ship.tracking_no}</span>
+                          )}
+                          {isShipping && ship?.shipped_at && !ship?.received_at && (
+                            <form action={confirmReceived}>
+                              <input type="hidden" name="id" value={a.id} />
+                              <button className="rounded-md border border-accent/50 px-2.5 py-1 text-xs text-accent-strong hover:bg-accent-soft">
+                                I&apos;ve received it
+                              </button>
+                            </form>
+                          )}
+                          {(!isShipping || ship?.received_at) && (
+                            <form action={customerAccountTested}>
+                              <input type="hidden" name="id" value={a.id} />
+                              <button
+                                title="Press once the account works — billing starts tomorrow"
+                                className="rounded-md bg-success px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
+                              >
+                                Account Tested
+                              </button>
+                            </form>
+                          )}
+                        </>
+                      );
+                    })()}
                     {tnc && (
                       <Link href={`/portal/agreements?view=${tnc.id}`} className="text-xs text-muted hover:text-foreground">
                         View terms
