@@ -412,3 +412,53 @@ export async function customerAccountTested(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(`${back}?saved=tested`);
 }
+
+
+/** The customer changes their mind about delivery — allowed until it ships or goes live. */
+export async function changeDelivery(formData: FormData): Promise<void> {
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/portal/login");
+  const customer = await customerForUser(cu.user.id);
+  if (!customer) redirect("/portal/login");
+  const id = String(formData.get("id") ?? "");
+  const back = "/portal/agreements";
+  const failTo = (m: string): never => redirect(`${back}?error=${encodeURIComponent(m)}`);
+
+  const { data } = await db()
+    .from("account_assignments")
+    .select("id, customer_id")
+    .eq("id", id)
+    .eq("customer_id", customer.id)
+    .maybeSingle();
+  if (!data) throw failTo("Not found");
+
+  const to = String(formData.get("delivery_method") ?? "") === "shipping" ? "shipping" : "direct";
+  let address: { name: string; phone: string; address: string } | null = null;
+  if (to === "shipping") {
+    const addrId = String(formData.get("address_id") ?? "");
+    if (addrId) {
+      const { data: saved } = await db()
+        .from("customer_addresses")
+        .select("name, phone, address")
+        .eq("id", addrId)
+        .eq("customer_id", customer.id)
+        .maybeSingle();
+      if (saved) address = saved as { name: string; phone: string; address: string };
+    } else {
+      const name = String(formData.get("addr_name") ?? "").trim();
+      const phone = String(formData.get("addr_phone") ?? "").trim();
+      const addr = String(formData.get("addr_address") ?? "").trim();
+      if (name && phone && addr) {
+        address = { name, phone, address: addr };
+        await db().from("customer_addresses").insert({ customer_id: customer.id, ...address });
+      }
+    }
+    if (!address) failTo("Shipping needs a delivery address");
+  }
+
+  const { switchDelivery } = await import("@/modules/contracts/customer-policy");
+  const err = await switchDelivery(id, to, address, cu.user.id);
+  if (err) failTo(err);
+  revalidatePath(back);
+  redirect(`${back}?saved=delivery`);
+}

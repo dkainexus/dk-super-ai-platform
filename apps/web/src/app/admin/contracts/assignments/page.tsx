@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requirePerm, can } from "@/lib/auth";
 import { requireCountryScope } from "@/modules/countries/lib";
 import { assignmentsFor, assignmentDeadline } from "@/modules/contracts/customer-policy";
-import { markAssignmentReady, cancelAssignment } from "@/modules/contracts/policy-actions";
+import { markAssignmentReady, cancelAssignment, setAssignmentDelivery } from "@/modules/contracts/policy-actions";
 import { shipmentForAssignment } from "@/modules/shipping/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
@@ -51,6 +51,11 @@ export default async function AssignmentsPage({
         </p>
       </div>
       <ErrorBanner message={error} />
+      {saved === "delivery" && (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
+          Delivery method changed.
+        </p>
+      )}
       {saved === "live" && (
         <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
           Live — billing starts tomorrow (or on the day-14 cap if that is sooner).
@@ -115,6 +120,26 @@ export default async function AssignmentsPage({
                         }`
                       : "waiting in the Shipping queue"}
                   </p>
+                )}
+                {canEdit && a.status === "confirmed" && !ship?.shipped_at && (
+                  <details className="mt-1 text-[11px]">
+                    <summary className="cursor-pointer text-muted hover:text-foreground">Switch delivery</summary>
+                    <form action={setAssignmentDelivery} className="mt-1.5 space-y-1">
+                      <input type="hidden" name="id" value={a.id} />
+                      <input type="hidden" name="back" value={back} />
+                      <input type="hidden" name="delivery_method" value={a.delivery_method === "shipping" ? "direct" : "shipping"} />
+                      {a.delivery_method === "direct" && (
+                        <>
+                          <input name="addr_name" className="input w-40 py-1 text-xs" placeholder="Recipient name" />
+                          <input name="addr_phone" className="input w-40 py-1 text-xs" placeholder="Phone" />
+                          <input name="addr_address" className="input w-52 py-1 text-xs" placeholder="Full address" />
+                        </>
+                      )}
+                      <button className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted hover:text-foreground">
+                        {a.delivery_method === "shipping" ? "→ direct binding" : "→ shipping"}
+                      </button>
+                    </form>
+                  </details>
                 )}
               </td>
               <td className="px-4 py-2.5 text-xs text-muted">{a.assigned_on}</td>

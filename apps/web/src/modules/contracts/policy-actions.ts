@@ -323,15 +323,20 @@ export async function setAssignmentDelivery(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("contracts", "edit");
   const id = String(formData.get("id") ?? "");
   const back = String(formData.get("back") ?? "/admin/contracts/assignments");
-  const delivery = String(formData.get("delivery_method") ?? "") === "shipping" ? "shipping" : "direct";
-  await db()
-    .from("account_assignments")
-    .update({ delivery_method: delivery, updated_at: new Date().toISOString(), updated_by: cu.user.id })
-    .eq("id", id)
-    .neq("status", "live")
-    .neq("status", "cancelled");
+  const to = String(formData.get("delivery_method") ?? "") === "shipping" ? "shipping" : "direct";
+
+  let address: { name: string; phone: string; address: string } | null = null;
+  if (to === "shipping") {
+    const name = String(formData.get("addr_name") ?? "").trim();
+    const phone = String(formData.get("addr_phone") ?? "").trim();
+    const addr = String(formData.get("addr_address") ?? "").trim();
+    if (name && phone && addr) address = { name, phone, address: addr };
+  }
+  const { switchDelivery } = await import("./customer-policy");
+  const err = await switchDelivery(id, to, address, cu.user.id);
+  if (err) fail(back, err);
   revalidatePath(back);
-  redirect(back);
+  redirect(`${back}?saved=delivery`);
 }
 
 export async function cancelAssignment(formData: FormData): Promise<void> {

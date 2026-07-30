@@ -5,7 +5,7 @@ import { db } from "@/lib/supabase";
 import { customerForUser } from "@/modules/customers/lib";
 import { assignmentsFor, assignmentDeadline } from "@/modules/contracts/customer-policy";
 import { shipmentForAssignment, type Shipment } from "@/modules/shipping/lib";
-import { confirmAssignment, confirmReceived, customerAccountTested } from "@/app/portal/actions";
+import { confirmAssignment, confirmReceived, customerAccountTested, changeDelivery } from "@/app/portal/actions";
 import { logoutAction } from "@/app/actions/auth";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
@@ -84,6 +84,11 @@ export default async function AgreementsPage({
         </div>
       </div>
       <ErrorBanner message={error} />
+      {saved === "delivery" && (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
+          Delivery method changed.
+        </p>
+      )}
       {saved === "tested" && (
         <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
           Thank you — the account is accepted. Billing starts tomorrow.
@@ -235,6 +240,43 @@ export default async function AgreementsPage({
                                 I&apos;ve received it
                               </button>
                             </form>
+                          )}
+                          {isShipping && !ship?.shipped_at && (
+                            <form action={changeDelivery}>
+                              <input type="hidden" name="id" value={a.id} />
+                              <input type="hidden" name="delivery_method" value="direct" />
+                              <button
+                                title="Switch to direct binding with our support instead"
+                                className="rounded-md border border-border px-2.5 py-1 text-xs text-muted hover:text-foreground"
+                              >
+                                Switch to direct binding
+                              </button>
+                            </form>
+                          )}
+                          {!isShipping && (
+                            <details className="text-xs">
+                              <summary className="cursor-pointer rounded-md border border-border px-2.5 py-1 text-muted hover:text-foreground">
+                                Switch to shipping
+                              </summary>
+                              <form action={changeDelivery} className="mt-2 space-y-1.5">
+                                <input type="hidden" name="id" value={a.id} />
+                                <input type="hidden" name="delivery_method" value="shipping" />
+                                {addressBook.length > 0 && (
+                                  <select name="address_id" className="input py-1 text-xs" defaultValue="">
+                                    <option value="">— New address —</option>
+                                    {addressBook.map((ad) => (
+                                      <option key={ad.id} value={ad.id}>{ad.name} · {ad.address}</option>
+                                    ))}
+                                  </select>
+                                )}
+                                <input name="addr_name" className="input py-1 text-xs" placeholder="Recipient name" />
+                                <input name="addr_phone" className="input py-1 text-xs" placeholder="Phone" />
+                                <input name="addr_address" className="input py-1 text-xs" placeholder="Full address" />
+                                <button className="rounded-md border border-accent/50 px-2.5 py-1 text-xs text-accent-strong hover:bg-accent-soft">
+                                  Change to shipping
+                                </button>
+                              </form>
+                            </details>
                           )}
                           {(!isShipping || ship?.received_at) && (
                             <form action={customerAccountTested}>

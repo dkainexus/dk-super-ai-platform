@@ -280,3 +280,96 @@ export async function applyAutoRenewals(): Promise<void> {
     });
   }
 }
+
+/**
+ * Switch a confirmed assignment between shipping and direct binding, tidying
+ * the tails: an unshipped parcel cancels and a binding ticket opens, or a
+ * shipment is created and the now-pointless binding ticket resolves. A parcel
+ * already in transit cannot be un-sent — receive it instead.
+ */
+export async function switchDelivery(
+  assignmentId: string,
+  to: "shipping" | "direct",
+  address: { name: string; phone: string; address: string } | null,
+  byUserId: string | null
+): Promise<string | null> {
+  const { data } = await db().from("account_assignments").select("*").eq("id", assignmentId).maybeSingle();
+  const a = data as Assignment | null;
+  if (!a) return "Assignment not found";
+  if (a.status !== "confirmed") return "Delivery can only change while the account is being handed over";
+  if (a.delivery_method === to) return null;
+
+  if (to === "direct") {
+    const { data: ship } = await db()
+      .from("shipments")
+      .select("id, shipped_at")
+      .eq("assignment_id", assignmentId)
+      .is("cancelled_at", null)
+      .maybeSingle();
+    if (ship?.shipped_at) return "The parcel is already on its way — it can't be recalled, confirm receipt instead";
+    if (ship) await db().from("shipments").update({ cancelled_at: new Date().toISOString(), updated_by: byUserId }).eq("id", ship.id);
+
+    // Direct binding runs through support — make sure a ticket exists.
+    if (!a.binding_ticket_id) {
+      let { data: type } = await db()
+        .from("ticket_types")
+        .select("id")
+        .eq("country_id", a.country_id ?? "")
+        .eq("is_binding", true)
+        .is("merchant_id", null)
+        .maybeSingle();
+      if (!type) {
+        const { data: created } = await db()
+          .from("ticket_types")
+          .insert({ country_id: a.country_id, name: "Account Binding", default_assignee: "phone_cs", window_days: 14, is_binding: true, sort: 5 })
+          .select("id")
+          .single();
+        type = created;
+      }
+      const { data: ticket } = await db()
+        .from("tickets")
+        .insert({
+          merchant_id: a.merchant_id,
+          country_id: a.country_id,
+          bank_account_id: a.bank_account_id,
+          customer_id: a.customer_id,
+          type_id: type?.id ?? null,
+          description: `Account binding — ${a.ref ?? a.id}. Delivery switched to direct binding; walk the customer through it.`,
+          status: "assigned",
+          assigned_to: "phone_cs",
+          assigned_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (ticket) await db().from("account_assignments").update({ binding_ticket_id: ticket.id }).eq("id", assignmentId);
+    }
+    await db()
+      .from("account_assignments")
+      .update({ delivery_method: "direct", updated_at: new Date().toISOString(), updated_by: byUserId })
+      .eq("id", assignmentId);
+    return null;
+  }
+
+  // → shipping
+  if (!address) return "Shipping needs a delivery address";
+  await db().from("shipments").insert({
+    merchant_id: a.merchant_id,
+    country_id: a.country_id,
+    customer_id: a.customer_id,
+    assignment_id: assignmentId,
+    address,
+  });
+  // The binding ticket has nothing left to do.
+  if (a.binding_ticket_id) {
+    await db()
+      .from("tickets")
+      .update({ status: "resolved", closed_at: new Date().toISOString() })
+      .eq("id", a.binding_ticket_id)
+      .in("status", ["open", "assigned"]);
+  }
+  await db()
+    .from("account_assignments")
+    .update({ delivery_method: "shipping", address, updated_at: new Date().toISOString(), updated_by: byUserId })
+    .eq("id", assignmentId);
+  return null;
+}
