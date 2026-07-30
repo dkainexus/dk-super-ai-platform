@@ -33,13 +33,30 @@ export async function createExpense(formData: FormData): Promise<void> {
     receiptPath = await uploadFile(DOCS_BUCKET, `expenses/${Date.now()}.${fileExt(file)}`, file);
   }
 
+  // A freshly typed item joins the category's presets by itself, so the
+  // library grows from real spending — retire strays on the Categories page.
+  const item = String(formData.get("item") ?? "").trim() || null;
+  if (item && active) {
+    const { data: cat } = await db()
+      .from("expense_categories")
+      .select("id")
+      .eq("country_id", active.id)
+      .eq("name", category)
+      .maybeSingle();
+    if (cat) {
+      await db()
+        .from("expense_items")
+        .upsert({ category_id: cat.id, name: item }, { onConflict: "category_id,name", ignoreDuplicates: true });
+    }
+  }
+
   const isClaim = formData.get("is_claim") === "on";
   const { error } = await db().from("expenses").insert({
     country_id: active?.id ?? null,
     company_id: String(formData.get("company_id") ?? "") || null,
     merchant_id: String(formData.get("merchant_id") ?? "") || null,
     staff_user_id: isClaim ? cu.user.id : String(formData.get("staff_user_id") ?? "") || null,
-    item: String(formData.get("item") ?? "").trim() || null,
+    item,
     category,
     amount,
     currency: active?.currency ?? "THB",
