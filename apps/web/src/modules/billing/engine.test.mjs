@@ -213,3 +213,83 @@ test("§4 turnover top-ups — the base is a floor, turnover only adds", async (
   // Same inputs, same key — a rerun cannot raise it twice.
   assert.equal(april.dedupe_key, turnoverTopup(customer, "2026-04-01", 50_000_000).dedupe_key);
 });
+
+test("§8 — the worked theft example", async () => {
+  const { computeClaim } = await import("./engine.ts");
+  // Owner takes 500,000. Customer deposit 100,000, agent deposit 200,000,
+  // window 6 months, company registered 2 months before the claim.
+  const c = computeClaim({
+    stolen: 500_000,
+    customerDeposit: 100_000,
+    agentDeposit: 200_000,
+    agentWindowMonths: 6,
+    companyRegisteredOn: "2026-05-29",
+    claimedOn: "2026-07-29",
+    companyContribution: 30_000,
+    rentPaidBase: 37_741.94, // owner 30,000 + stub 7,741.94
+    rentPaidTurnover: 15_000, // the agent's April top-up, owed whole
+    setupFee: 20_000,
+    customerStartedOn: "2026-07-10",
+  });
+  assert.equal(c.customer_compensation, 100_000, "capped at the customer's own deposit");
+  assert.equal(c.written_off, 400_000, "the shortfall is written off, not carried");
+  assert.equal(c.inside_agent_window, true);
+  assert.equal(c.agent_deposit_due, 200_000, "capped at the agent's own deposit");
+  assert.equal(c.agent_company_due, 30_000);
+  assert.equal(c.agent_rent_due, 52_741.94, "base prorated as billed; turnover whole");
+  assert.equal(c.agent_total_due, 282_741.94);
+  assert.equal(c.customer_setup_fee_refund, 6_666.67, "19 days used of 30 → 11 back");
+});
+
+test("§8 — outside the window only the deposit comes back", async () => {
+  const { computeClaim } = await import("./engine.ts");
+  const c = computeClaim({
+    stolen: 500_000,
+    customerDeposit: 100_000,
+    agentDeposit: 200_000,
+    agentWindowMonths: 6,
+    companyRegisteredOn: "2025-01-01",
+    claimedOn: "2026-07-29",
+    companyContribution: 30_000,
+    rentPaidBase: 999_999,
+    rentPaidTurnover: 999_999,
+    setupFee: 20_000,
+    customerStartedOn: "2025-02-01",
+  });
+  assert.equal(c.inside_agent_window, false);
+  assert.equal(c.agent_total_due, 200_000);
+  assert.equal(c.customer_setup_fee_refund, 0, "past 30 days, nothing back");
+});
+
+test("§5 — the four-way split settles on the asking price", async () => {
+  const { settleAccount } = await import("./engine.ts");
+  const line = settleAccount(
+    { askingPrice: 80_000, days: 30, daysInMonth: 30, ownerPaid: 30_000, agentPaid: 10_000, ownUse: false },
+    50,
+    0
+  );
+  assert.equal(line.profit, 40_000);
+  assert.equal(line.we_take, 20_000);
+  assert.equal(line.wl_takes, 20_000);
+
+  // A part month settles on the same fraction the customer was billed.
+  const stub = settleAccount(
+    { askingPrice: 80_000, days: 11, daysInMonth: 31, ownerPaid: 7_741.94, agentPaid: 2_580.65, ownUse: false },
+    50,
+    0
+  );
+  assert.equal(stub.asking_revenue, 28_387.1);
+  assert.equal(stub.profit, 18_064.51);
+  assert.equal(stub.we_take, 9_032.25, "half of the profit, rounded to cents");
+  assert.equal(stub.wl_takes, 9_032.26, "the other half carries the rounding cent");
+  assert.ok(Math.abs(stub.we_take + stub.wl_takes - stub.profit) < 0.005, "the split never loses a cent");
+
+  // Own use: the flat fee, nothing else.
+  const own = settleAccount(
+    { askingPrice: 80_000, days: 30, daysInMonth: 30, ownerPaid: 30_000, agentPaid: 0, ownUse: true },
+    50,
+    15_000
+  );
+  assert.equal(own.we_take, 15_000);
+  assert.equal(own.wl_takes, -15_000);
+});

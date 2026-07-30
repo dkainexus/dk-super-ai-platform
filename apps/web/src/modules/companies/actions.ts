@@ -62,8 +62,32 @@ export async function saveCompany(formData: FormData): Promise<void> {
   // The business starts the day the registration comes through, so the first
   // time a company reaches Registered we stamp the date ourselves.
   let startDate = String(formData.get("business_start_date") ?? "") || null;
-  if (!startDate && status === "registered" && company?.status !== "registered") {
+  const becomingRegistered = status === "registered" && company?.status !== "registered";
+  let fundingDue = 0;
+  if (!startDate && becomingRegistered) {
     startDate = new Date().toISOString().slice(0, 10);
+  }
+
+  // Registering is when the white label's half of the company cost is taken.
+  // Not enough in their wallet → the company does not register.
+  if (becomingRegistered) {
+    const { data: m } = await db()
+      .from("merchants")
+      .select("company_quote")
+      .eq("id", merchantId)
+      .maybeSingle();
+    const share = Number(m?.company_quote ?? 0) / 2;
+    if (share > 0) {
+      const { ledgerFor } = await import("@/modules/billing/ledger");
+      const { balance } = await ledgerFor("merchant", merchantId);
+      if (balance < share) {
+        fail(
+          back,
+          `Registering takes ${share.toLocaleString()} from the white label's wallet, which holds ${balance.toLocaleString()} — top it up first`
+        );
+      }
+      fundingDue = share;
+    }
   }
 
   const fields = {
@@ -95,6 +119,21 @@ export async function saveCompany(formData: FormData): Promise<void> {
       .single();
     if (error || !data) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
     company = data as Company;
+  }
+
+  // The funding is taken now that the company row exists to reference.
+  if (fundingDue > 0 && company) {
+    await db().from("ledger_entries").insert({
+      merchant_id: merchantId,
+      country_id: countryId,
+      holder_type: "merchant",
+      holder_id: merchantId,
+      currency: "THB",
+      amount: -fundingDue,
+      kind: "adjustment",
+      note: `company:${company.id} registration funding`,
+      created_by: cu.user.id,
+    });
   }
 
   // ----- Members: one company owner + optional shareholders -----

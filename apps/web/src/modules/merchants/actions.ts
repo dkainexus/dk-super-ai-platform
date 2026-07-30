@@ -272,3 +272,25 @@ export async function removeMerchantFromCountry(formData: FormData): Promise<voi
   revalidatePath("/", "layout");
   redirect(back);
 }
+
+/** The white label's money terms — console side only. */
+export async function saveSettlementSettings(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("merchants", "edit");
+  if (cu.merchant) redirect("/m");
+  const id = String(formData.get("merchant_id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/white-labels/${id}`);
+
+  const num = (k: string) => parseFloat(String(formData.get(k) ?? "").replace(/,/g, "")) || 0;
+  const { error } = await db()
+    .from("merchants")
+    .update({
+      profit_share_pct: Math.max(0, Math.min(100, num("profit_share_pct"))),
+      own_use_fee: num("own_use_fee"),
+      company_quote: num("company_quote"),
+      min_prepaid_companies: Math.max(0, parseInt(String(formData.get("min_prepaid_companies") ?? "0"), 10) || 0),
+    })
+    .eq("id", id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(`${back}?saved=settlement`);
+}

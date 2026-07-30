@@ -219,6 +219,31 @@ export async function buildDraft(countryId: string, periodMonth: string, userId:
         lines.push({ ...line, description: `${name} — ${line.description}` });
       }
     }
+    // An agent owing recovery money has it taken out of this payout, down to
+    // zero — never into the negative, and never from any owner's invoice.
+    if (c.party_type === "agent" && c.agent_id && lines.length > 0) {
+      const { ledgerFor } = await import("./ledger");
+      const { balance } = await ledgerFor("agent", c.agent_id);
+      if (balance < 0) {
+        const subtotal = lines.reduce((s, l) => s + l.amount, 0);
+        const deduction = Math.min(subtotal, -balance);
+        if (deduction > 0) {
+          lines.push({
+            contract_account_id: null,
+            kind: "adjustment",
+            description: `Recovery deduction (owed ${(-balance).toLocaleString()})`,
+            period_start: null,
+            period_end: null,
+            days: null,
+            days_in_month: null,
+            amount: -Math.round(deduction * 100) / 100,
+            dedupe_key: `recovery|${c.agent_id}|${periodMonth}`,
+            snapshot: { owed_before: -balance, deducted: deduction },
+          });
+        }
+      }
+    }
+
     if (lines.length === 0) continue;
 
     const { data: inv, error: invError } = await db()
@@ -363,6 +388,33 @@ export async function issueRun(runId: string, userId: string): Promise<number> {
       .update({ setup_fee_invoiced_at: now })
       .in("id", feeAccounts)
       .is("setup_fee_invoiced_at", null);
+  }
+
+  // Recovery deductions that just went out shrink the agent's debt.
+  const { data: recoveryLines } = await db()
+    .from("invoice_lines")
+    .select("amount, dedupe_key, invoice_id, invoice:invoices!inner(agent_id, merchant_id, country_id, currency)")
+    .in("invoice_id", ids)
+    .eq("kind", "adjustment")
+    .like("dedupe_key", "recovery|%");
+  for (const l of (recoveryLines ?? []) as unknown as {
+    amount: number;
+    invoice_id: string;
+    invoice: { agent_id: string | null; merchant_id: string; country_id: string | null; currency: string };
+  }[]) {
+    if (!l.invoice.agent_id) continue;
+    await db().from("ledger_entries").insert({
+      merchant_id: l.invoice.merchant_id,
+      country_id: l.invoice.country_id,
+      holder_type: "agent",
+      holder_id: l.invoice.agent_id,
+      currency: l.invoice.currency,
+      amount: -Number(l.amount), // the line is negative; the ledger credit is positive
+      kind: "adjustment",
+      invoice_id: l.invoice_id,
+      note: "Recovery deducted from this payout",
+      created_by: userId,
+    });
   }
 
   // Service charges that just went out never join another run.

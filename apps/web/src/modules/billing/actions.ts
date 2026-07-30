@@ -228,3 +228,75 @@ export async function settleFromWallet(formData: FormData): Promise<void> {
   revalidatePath("/admin/billing");
   redirect(back);
 }
+
+// ---------- White-label settlement ----------
+
+/** Lock a month's statement and credit the white label's wallet with the net. */
+export async function approveSettlement(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("billing", "edit");
+  if (cu.merchant) redirect("/m");
+  const merchantId = String(formData.get("merchant_id") ?? "");
+  const month = String(formData.get("period_month") ?? "");
+  const back = String(formData.get("back") ?? "/admin/billing/settlements");
+
+  const { adminCountry } = await import("@/modules/countries/lib");
+  const active = (await adminCountry()).active;
+  if (!active) fail(back, "Switch into a country first");
+
+  const { computeSettlements } = await import("./settlement");
+  const statements = await computeSettlements(active.id, month);
+  const statement = statements.find((s) => s.merchant_id === merchantId);
+  if (!statement) fail(back, "Nothing to settle for that white label this month");
+  if (statement.accounts.some((a) => a.warning))
+    fail(back, "Fix the accounts missing an asking price first");
+
+  const { error } = await db().from("settlements").insert({
+    merchant_id: merchantId,
+    country_id: active.id,
+    period_month: month,
+    computation: statement,
+    net_amount: statement.wl_net,
+    approved_by: cu.user.id,
+  });
+  if (error)
+    fail(back, error.message.includes("duplicate") ? "That month is already settled" : `Failed: ${error.message}`);
+
+  if (statement.wl_net !== 0) {
+    await db().from("ledger_entries").insert({
+      merchant_id: merchantId,
+      country_id: active.id,
+      holder_type: "merchant",
+      holder_id: merchantId,
+      currency: active.currency,
+      amount: statement.wl_net,
+      kind: "payout",
+      note: `Settlement ${month.slice(0, 7)}`,
+      created_by: cu.user.id,
+    });
+  }
+  revalidatePath(back);
+  redirect(`${back}?saved=1`);
+}
+
+/** We received the white label's USDT top-up (company funding money). */
+export async function recordMerchantTopUp(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("billing", "edit");
+  if (cu.merchant) redirect("/m");
+  const merchantId = String(formData.get("merchant_id") ?? "");
+  const back = String(formData.get("back") ?? `/admin/white-labels/${merchantId}`);
+  const amount = parseFloat(String(formData.get("amount") ?? "").replace(/,/g, ""));
+  if (!Number.isFinite(amount) || amount <= 0) fail(back, "Enter the amount received");
+
+  await db().from("ledger_entries").insert({
+    merchant_id: merchantId,
+    holder_type: "merchant",
+    holder_id: merchantId,
+    currency: "THB",
+    amount,
+    kind: "topup",
+    note: String(formData.get("note") ?? "").trim() || null,
+    created_by: cu.user.id,
+  });
+  revalidatePath(back);
+  redirect(`${back}?saved=topup`);
+}

@@ -251,6 +251,10 @@ export async function editBankAccount(formData: FormData): Promise<void> {
       login_id: String(formData.get("login_id") ?? "").trim() || null,
       password: String(formData.get("password") ?? "").trim() || null,
       condition: conditionOf(formData),
+      asking_price: String(formData.get("asking_price") ?? "").trim()
+        ? parseFloat(String(formData.get("asking_price")).replace(/,/g, "")) || null
+        : null,
+      own_use: formData.get("own_use") === "on",
       ...(branch.branch_name ? branch : {}),
       extra,
       channels,

@@ -25,7 +25,7 @@ export type AccountLine = {
 
 export type BilledLine = {
   contract_account_id: string | null;
-  kind: "base_rent" | "setup_fee" | "turnover_topup" | "service";
+  kind: "base_rent" | "setup_fee" | "turnover_topup" | "service" | "adjustment";
   description: string;
   period_start: string | null;
   period_end: string | null;
@@ -283,4 +283,109 @@ export function turnoverTopup(
       base_billed: billed.amount,
     },
   };
+}
+
+// ---------- theft claims (§8) ----------
+
+export type ClaimInput = {
+  /** What was taken. */
+  stolen: number;
+  customerDeposit: number;
+  agentDeposit: number;
+  /** Months of agent liability, measured from the company's registration. */
+  agentWindowMonths: number | null;
+  companyRegisteredOn: string | null;
+  claimedOn: string;
+  /** What the white label put in when the company was registered. */
+  companyContribution: number;
+  /** Base rent already paid out to the owner and the agent for this account. */
+  rentPaidBase: number;
+  /** Turnover top-ups already paid out — owed whole, never prorated. */
+  rentPaidTurnover: number;
+  /** The customer's setup fee and when their billing started, for the refund. */
+  setupFee: number;
+  customerStartedOn: string | null;
+};
+
+export type ClaimComputation = {
+  customer_compensation: number;
+  customer_setup_fee_refund: number;
+  inside_agent_window: boolean;
+  agent_deposit_due: number;
+  agent_company_due: number;
+  agent_rent_due: number;
+  agent_total_due: number;
+  written_off: number;
+};
+
+/**
+ * Who owes whom after a theft. Both caps are the party's own deposit; inside
+ * the agent's window the company contribution and the rent already paid out
+ * come back too. Anything beyond the caps is written off, not carried.
+ */
+export function computeClaim(input: ClaimInput): ClaimComputation {
+  const compensation = money(Math.min(input.stolen, Math.max(0, input.customerDeposit)));
+
+  // Stolen within 30 days of the customer's start → the setup fee comes back
+  // prorated over those 30 days.
+  const setupRefund =
+    input.customerStartedOn != null
+      ? setupFeeRefund(input.setupFee, input.customerStartedOn, input.claimedOn)
+      : 0;
+
+  const inside =
+    input.agentWindowMonths != null &&
+    input.companyRegisteredOn != null &&
+    input.claimedOn <= addMonths(input.companyRegisteredOn, input.agentWindowMonths);
+
+  const agentDeposit = money(Math.min(input.stolen, Math.max(0, input.agentDeposit)));
+  const agentCompany = inside ? money(input.companyContribution) : 0;
+  const agentRent = inside ? money(input.rentPaidBase + input.rentPaidTurnover) : 0;
+  const agentTotal = money(agentDeposit + agentCompany + agentRent);
+
+  return {
+    customer_compensation: compensation,
+    customer_setup_fee_refund: setupRefund,
+    inside_agent_window: inside,
+    agent_deposit_due: agentDeposit,
+    agent_company_due: agentCompany,
+    agent_rent_due: agentRent,
+    agent_total_due: agentTotal,
+    written_off: money(Math.max(0, input.stolen - compensation)),
+  };
+}
+
+// ---------- white-label settlement (§5) ----------
+
+export type SettlementAccount = {
+  /** The white label's asking price for a month of this account. */
+  askingPrice: number;
+  /** Billed-days ratio, so a part-month settles on the same fraction. */
+  days: number;
+  daysInMonth: number;
+  ownerPaid: number;
+  agentPaid: number;
+  ownUse: boolean;
+};
+
+export type SettlementLine = {
+  asking_revenue: number;
+  profit: number;
+  we_take: number;
+  wl_takes: number;
+};
+
+/**
+ * One account, one month. We are the dividend side: profit on the asking price
+ * splits at the share; an own-use account pays the flat fee instead. Whatever
+ * we actually charged the customer above the asking price never enters this.
+ */
+export function settleAccount(a: SettlementAccount, sharePct: number, ownUseFee: number): SettlementLine {
+  if (a.ownUse) {
+    return { asking_revenue: 0, profit: 0, we_take: money(ownUseFee), wl_takes: money(-ownUseFee) };
+  }
+  const revenue = money((a.askingPrice * a.days) / a.daysInMonth);
+  const profit = money(revenue - a.ownerPaid - a.agentPaid);
+  const weTake = money((profit * sharePct) / 100);
+  return { asking_revenue: revenue, profit, we_take: weTake, wl_takes: money(profit - weTake) };
 }
