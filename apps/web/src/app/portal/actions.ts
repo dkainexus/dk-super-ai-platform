@@ -359,7 +359,7 @@ export async function confirmReceived(formData: FormData): Promise<void> {
   const customer = await customerForUser(cu.user.id);
   if (!customer) redirect("/portal/login");
   const id = String(formData.get("id") ?? "");
-  const back = "/portal/agreements";
+  const back = String(formData.get("back") ?? "/portal/agreements");
 
   await db()
     .from("shipments")

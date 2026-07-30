@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requirePerm } from "@/lib/auth";
-import { platformSettings } from "@/lib/settings";
-import { savePlatformSettings } from "@/app/actions/settings";
+import { platformSettings, getSetting } from "@/lib/settings";
+import { savePlatformSettings, saveTrackingKey } from "@/app/actions/settings";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton } from "@/components/action-buttons";
 
@@ -13,6 +13,7 @@ export default async function AdminSettingsPage({
   await requirePerm("settings", "view");
   const { error } = await searchParams;
   const platform = await platformSettings();
+  const shipping = await getSetting<{ track17_key?: string }>("shipping", {});
 
   return (
     <div className="space-y-6">
@@ -32,6 +33,27 @@ export default async function AdminSettingsPage({
             <input name="name" defaultValue={platform.name} className="input" required />
           </div>
           <SaveButton tip="Save general settings" />
+        </form>
+      </section>
+
+      {/* Shipping tracking */}
+      <section className="card p-5">
+        <h2 className="mb-1 text-sm font-semibold">Shipping Tracking</h2>
+        <p className="mb-4 text-xs text-muted">
+          17TRACK API token — with it, customers see live courier events inside the portal instead of a bare
+          tracking number. Register at 17track.net (free tier available) and paste the token here.
+        </p>
+        <form action={saveTrackingKey} className="flex max-w-md items-end gap-3">
+          <div className="flex-1">
+            <label className="mb-1 block text-xs text-muted">17TRACK API token</label>
+            <input
+              name="track17_key"
+              defaultValue={shipping.track17_key ? "••••••••" + shipping.track17_key.slice(-4) : ""}
+              placeholder="not set — portal shows our own milestones only"
+              className="input mono-num"
+            />
+          </div>
+          <SaveButton tip="Save the tracking token (leave the masked value to keep it)" />
         </form>
       </section>
 
