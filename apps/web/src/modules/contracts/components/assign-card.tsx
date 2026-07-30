@@ -43,7 +43,7 @@ export async function AssignCard({
         </p>
         <p className="mt-1 text-xs text-muted">
           {fmtNum(Number(c.rent ?? 0))}/mo · setup {fmtNum(Number(c.setup_fee ?? 0))} · insurance {fmtNum(Number(c.deposit ?? 0))} ·{" "}
-          {c.contract_months ?? "open"} mo · {a.delivery_method === "mail" ? "mail" : "direct binding"} — manage in{" "}
+          {c.contract_months ?? "open"} mo · {a.delivery_method === "shipping" ? "shipping" : "direct binding"} — manage in{" "}
           <Link href="/admin/contracts/assignments" className="text-accent-strong hover:underline">Assignments</Link>
         </p>
       </section>
@@ -84,7 +84,7 @@ export async function AssignCard({
           <label className="mb-1 block text-xs text-muted">Delivery</label>
           <select name="delivery_method" className="input">
             <option value="direct">Direct binding (via support)</option>
-            <option value="mail">Mail</option>
+            <option value="shipping">Shipping</option>
           </select>
         </div>
         <ActionButton icon="send" tip="Offer this account at the customer's own conditions" label="Assign" variant="primary" />

@@ -15,7 +15,7 @@ export type Assignment = {
   country_id: string | null;
   bank_account_id: string;
   customer_id: string;
-  delivery_method: "mail" | "direct";
+  delivery_method: "shipping" | "direct";
   status: "awaiting_confirmation" | "confirmed" | "live" | "cancelled";
   conditions: Record<string, unknown>;
   tnc_id: string | null;

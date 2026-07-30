@@ -107,7 +107,7 @@ export async function buildAgreementPdf(input: AgreementPdfInput): Promise<Uint8
   write("Account", 12, { gap: 2 });
   write(`${input.bankName} · ${input.accountNo}`, 11);
   write(`Customer: ${input.customerName}`, 11);
-  write(`Assigned: ${input.assignedOn}   Delivery: ${input.delivery === "mail" ? "by mail" : "direct binding"}`, 10);
+  write(`Assigned: ${input.assignedOn}   Delivery: ${input.delivery === "shipping" ? "shipping" : "direct binding"}`, 10);
   write(
     input.confirmedAt
       ? `Confirmed by the customer: ${input.confirmedAt}`

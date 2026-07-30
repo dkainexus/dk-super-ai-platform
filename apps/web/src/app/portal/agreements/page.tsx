@@ -109,7 +109,7 @@ export default async function AgreementsPage({
                 <p>Minimum term: <span className="mono-num font-medium">{c.contract_months ?? "—"} months</span></p>
                 <p>Renewal: <span className="mono-num font-medium">{c.renewal_months ?? "—"} months</span></p>
                 <p>
-                  Delivery: <span className="font-medium">{a.delivery_method === "mail" ? "By mail" : "Direct binding with our support"}</span>
+                  Delivery: <span className="font-medium">{a.delivery_method === "shipping" ? "Shipping" : "Direct binding with our support"}</span>
                 </p>
               </div>
               <p className="mt-2 text-xs text-muted">
@@ -136,7 +136,7 @@ export default async function AgreementsPage({
 
             <form action={confirmAssignment} className="space-y-3 border-t border-border pt-4">
               <input type="hidden" name="id" value={a.id} />
-              {a.delivery_method === "mail" && (
+              {a.delivery_method === "shipping" && (
                 <div className="space-y-2">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">Delivery Address</h3>
                   {addressBook.length > 0 && (

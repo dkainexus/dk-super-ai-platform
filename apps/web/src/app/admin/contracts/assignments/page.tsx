@@ -97,11 +97,11 @@ export default async function AssignmentsPage({
                     <input type="hidden" name="back" value={back} />
                     <select name="delivery_method" defaultValue={a.delivery_method} className="input py-1 text-xs" data-autosubmit>
                       <option value="direct">Direct binding</option>
-                      <option value="mail">Mail</option>
+                      <option value="shipping">Shipping</option>
                     </select>
                   </form>
                 ) : (
-                  <span className="text-muted">{a.delivery_method === "mail" ? "Mail" : "Direct binding"}</span>
+                  <span className="text-muted">{a.delivery_method === "shipping" ? "Shipping" : "Direct binding"}</span>
                 )}
                 {a.address && (
                   <p className="mt-1 max-w-[14rem] text-[11px] text-muted">
@@ -127,7 +127,7 @@ export default async function AssignmentsPage({
                       <ActionButton
                         icon="check"
                         tip={
-                          a.delivery_method === "mail"
+                          a.delivery_method === "shipping"
                             ? "Delivered and tested working — billing starts tomorrow"
                             : "Binding finished — billing starts tomorrow"
                         }

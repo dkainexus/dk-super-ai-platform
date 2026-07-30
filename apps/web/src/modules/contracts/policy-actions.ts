@@ -257,7 +257,7 @@ export async function assignAccount(formData: FormData): Promise<void> {
   const back = String(formData.get("back") ?? `/admin/bank-accounts/${accountId}`);
   const customerId = String(formData.get("customer_id") ?? "");
   const deliveryRaw = String(formData.get("delivery_method") ?? "direct");
-  const delivery = deliveryRaw === "mail" ? "mail" : "direct";
+  const delivery = deliveryRaw === "shipping" ? "shipping" : "direct";
   if (!customerId) fail(back, "Pick the customer");
 
   const { data: acc } = await db()
@@ -323,7 +323,7 @@ export async function setAssignmentDelivery(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("contracts", "edit");
   const id = String(formData.get("id") ?? "");
   const back = String(formData.get("back") ?? "/admin/contracts/assignments");
-  const delivery = String(formData.get("delivery_method") ?? "") === "mail" ? "mail" : "direct";
+  const delivery = String(formData.get("delivery_method") ?? "") === "shipping" ? "shipping" : "direct";
   await db()
     .from("account_assignments")
     .update({ delivery_method: delivery, updated_at: new Date().toISOString(), updated_by: cu.user.id })

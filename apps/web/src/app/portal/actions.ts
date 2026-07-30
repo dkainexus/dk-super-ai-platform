@@ -204,7 +204,7 @@ export async function confirmAssignment(formData: FormData): Promise<void> {
 
   // Mail needs somewhere to send it.
   let address: { name: string; phone: string; address: string } | null = null;
-  if (a.delivery_method === "mail") {
+  if (a.delivery_method === "shipping") {
     const addrId = String(formData.get("address_id") ?? "");
     if (addrId) {
       const { data: saved } = await db()
@@ -219,7 +219,7 @@ export async function confirmAssignment(formData: FormData): Promise<void> {
       const name = String(formData.get("addr_name") ?? "").trim();
       const phone = String(formData.get("addr_phone") ?? "").trim();
       const addr = String(formData.get("addr_address") ?? "").trim();
-      if (!name || !phone || !addr) failTo("Mail delivery needs a name, phone and address");
+      if (!name || !phone || !addr) failTo("Shipping needs a name, phone and address");
       address = { name, phone, address: addr };
       await db().from("customer_addresses").insert({ customer_id: customer.id, ...address });
     }
