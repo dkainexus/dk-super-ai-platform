@@ -129,9 +129,9 @@ export default async function AssignmentsPage({
                         tip={
                           a.delivery_method === "shipping"
                             ? "Delivered and tested working — billing starts tomorrow"
-                            : "Binding finished — billing starts tomorrow"
+                            : "Binding finished and tested — billing starts tomorrow"
                         }
-                        label="Bound & Working"
+                        label="Account Tested"
                         variant="success"
                       />
                     </form>
