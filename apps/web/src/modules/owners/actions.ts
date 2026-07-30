@@ -111,7 +111,7 @@ export async function reviewOwner(formData: FormData): Promise<void> {
   if (decision !== "approved" && decision !== "rejected") fail(back, "Invalid operation");
   if (decision === "rejected" && !reason) fail(back, "Please provide a rejection reason");
 
-  const { data: owner } = await db()
+  const { data: owner, error } = await db()
     .from("owners")
     .update({
       status: decision,
@@ -122,6 +122,8 @@ export async function reviewOwner(formData: FormData): Promise<void> {
     .eq("id", id)
     .select("telegram_user_id")
     .single();
+  // A review that did not land must say so — this failed silently once.
+  if (error) fail(back, `Failed to save the review: ${error.message}`);
 
   // Owners collected over Telegram get the review result pushed by the bot.
   if (owner?.telegram_user_id) {

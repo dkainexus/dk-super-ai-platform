@@ -72,13 +72,47 @@ export async function approveAndIssue(formData: FormData): Promise<void> {
 }
 
 export async function markInvoicePaid(formData: FormData): Promise<void> {
-  await requirePerm("billing", "edit");
+  const { cu } = await requirePerm("billing", "edit");
   const id = String(formData.get("id") ?? "");
   const back = String(formData.get("back") ?? `/admin/billing/invoices/${id}`);
 
-  const { data } = await db().from("invoices").select("status").eq("id", id).maybeSingle();
+  const { data } = await db()
+    .from("invoices")
+    .select("status, party_type, owner_id, total, currency, merchant_id, ref")
+    .eq("id", id)
+    .maybeSingle();
   if (!data) fail(back, "Invoice not found");
   if (data.status !== "issued") fail(back, "Only an issued invoice can be marked paid");
+
+  // An owner's rent lives in their app wallet — paying the invoice IS the
+  // credit; the withdrawals queue then moves it to their bank.
+  if (data.party_type === "owner" && data.owner_id && Number(data.total) > 0) {
+    const { walletApply } = await import("@/modules/wallet/lib");
+    try {
+      await walletApply({
+        ownerId: data.owner_id,
+        currency: data.currency,
+        type: "rent",
+        amount: Number(data.total),
+        reference: `invoice_${id}`,
+        note: `Rent ${data.ref ?? ""}`.trim(),
+        merchantId: data.merchant_id,
+        createdBy: cu.user.id,
+      });
+      const { notifyOwner } = await import("@/modules/notifications/lib");
+      await notifyOwner(
+        data.owner_id,
+        "reward",
+        "Rent received 🏦",
+        `${Number(data.total).toLocaleString()} ${data.currency} has been added to your wallet.`,
+        cu.user.id
+      ).catch(() => {});
+    } catch (e) {
+      // A duplicate reference means it was already credited — safe to proceed.
+      if (!(e instanceof Error && /duplicate|unique/i.test(e.message)))
+        fail(back, e instanceof Error ? e.message : "Failed to credit the owner's wallet");
+    }
+  }
 
   await db().from("invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
   revalidatePath("/admin/billing");
