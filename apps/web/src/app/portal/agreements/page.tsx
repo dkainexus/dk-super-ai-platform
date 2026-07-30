@@ -105,7 +105,7 @@ export default async function AgreementsPage({
                 {c.mode !== "turnover" && <p>Monthly price: <span className="mono-num font-medium">{fmtNum(c.rent ?? 0)}</span></p>}
                 {c.turnover_pct != null && <p>Turnover share: <span className="mono-num font-medium">{c.turnover_pct}%</span></p>}
                 <p>Setup fee (once): <span className="mono-num font-medium">{fmtNum(c.setup_fee ?? 0)}</span></p>
-                <p>Deposit (written, not collected): <span className="mono-num font-medium">{fmtNum(c.deposit ?? 0)}</span></p>
+                <p>Insurance (written, not collected): <span className="mono-num font-medium">{fmtNum(c.deposit ?? 0)}</span></p>
                 <p>Minimum term: <span className="mono-num font-medium">{c.contract_months ?? "—"} months</span></p>
                 <p>Renewal: <span className="mono-num font-medium">{c.renewal_months ?? "—"} months</span></p>
                 <p>

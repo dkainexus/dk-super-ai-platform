@@ -128,7 +128,7 @@ export function NewContractForm({
         </div>
         {kind !== "owner" && (
           <div>
-            <label className="mb-1 block text-xs text-muted">Deposit (written, not collected)</label>
+            <label className="mb-1 block text-xs text-muted">Insurance (written, not collected)</label>
             <MoneyInput name="deposit" defaultValue={0} />
           </div>
         )}

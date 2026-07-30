@@ -77,7 +77,7 @@ export default async function CustomersPage({
         </FilterForm>
       </TableToolbar>
 
-      <Table head={["ID", "Name", "Company", "White Label", "Belongs To", "Deposit", "Contracts", "Status", ""]}>
+      <Table head={["ID", "Name", "Company", "White Label", "Belongs To", "Insurance", "Contracts", "Status", ""]}>
         {rows.length === 0 && (
           <tr>
             <td colSpan={9} className="px-4 py-6 text-sm text-muted">No customers match these filters.</td>

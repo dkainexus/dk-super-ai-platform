@@ -66,7 +66,7 @@ export default async function PortalContractsPage({
                 <p className="mono-num">{k.contract_accounts?.[0]?.count ?? 0}</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted">Deposit (agreed)</p>
+                <p className="text-[10px] uppercase tracking-wide text-muted">Insurance (agreed)</p>
                 <p className="mono-num">{fmtNum(k.deposit)}</p>
               </div>
               <div>

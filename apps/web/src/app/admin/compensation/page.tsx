@@ -41,7 +41,7 @@ export default async function CompensationPage({
       <div>
         <h1 className="text-xl font-semibold">Compensation</h1>
         <p className="mt-1 text-sm text-muted">
-          Compensation is capped at each party&apos;s own written deposit; the shortfall is written off. The
+          Compensation is capped at each party&apos;s own written insurance; the shortfall is written off. The
           owner&apos;s rent is never touched.
         </p>
       </div>

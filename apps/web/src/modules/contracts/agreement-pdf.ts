@@ -122,7 +122,7 @@ export async function buildAgreementPdf(input: AgreementPdfInput): Promise<Uint8
   if (c.mode !== "turnover") write(`Monthly price: ${fmtNum(c.rent ?? 0)}`, 10);
   if (c.turnover_pct != null) write(`Turnover share: ${c.turnover_pct}%`, 10);
   write(`Setup fee (once): ${fmtNum(c.setup_fee ?? 0)}`, 10);
-  write(`Deposit (written, not collected): ${fmtNum(c.deposit ?? 0)}`, 10);
+  write(`Insurance (written, not collected): ${fmtNum(c.deposit ?? 0)}`, 10);
   write(`Minimum term: ${c.contract_months ?? "—"} months   Renewal: ${c.renewal_months ?? "—"} months`, 10, { gap: 12 });
   if (input.liveOn) write(`Billing since: ${input.liveOn}`, 10, { gap: 12 });
 

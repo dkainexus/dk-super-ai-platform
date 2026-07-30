@@ -81,7 +81,7 @@ export async function confirmClaim(formData: FormData): Promise<void> {
         currency: "THB",
         amount: credit,
         kind: "adjustment",
-        note: `Theft compensation ${c.ref ?? c.id} (capped at deposit${
+        note: `Theft compensation ${c.ref ?? c.id} (capped at insurance${
           comp.customer_setup_fee_refund > 0 ? " + setup fee refund" : ""
         })`,
         created_by: cu.user.id,
@@ -100,7 +100,7 @@ export async function confirmClaim(formData: FormData): Promise<void> {
       currency: "THB",
       amount: -comp.agent_total_due,
       kind: "adjustment",
-      note: `Theft recovery ${c.ref ?? c.id}: deposit ${comp.agent_deposit_due}${
+      note: `Theft recovery ${c.ref ?? c.id}: insurance ${comp.agent_deposit_due}${
         comp.inside_agent_window
           ? ` + company ${comp.agent_company_due} + rent paid ${comp.agent_rent_due}`
           : ""

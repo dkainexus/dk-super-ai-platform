@@ -98,7 +98,7 @@ export default async function MerchantCustomerDetailPage({
             <input name="email" type="email" defaultValue={c.email ?? ""} className="input" disabled={!canEdit} />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">Deposit (written, not collected)</label>
+            <label className="mb-1 block text-xs text-muted">Insurance (written, not collected)</label>
             <MoneyInput name="deposit" defaultValue={c.deposit} />
           </div>
           <div className="sm:col-span-2">

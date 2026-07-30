@@ -44,7 +44,7 @@ export default async function MerchantCustomersPage({
 
       <TableToolbar count={rows.length} noun="customer" />
 
-      <Table head={["ID", "Name", "Company", "Deposit", "Contracts", "Status", ""]}>
+      <Table head={["ID", "Name", "Company", "Insurance", "Contracts", "Status", ""]}>
         {rows.length === 0 && (
           <tr>
             <td colSpan={7} className="px-4 py-6 text-sm text-muted">No customers yet — use the button above to add one.</td>

@@ -22,7 +22,7 @@ export default async function MerchantNewCustomerPage({
         <Link href="/m/customers" className="text-xs text-muted hover:text-foreground">← Customers</Link>
         <h1 className="mt-1 text-xl font-semibold">New Customer</h1>
         <p className="mt-1 text-sm text-muted">
-          {active ? `In ${active.flag || ""} ${active.name}. ` : ""}The deposit is written into the agreement,
+          {active ? `In ${active.flag || ""} ${active.name}. ` : ""}The insurance is written into the agreement,
           never collected — it caps the compensation if an account is robbed.
         </p>
       </div>
@@ -46,7 +46,7 @@ export default async function MerchantNewCustomerPage({
           <input name="email" type="email" className="input" />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted">Deposit (written, not collected)</label>
+          <label className="mb-1 block text-xs text-muted">Insurance (written, not collected)</label>
           <MoneyInput name="deposit" defaultValue={0} />
         </div>
         <div className="sm:col-span-2">

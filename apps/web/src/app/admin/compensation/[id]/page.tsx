@@ -73,7 +73,7 @@ export default async function ClaimDetailPage({
         <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">We compensate the customer</h2>
         <p className="mb-2 text-xs text-muted">
           {ctx.customer ? ctx.customer.name : "No customer is renting this account"} — capped at their own written
-          deposit{ctx.customer ? ` of ${fmtNum(ctx.customer.contract_deposit)}` : ""}.
+          insurance{ctx.customer ? ` of ${fmtNum(ctx.customer.contract_deposit)}` : ""}.
         </p>
         <div className="divide-y divide-border">
           {row("Compensation", fmtNum(comp.customer_compensation))}
@@ -94,11 +94,11 @@ export default async function ClaimDetailPage({
             ? ctx.agent?.window_open
               ? "a turnover-only deal: liable for as long as the account is in use"
               : `inside their ${ctx.agent?.window_months ?? "?"}-month window (company registered ${ctx.company?.registered_on ?? "?"})`
-            : "outside their liability window, so only the deposit"}
+            : "outside their liability window, so only the insurance"}
           .
         </p>
         <div className="divide-y divide-border">
-          {row("Deposit", fmtNum(comp.agent_deposit_due), "capped at their own written deposit")}
+          {row("Insurance", fmtNum(comp.agent_deposit_due), "capped at their own written insurance")}
           {comp.inside_agent_window && row("Company funding back", fmtNum(comp.agent_company_due))}
           {comp.inside_agent_window &&
             row(

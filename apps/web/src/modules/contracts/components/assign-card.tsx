@@ -42,7 +42,7 @@ export async function AssignCard({
           {a.status === "live" && a.live_on && <span className="text-muted"> · billing since {a.live_on}</span>}
         </p>
         <p className="mt-1 text-xs text-muted">
-          {fmtNum(Number(c.rent ?? 0))}/mo · setup {fmtNum(Number(c.setup_fee ?? 0))} · deposit {fmtNum(Number(c.deposit ?? 0))} ·{" "}
+          {fmtNum(Number(c.rent ?? 0))}/mo · setup {fmtNum(Number(c.setup_fee ?? 0))} · insurance {fmtNum(Number(c.deposit ?? 0))} ·{" "}
           {c.contract_months ?? "open"} mo · {a.delivery_method === "mail" ? "mail" : "direct binding"} — manage in{" "}
           <Link href="/admin/contracts/assignments" className="text-accent-strong hover:underline">Assignments</Link>
         </p>

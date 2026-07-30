@@ -92,7 +92,7 @@ function RowForm({
         <input name="renewal_months" defaultValue={row?.renewal_months ?? ""} className="input mono-num py-1.5 text-sm" placeholder="mo" />
       </div>
       <div>
-        <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Deposit</label>
+        <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Insurance</label>
         <MoneyInput name="deposit" defaultValue={row ? Number(row.deposit) : 0} />
       </div>
       <ActionButton
@@ -168,7 +168,7 @@ export function ConditionTable({
                 {kind === "customer" && <th className="px-3 py-2 text-right">Setup Fee</th>}
                 <th className="px-3 py-2 text-right">Contract</th>
                 <th className="px-3 py-2 text-right">Renewal</th>
-                <th className="px-3 py-2 text-right">Deposit</th>
+                <th className="px-3 py-2 text-right">Insurance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

@@ -34,7 +34,7 @@ export default async function NewCustomerPage({
         <Link href="/admin/customers" className="text-xs text-muted hover:text-foreground">← Customers</Link>
         <h1 className="mt-1 text-xl font-semibold">New Customer</h1>
         <p className="mt-1 text-sm text-muted">
-          In {active.flag || "🌐"} {active.name}. The deposit is written into the agreement, never collected —
+          In {active.flag || "🌐"} {active.name}. The insurance is written into the agreement, never collected —
           it caps what we compensate if an account is robbed.
         </p>
       </div>
@@ -74,7 +74,7 @@ export default async function NewCustomerPage({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted">Deposit (written, not collected)</label>
+          <label className="mb-1 block text-xs text-muted">Insurance (written, not collected)</label>
           <MoneyInput name="deposit" defaultValue={0} />
         </div>
         <div className="sm:col-span-2">
