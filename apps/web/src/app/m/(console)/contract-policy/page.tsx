@@ -2,7 +2,7 @@ import { requireMerchantUser, requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { activeCountry } from "@/modules/merchants/lib";
 import { contractPolicy, conditionRows } from "@/modules/contracts/policy";
-import { savePolicy } from "@/modules/contracts/policy-actions";
+import { savePolicy, saveRenewModes } from "@/modules/contracts/policy-actions";
 import { ConditionTable } from "@/modules/contracts/components/condition-table";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton } from "@/components/action-buttons";
@@ -82,6 +82,31 @@ export default async function ContractPolicyPage({
               <SaveButton tip="Save the owner rules — applies to terms entered from now on" />
             </div>
           )}
+        </form>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Renewal Mode</h2>
+        <p className="mb-4 text-xs text-muted">
+          Auto extends an expiring owner or agent contract by its renewal months without anyone touching it.
+          Manual means the platform confirms each renewal — until then, an expired contract stops billing.
+        </p>
+        <form action={saveRenewModes} className="grid gap-4 sm:grid-cols-3 sm:items-end">
+          <div>
+            <label className="mb-1 block text-xs text-muted">Owner renewals</label>
+            <select name="renew_owner_mode" defaultValue={(cu.merchant as { renew_owner_mode?: string }).renew_owner_mode ?? "auto"} className="input">
+              <option value="auto">Automatic</option>
+              <option value="manual">Manual — platform confirms</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Agent renewals</label>
+            <select name="renew_agent_mode" defaultValue={(cu.merchant as { renew_agent_mode?: string }).renew_agent_mode ?? "auto"} className="input">
+              <option value="auto">Automatic</option>
+              <option value="manual">Manual — platform confirms</option>
+            </select>
+          </div>
+          {canEdit && <SaveButton tip="Save the renewal modes" />}
         </form>
       </section>
 

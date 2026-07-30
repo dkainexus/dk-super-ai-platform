@@ -287,3 +287,54 @@ export async function confirmAssignment(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(`${back}?saved=confirmed`);
 }
+
+/**
+ * The customer renews their own contract — always by hand, always against the
+ * current T&C version, always inside the window. A closed window means only
+ * we can renew, by agreement.
+ */
+export async function renewMyContract(formData: FormData): Promise<void> {
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/portal/login");
+  const customer = await customerForUser(cu.user.id);
+  if (!customer) redirect("/portal/login");
+  const id = String(formData.get("id") ?? "");
+  const back = "/portal/contracts";
+  const failTo = (m: string): never => redirect(`${back}?error=${encodeURIComponent(m)}`);
+
+  if (String(formData.get("accept") ?? "") !== "yes") failTo("Please tick that you accept the current terms");
+
+  const { data } = await db()
+    .from("contracts")
+    .select("*")
+    .eq("id", id)
+    .eq("customer_id", customer.id)
+    .maybeSingle();
+  if (!data) failTo("Contract not found");
+  const k = data as import("@/modules/contracts/lib").Contract;
+  if (k.status !== "active" || !k.ends_on) throw failTo("This contract cannot be renewed");
+
+  const { renewalState, today } = await import("@/modules/contracts/lib");
+  const state = renewalState(k, today());
+  if (state !== "open") failTo(state === "closed" ? "The window has closed — contact support to renew" : "The renewal window isn't open yet");
+
+  const { addMonths } = await import("@/modules/billing/engine");
+  const months = Math.max(1, k.renewal_min_months || 1);
+  const newEnd = addMonths(k.ends_on, months);
+
+  const { currentTnc } = await import("@/modules/contracts/customer-policy");
+  const tnc = await currentTnc(k.country_id ?? "", null);
+
+  await db().from("contracts").update({ ends_on: newEnd, updated_at: new Date().toISOString() }).eq("id", id);
+  await db().from("contract_renewals").insert({
+    contract_id: id,
+    months,
+    old_ends_on: k.ends_on,
+    new_ends_on: newEnd,
+    tnc_id: tnc?.id ?? null,
+    confirmed_by: cu.user.id,
+    kind: "customer",
+  });
+  revalidatePath(back);
+  redirect(`${back}?saved=renewed`);
+}

@@ -246,3 +246,39 @@ export async function applyAssignmentDeadlines(): Promise<void> {
     if (deadline <= today) await goLive(a.id, deadline, null);
   }
 }
+
+/**
+ * Owner and agent renewals, by the white label's mode: auto extends an
+ * expiring contract by its renewal months and writes the record; manual means
+ * WE press the button — until then an expired contract simply stops billing.
+ * Customers never appear here: their renewal is their own click in the portal.
+ */
+export async function applyAutoRenewals(): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await db()
+    .from("contracts")
+    .select("id, party_type, merchant_id, ends_on, renewal_min_months, merchant:merchants(renew_owner_mode, renew_agent_mode)")
+    .in("party_type", ["owner", "agent"])
+    .eq("status", "active")
+    .not("ends_on", "is", null)
+    .lte("ends_on", today);
+  for (const c of (data ?? []) as unknown as {
+    id: string; party_type: string; ends_on: string; renewal_min_months: number;
+    merchant: { renew_owner_mode: string; renew_agent_mode: string } | null;
+  }[]) {
+    const mode = c.party_type === "owner" ? c.merchant?.renew_owner_mode : c.merchant?.renew_agent_mode;
+    if (mode !== "auto") continue;
+    const months = Math.max(1, c.renewal_min_months || 1);
+    // Catch up however many periods have passed, so a long gap can't bill wrong.
+    let newEnd = c.ends_on;
+    while (newEnd < today) newEnd = addMonths(newEnd, months);
+    await db().from("contracts").update({ ends_on: newEnd }).eq("id", c.id);
+    await db().from("contract_renewals").insert({
+      contract_id: c.id,
+      months,
+      old_ends_on: c.ends_on,
+      new_ends_on: newEnd,
+      kind: "auto",
+    });
+  }
+}

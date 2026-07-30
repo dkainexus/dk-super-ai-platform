@@ -82,8 +82,9 @@ export async function buildDraft(countryId: string, periodMonth: string, userId:
   // billing whether or not anyone clicked anything.
   const { applyOverdueFreezes } = await import("@/modules/tickets/lib");
   await applyOverdueFreezes();
-  const { applyAssignmentDeadlines } = await import("@/modules/contracts/customer-policy");
+  const { applyAssignmentDeadlines, applyAutoRenewals } = await import("@/modules/contracts/customer-policy");
   await applyAssignmentDeadlines();
+  await applyAutoRenewals();
 
   // Out with the old draft.
   const { data: existing } = await db()

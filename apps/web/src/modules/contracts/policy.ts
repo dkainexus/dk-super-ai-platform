@@ -340,6 +340,7 @@ export async function wireAccountContracts(bankAccountId: string, byUserId: stri
     .neq("status", "terminated")
     .maybeSingle();
   if (!ownerContract) {
+    const term0 = firstOfMonth(addMonths(today, 1));
     const { data: created, error } = await db()
       .from("contracts")
       .insert({
@@ -352,6 +353,8 @@ export async function wireAccountContracts(bankAccountId: string, byUserId: stri
         deposit: 0,
         status: "active",
         starts_on: today,
+        // The term runs from the 1st after the first account; renewal extends it.
+        ends_on: addDays(addMonths(term0, terms.contract_months), -1),
         notes: "Created automatically from the owner's terms",
         created_by: byUserId,
       })
@@ -417,6 +420,10 @@ export async function wireAccountContracts(bankAccountId: string, byUserId: stri
       theft_window_open: row.mode === "turnover",
       status: "active",
       starts_on: today,
+      // Pure turnover has no term at all; everything else ends and renews.
+      ends_on: row.contract_months
+        ? addDays(addMonths(firstOfMonth(addMonths(today, 1)), row.contract_months), -1)
+        : null,
       notes: `Conditions frozen at activation: ${bankName}${row.channel ? ` × ${row.channel}` : " (bank default)"}`,
       created_by: byUserId,
     })

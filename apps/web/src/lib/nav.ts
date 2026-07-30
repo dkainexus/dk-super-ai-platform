@@ -72,6 +72,7 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
         { href: "/admin/contracts/assignments", label: "Assignments" },
         { href: "/admin/contracts/customer-defaults", label: "Customer Defaults" },
         { href: "/admin/contracts/terms", label: "Terms & Conditions" },
+        { href: "/admin/contracts/terminations", label: "Termination Requests" },
       ];
     }
     if (!isMerchant && !isGlobal && m.key === "tickets") {

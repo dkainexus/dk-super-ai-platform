@@ -372,3 +372,84 @@ export async function markAssignmentReady(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(`${back}?saved=live`);
 }
+
+/** The white label's renewal switches: auto, or manual — meaning we confirm. */
+export async function saveRenewModes(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("contracts", "edit");
+  if (!cu.merchant) fail("/admin", "Set on the white label's own console");
+  const back = "/m/contract-policy";
+  const mode = (v: FormDataEntryValue | null) => (String(v ?? "auto") === "manual" ? "manual" : "auto");
+  const { error } = await db()
+    .from("merchants")
+    .update({
+      renew_owner_mode: mode(formData.get("renew_owner_mode")),
+      renew_agent_mode: mode(formData.get("renew_agent_mode")),
+    })
+    .eq("id", cu.merchant.id);
+  if (error) fail(back, `Failed to save: ${error.message}`);
+  revalidatePath(back);
+  redirect(`${back}?saved=renew`);
+}
+
+// ---------- termination requests ----------
+
+export async function decideTermination(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("contracts", "edit");
+  if (cu.merchant) fail("/m", "Terminations are decided by the platform");
+  const id = String(formData.get("id") ?? "");
+  const back = "/admin/contracts/terminations";
+  const decision = String(formData.get("decision") ?? "");
+  const note = String(formData.get("admin_note") ?? "").trim();
+
+  const { data } = await db()
+    .from("termination_requests")
+    .select("*, bank_account:bank_accounts(id, account_no)")
+    .eq("id", id)
+    .eq("status", "pending")
+    .maybeSingle();
+  if (!data) fail(back, "Request not found or already decided");
+  const req = data as unknown as { id: string; owner_id: string; bank_account_id: string };
+
+  if (decision === "reject") {
+    await db()
+      .from("termination_requests")
+      .update({ status: "rejected", admin_note: note || null, decided_by: cu.user.id, decided_at: new Date().toISOString() })
+      .eq("id", id);
+  } else if (decision === "approve") {
+    if (!note) fail(back, "Record what was agreed with the agent (compensation) before approving");
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Every contract line on this account ends today; single-account contracts
+    // (customer, agent) terminate outright, the owner's shared one lives on.
+    const { data: lines } = await db()
+      .from("contract_accounts")
+      .select("id, contract_id, contract:contracts!inner(party_type)")
+      .eq("bank_account_id", req.bank_account_id)
+      .is("ends_on", null);
+    for (const l of (lines ?? []) as unknown as { id: string; contract_id: string; contract: { party_type: string } }[]) {
+      await db().from("contract_accounts").update({ ends_on: today }).eq("id", l.id);
+      if (l.contract.party_type !== "owner") {
+        await db().from("contracts").update({ status: "terminated", ends_on: today }).eq("id", l.contract_id);
+      }
+    }
+    await db()
+      .from("bank_accounts")
+      .update({ status: "closed", closed_at: new Date().toISOString() })
+      .eq("id", req.bank_account_id);
+    await db()
+      .from("account_assignments")
+      .update({ status: "cancelled", cancel_reason: "Account terminated on the owner's request" })
+      .eq("bank_account_id", req.bank_account_id)
+      .neq("status", "cancelled");
+    await db()
+      .from("termination_requests")
+      .update({ status: "approved", admin_note: note, decided_by: cu.user.id, decided_at: new Date().toISOString() })
+      .eq("id", id);
+    const { notifyOwner } = await import("@/modules/notifications/lib");
+    await notifyOwner(req.owner_id, "general", "Account termination approved", "Your termination request was approved — the account is closed.").catch(() => {});
+  } else {
+    fail(back, "Unknown decision");
+  }
+  revalidatePath(back);
+  redirect(`${back}?saved=${decision}`);
+}

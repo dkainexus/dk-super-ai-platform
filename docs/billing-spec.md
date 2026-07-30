@@ -524,3 +524,39 @@ advance; rent_plus_turnover = base in advance plus the whole share;
 max = the customer model (base as floor). Turnover money is never prorated.
 
 Manual contract creation remains for customers only.
+
+## §16 Customer assignment, confirmation and renewals (2026-07-30, batch 7)
+
+**Assignment.** The flow starts from an active account: assigning it to a
+customer prices from the customer's own condition table — a copy of the
+platform's Customer Defaults made at customer creation, negotiable per
+customer, same bank × channel × mode shape as the agent table plus a setup
+fee. The form has no price field. The matched row and the current T&C version
+freeze onto the assignment (TH-ASG refs).
+
+**Confirmation gate.** A customer with any unconfirmed agreement cannot enter
+the portal: they read the conditions and the full fixed text, tick acceptance,
+and the timestamp is recorded against that exact T&C version. The T&C is
+versioned and immutable per country (white-label override reserved);
+publishing is adding a version. Every agreement downloads as a PDF (Noto
+fonts, Thai-capable) and old versions stay readable forever.
+
+**Confirmation is not activation.** The delivery fork is set at assignment
+(changeable until live): mail collects an address into the customer's reusable
+address book; direct binding auto-opens a free ticket of the binding type
+(ticket_types.is_binding). Billing starts the day after the account is marked
+bound & working — and on day 14 after assignment regardless, confirmed or
+not, applied by the sweep before every billing draft.
+
+**Renewals.** Customers renew only by hand, in the portal, inside the window,
+re-accepting the current T&C — recorded in contract_renewals. Outside the
+window it is by agreement (admin). Owner and agent renewal is per white
+label: auto (the sweep extends by the renewal months and records it) or
+manual — meaning the platform confirms; until then an expired contract stops
+billing. Owner/agent contracts now carry real end dates from activation
+(pure-turnover agent deals have none).
+
+**Termination.** An owner asks out from the app; the admin negotiates the
+agent's compensation and must record it to approve — then every contract line
+on the account ends today, single-party contracts terminate, the account
+closes, and any open assignment is cancelled.

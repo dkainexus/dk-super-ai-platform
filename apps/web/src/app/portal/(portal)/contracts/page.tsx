@@ -2,12 +2,22 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { customerForUser } from "@/modules/customers/lib";
 import { renewalState, today, type Contract } from "@/modules/contracts/lib";
+import { renewMyContract } from "@/app/portal/actions";
+import { currentTnc } from "@/modules/contracts/customer-policy";
+import { ErrorBanner } from "@/components/error-banner";
+import { ActionButton } from "@/components/action-buttons";
 import { fmtNum } from "@/lib/format";
 
 // The customer's contracts: terms, dates, and where renewal stands.
-export default async function PortalContractsPage() {
+export default async function PortalContractsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; saved?: string }>;
+}) {
   const cu = (await getCurrentUser())!;
   const c = (await customerForUser(cu.user.id))!;
+  const { error, saved } = await searchParams;
+  const tnc = c.country_id ? await currentTnc(c.country_id, null) : null;
 
   const { data } = await db()
     .from("contracts")
@@ -28,6 +38,12 @@ export default async function PortalContractsPage() {
         </p>
       </div>
 
+      <ErrorBanner message={error} />
+      {saved === "renewed" && (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">
+          Renewed — your acceptance of the current terms is on record.
+        </p>
+      )}
       {rows.length === 0 && <p className="card px-5 py-6 text-sm text-muted">No contracts yet.</p>}
 
       {rows.map((k) => {
@@ -56,7 +72,7 @@ export default async function PortalContractsPage() {
               <div>
                 <p className="text-[10px] uppercase tracking-wide text-muted">Renewal</p>
                 <p>
-                  {renewal === "open" && <span className="text-warning">window open — contact us to renew</span>}
+                  {renewal === "open" && <span className="text-warning">window open — renew below</span>}
                   {renewal === "closed" && <span className="text-danger">window closed — by agreement only</span>}
                   {renewal === "not_yet" && k.ends_on && (
                     <span className="text-muted">opens {k.renewal_window_days} days before {k.ends_on}</span>
@@ -65,6 +81,19 @@ export default async function PortalContractsPage() {
                 </p>
               </div>
             </div>
+            {renewal === "open" && k.status === "active" && (
+              <form action={renewMyContract} className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+                <input type="hidden" name="id" value={k.id} />
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="accept" value="yes" required />
+                  <span>
+                    I renew for {Math.max(1, k.renewal_min_months || 1)} more months and accept the current{" "}
+                    {tnc ? `terms (v${tnc.version})` : "terms"}.
+                  </span>
+                </label>
+                <ActionButton icon="check" tip="Extend your contract and record your acceptance" label="Renew" variant="success" />
+              </form>
+            )}
           </section>
         );
       })}
