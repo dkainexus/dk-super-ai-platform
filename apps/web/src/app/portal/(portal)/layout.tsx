@@ -16,6 +16,15 @@ export default async function PortalLayout({ children }: { children: React.React
   if (!c) redirect(cu.merchant ? "/m" : "/admin");
   if (c.status !== "active") redirect("/portal/login");
 
+  // An unconfirmed agreement blocks the door: read it, accept it, then enter.
+  const { db } = await import("@/lib/supabase");
+  const { count } = await db()
+    .from("account_assignments")
+    .select("id", { count: "exact", head: true })
+    .eq("customer_id", c.id)
+    .eq("status", "awaiting_confirmation");
+  if ((count ?? 0) > 0) redirect("/portal/agreements");
+
   return (
     <AppShell
       brand={{ name: cu.merchant?.name ?? "Customer Portal", homeHref: "/portal" }}
@@ -23,6 +32,7 @@ export default async function PortalLayout({ children }: { children: React.React
         {
           items: [
             { href: "/portal", label: "My Accounts" },
+            { href: "/portal/agreements", label: "My Agreements" },
             { href: "/portal/contracts", label: "My Contracts" },
             { href: "/portal/turnover", label: "Monthly Turnover" },
             { href: "/portal/invoices", label: "Invoices" },

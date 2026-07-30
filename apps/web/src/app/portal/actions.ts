@@ -173,3 +173,117 @@ export async function replyTicket(formData: FormData): Promise<void> {
   revalidatePath(back);
   redirect(back);
 }
+
+/**
+ * The customer accepts an assignment: the confirmation is recorded against
+ * the exact conditions and T&C version frozen at assignment. Mail needs an
+ * address (saved for next time); direct binding opens a free support ticket.
+ */
+export async function confirmAssignment(formData: FormData): Promise<void> {
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/portal/login");
+  const customer = await customerForUser(cu.user.id);
+  if (!customer) redirect("/portal/login");
+  const id = String(formData.get("id") ?? "");
+  const back = "/portal/agreements";
+  const failTo = (m: string): never => redirect(`${back}?error=${encodeURIComponent(m)}`);
+
+  const { data } = await db()
+    .from("account_assignments")
+    .select("*")
+    .eq("id", id)
+    .eq("customer_id", customer.id)
+    .maybeSingle();
+  if (!data) failTo("Assignment not found");
+  const a = data as import("@/modules/contracts/customer-policy").Assignment;
+  if (a.status !== "awaiting_confirmation") failTo("Already confirmed");
+
+  if (String(formData.get("accept") ?? "") !== "yes") {
+    failTo("Please tick that you have read and accept the terms");
+  }
+
+  // Mail needs somewhere to send it.
+  let address: { name: string; phone: string; address: string } | null = null;
+  if (a.delivery_method === "mail") {
+    const addrId = String(formData.get("address_id") ?? "");
+    if (addrId) {
+      const { data: saved } = await db()
+        .from("customer_addresses")
+        .select("name, phone, address")
+        .eq("id", addrId)
+        .eq("customer_id", customer.id)
+        .maybeSingle();
+      if (!saved) failTo("That saved address wasn't found");
+      address = saved as { name: string; phone: string; address: string };
+    } else {
+      const name = String(formData.get("addr_name") ?? "").trim();
+      const phone = String(formData.get("addr_phone") ?? "").trim();
+      const addr = String(formData.get("addr_address") ?? "").trim();
+      if (!name || !phone || !addr) failTo("Mail delivery needs a name, phone and address");
+      address = { name, phone, address: addr };
+      await db().from("customer_addresses").insert({ customer_id: customer.id, ...address });
+    }
+  }
+
+  const { data: locked } = await db()
+    .from("account_assignments")
+    .update({
+      status: "confirmed",
+      confirmed_at: new Date().toISOString(),
+      address,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("status", "awaiting_confirmation")
+    .select("id");
+  if (!locked || locked.length === 0) failTo("Already confirmed");
+
+  // The billing contract exists from this moment — dormant until it goes live.
+  const { wireCustomerContract } = await import("@/modules/contracts/customer-policy");
+  await wireCustomerContract({ ...a, status: "confirmed" }, cu.user.id);
+
+  // Direct binding goes through support, free of charge.
+  if (a.delivery_method === "direct") {
+    let { data: type } = await db()
+      .from("ticket_types")
+      .select("id")
+      .eq("country_id", a.country_id ?? "")
+      .eq("is_binding", true)
+      .is("merchant_id", null)
+      .maybeSingle();
+    if (!type) {
+      const { data: created } = await db()
+        .from("ticket_types")
+        .insert({
+          country_id: a.country_id,
+          name: "Account Binding",
+          default_assignee: "phone_cs",
+          window_days: 14,
+          is_binding: true,
+          sort: 5,
+        })
+        .select("id")
+        .single();
+      type = created;
+    }
+    const { data: ticket } = await db()
+      .from("tickets")
+      .insert({
+        merchant_id: a.merchant_id,
+        country_id: a.country_id,
+        bank_account_id: a.bank_account_id,
+        customer_id: customer.id,
+        type_id: type?.id ?? null,
+        description: `Account binding — ${a.ref ?? a.id}. Customer confirmed the agreement; walk them through binding.`,
+        status: "assigned",
+        assigned_to: "phone_cs",
+        assigned_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+    if (ticket) await db().from("account_assignments").update({ binding_ticket_id: ticket.id }).eq("id", id);
+  }
+
+  revalidatePath(back);
+  redirect(`${back}?saved=confirmed`);
+}

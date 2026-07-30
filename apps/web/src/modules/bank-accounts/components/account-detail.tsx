@@ -28,6 +28,7 @@ export function BankAccountDetail({
   countryCodes,
   channels,
   error,
+  extra,
 }: {
   a: BankAccountRow;
   base: string;
@@ -36,6 +37,8 @@ export function BankAccountDetail({
   countryCodes: Record<string, string>;
   channels: string[];
   error?: string;
+  /** Platform-side extras (the customer assignment card). */
+  extra?: React.ReactNode;
 }) {
   const back = `${base}/${a.id}`;
   const enabledChannels = Object.entries(a.channels ?? {})
@@ -268,6 +271,8 @@ export function BankAccountDetail({
         </div>
       )}
       </section>
+
+      {extra}
 
       <AuditLine
         createdBy={(a as { created_by?: string | null }).created_by}

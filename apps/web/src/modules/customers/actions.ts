@@ -89,6 +89,12 @@ export async function createCustomer(formData: FormData): Promise<void> {
     .single();
   if (error || !data) fail(back, `Failed to create: ${error?.message ?? "unknown"}`);
 
+  // Our customers start on the platform's default conditions — their own copy.
+  if (f.belongs_to === "platform" && countryId) {
+    const { copyTemplateToCustomer } = await import("@/modules/contracts/customer-policy");
+    await copyTemplateToCustomer(countryId, data.id, merchantId, cu.user.id).catch(() => {});
+  }
+
   revalidate();
   redirect(`${c.prefix}/${data.id}`);
 }

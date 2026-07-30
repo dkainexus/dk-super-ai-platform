@@ -78,9 +78,12 @@ type LoadedContract = Contract & {
  */
 export async function buildDraft(countryId: string, periodMonth: string, userId: string): Promise<string> {
   // The picture must be current before any arithmetic: overdue tickets freeze
-  // their accounts right here, not on some other page visit.
+  // their accounts right here, and assignments past their 14-day cap start
+  // billing whether or not anyone clicked anything.
   const { applyOverdueFreezes } = await import("@/modules/tickets/lib");
   await applyOverdueFreezes();
+  const { applyAssignmentDeadlines } = await import("@/modules/contracts/customer-policy");
+  await applyAssignmentDeadlines();
 
   // Out with the old draft.
   const { data: existing } = await db()
