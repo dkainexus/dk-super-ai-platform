@@ -4,7 +4,7 @@ import { shipmentsFor, shipmentStage, couriersFor, trackingUrl } from "@/modules
 import { markShipped, updateTracking } from "@/modules/shipping/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
-import { Table, TableToolbar, FilterSelect } from "@/components/data-table";
+import { TableToolbar, FilterSelect } from "@/components/data-table";
 import { FilterForm } from "@/components/filter-form";
 
 const STAGE_STYLE: Record<string, string> = {
@@ -74,100 +74,89 @@ export default async function ShippingPage({
         </FilterForm>
       </TableToolbar>
 
-      <Table head={["Customer", "Courier / Tracking", "Stage"]}>
-        {rows.length === 0 && (
-          <tr>
-            <td colSpan={3} className="px-4 py-6 text-sm text-muted">Nothing here.</td>
-          </tr>
-        )}
+      <div className="card divide-y divide-border p-0">
+        {rows.length === 0 && <p className="px-5 py-6 text-sm text-muted">Nothing here.</p>}
         {rows.map((s) => {
           const st = shipmentStage(s);
+          const url = trackingUrl(s.courier_rec?.url_template, s.tracking_no);
           return (
-            <tr key={s.id} className="align-top transition-colors hover:bg-surface-raised">
-              <td className="px-4 py-2.5 text-sm">
-                {s.customer?.name ?? "?"}
-                <span className="mono-num block text-[11px] text-muted">{s.ref ?? ""}</span>
-                <details className="mt-0.5 text-xs text-muted">
-                  <summary className="cursor-pointer hover:text-foreground">details</summary>
-                  <p className="mt-1">
-                    {s.address.name} · {s.address.phone}
-                    <span className="block">{s.address.address}</span>
-                    <span className="mono-num block">
-                      {s.assignment?.bank_account?.bank?.name ?? "?"} {s.assignment?.bank_account?.account_no ?? ""} ·{" "}
-                      {s.assignment?.ref ?? ""}
-                    </span>
-                  </p>
-                </details>
-              </td>
-              <td className="px-4 py-2.5">
+            <div key={s.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">
+                  {s.customer?.name ?? "?"}
+                  <span className="mono-num ml-2 text-[11px] font-normal text-muted">{s.ref ?? ""}</span>
+                </p>
+                <p className="truncate text-xs text-muted">
+                  {s.address.name} · {s.address.phone} · {s.address.address}
+                </p>
+                <p className="mono-num truncate text-[11px] text-muted">
+                  {s.assignment?.bank_account?.bank?.name ?? "?"} {s.assignment?.bank_account?.account_no ?? ""} ·{" "}
+                  {s.assignment?.ref ?? ""}
+                </p>
+              </div>
+
+              <div className="flex flex-col items-end gap-0.5 text-right">
+                <span className={`rounded-full border px-2.5 py-0.5 text-[11px] ${STAGE_STYLE[st]}`}>{STAGE_LABEL[st]}</span>
+                {s.shipped_at && (
+                  <span className="text-[11px] text-muted">
+                    shipped {s.shipped_at.slice(0, 10)}
+                    {s.received_at ? ` · received ${s.received_at.slice(0, 10)}` : ""}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
                 {st === "to_ship" && canEdit ? (
                   <form action={markShipped} className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="back" value={back} />
-                    <select name="courier_id" className="input w-auto px-2 py-1 text-xs" required>
+                    <select name="courier_id" className="input w-auto" required>
                       <option value="">— Courier —</option>
                       {couriers.map((co) => (
                         <option key={co.id} value={co.id}>{co.name}</option>
                       ))}
                     </select>
-                    <input name="tracking_no" className="input mono-num w-36 px-2 py-1 text-xs" placeholder="Tracking no." />
+                    <input name="tracking_no" className="input mono-num w-44" placeholder="Tracking no." />
                     <ActionButton icon="send" tip="The parcel left — the customer sees the tracking number" label="Shipped" variant="primary" />
                   </form>
                 ) : st === "in_transit" && canEdit ? (
                   <form action={updateTracking} className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="back" value={back} />
-                    <select name="courier_id" defaultValue={s.courier_id ?? ""} className="input w-auto px-2 py-1 text-xs" required>
+                    <select name="courier_id" defaultValue={s.courier_id ?? ""} className="input w-auto" required>
                       <option value="">— Courier —</option>
                       {couriers.map((co) => (
                         <option key={co.id} value={co.id}>{co.name}</option>
                       ))}
                     </select>
-                    <input name="tracking_no" defaultValue={s.tracking_no ?? ""} className="input mono-num w-36 px-2 py-1 text-xs" />
+                    <input name="tracking_no" defaultValue={s.tracking_no ?? ""} className="input mono-num w-44" />
                     <ActionButton icon="save" tip="Fix the courier or tracking number" variant="outline" />
-                  </form>
-                ) : (
-                  <span className="mono-num text-xs text-muted">
-                    {s.courier ? `${s.courier} · ` : "—"}
-                    {s.tracking_no &&
-                      (trackingUrl(s.courier_rec?.url_template, s.tracking_no) ? (
-                        <a
-                          href={trackingUrl(s.courier_rec?.url_template, s.tracking_no)!}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-accent-strong hover:underline"
-                        >
-                          {s.tracking_no}
-                        </a>
-                      ) : (
-                        s.tracking_no
-                      ))}
-                  </span>
-                )}
-                {s.shipped_at && (
-                  <p className="mt-1 text-[11px] text-muted">
-                    shipped {s.shipped_at.slice(0, 10)}
-                    {s.received_at ? ` · received ${s.received_at.slice(0, 10)}` : ""}
-                    {trackingUrl(s.courier_rec?.url_template, s.tracking_no) && (
-                      <a
-                        href={trackingUrl(s.courier_rec?.url_template, s.tracking_no)!}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="ml-2 text-accent-strong hover:underline"
-                      >
+                    {url && (
+                      <a href={url} target="_blank" rel="noreferrer" className="text-xs text-accent-strong hover:underline">
                         Track ↗
                       </a>
                     )}
-                  </p>
+                  </form>
+                ) : (
+                  s.tracking_no && (
+                    <span className="mono-num text-xs text-muted">
+                      {s.courier} ·{" "}
+                      {url ? (
+                        <a href={url} target="_blank" rel="noreferrer" className="text-accent-strong hover:underline">
+                          {s.tracking_no} ↗
+                        </a>
+                      ) : (
+                        s.tracking_no
+                      )}
+                    </span>
+                  )
                 )}
-              </td>
-              <td className="px-4 py-2.5">
-                <span className={`rounded-full border px-2.5 py-0.5 text-[11px] ${STAGE_STYLE[st]}`}>{STAGE_LABEL[st]}</span>
-              </td>
-            </tr>
+              </div>
+
+            </div>
           );
         })}
-      </Table>
+      </div>
     </div>
   );
 }
