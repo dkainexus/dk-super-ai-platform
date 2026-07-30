@@ -76,7 +76,8 @@ export async function saveCourier(formData: FormData): Promise<void> {
   const name = String(formData.get("name") ?? "").trim();
   const urlTemplate = String(formData.get("url_template") ?? "").trim() || null;
   if (!countryId || !name) fail(back, "Enter the courier's name");
-  if (urlTemplate && !urlTemplate.includes("{tracking}"))
+  if (!urlTemplate) fail(back, "Every courier needs its tracking link — that's what makes the numbers clickable");
+  if (!urlTemplate.includes("{tracking}"))
     fail(back, "The tracking link must contain {tracking} where the number goes");
 
   const row = { country_id: countryId, name, url_template: urlTemplate };

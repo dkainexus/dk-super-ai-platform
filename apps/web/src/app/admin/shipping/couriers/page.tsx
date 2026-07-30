@@ -57,6 +57,7 @@ export default async function CouriersPage({
                     defaultValue={c.url_template ?? ""}
                     className="input mono-num py-1.5 text-xs"
                     placeholder="https://…/track?no={tracking}"
+                    required
                   />
                 </div>
                 <ActionButton icon="save" tip="Save this courier" label="Save" variant="outline" />
@@ -97,6 +98,7 @@ export default async function CouriersPage({
                 name="url_template"
                 className="input mono-num py-1.5 text-xs"
                 placeholder="https://th.kerryexpress.com/track/?track={tracking}"
+                required
               />
             </div>
             <ActionButton icon="plus" tip="Add this courier" label="Add" variant="primary" />
