@@ -10,12 +10,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `Sign in — ${platform.name}` };
 }
 
-// The platform door. On a white label's own domain this door doesn't exist —
-// visitors are theirs, so they get the white label sign-in.
+// The one door. On a white label's own domain it wears their brand; the
+// account decides where you land after.
 export default async function LoginPage() {
   const cu = await getCurrentUser();
   if (cu) redirect(homePath(cu));
-  if (await tenantFromHost()) redirect("/m/login");
+  const tenant = await tenantFromHost();
 
-  return <LoginPageView audience="admin" subtitle="Platform back office" />;
+  return <LoginPageView audience="admin" subtitle={tenant ? "Console sign-in" : "Sign in"} />;
 }

@@ -37,6 +37,29 @@ export async function agents(opts: { merchantId?: string; countryId?: string }):
   return (data ?? []) as unknown as AgentRow[];
 }
 
+export async function agentPage(opts: {
+  merchantId?: string;
+  countryId?: string;
+  status?: string;
+  q?: string;
+  from: number;
+  to: number;
+}): Promise<{ rows: AgentRow[]; total: number }> {
+  let q = db()
+    .from("agents")
+    .select(AGENT_SELECT, { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(opts.from, opts.to);
+  if (opts.merchantId) q = q.eq("merchant_id", opts.merchantId);
+  if (opts.countryId) q = q.eq("country_id", opts.countryId);
+  if (opts.status) q = q.eq("status", opts.status);
+  const needle = (opts.q ?? "").trim().replace(/[,()%]/g, "");
+  if (needle) q = q.or(`full_name.ilike.%${needle}%,ref.ilike.%${needle}%,phone.ilike.%${needle}%`);
+  const { data, count } = await q;
+  const rows = (data ?? []) as unknown as AgentRow[];
+  return { rows, total: count ?? rows.length };
+}
+
 export async function agent(id: string): Promise<AgentRow | null> {
   const { data } = await db().from("agents").select(AGENT_SELECT).eq("id", id).maybeSingle();
   return (data ?? null) as unknown as AgentRow | null;

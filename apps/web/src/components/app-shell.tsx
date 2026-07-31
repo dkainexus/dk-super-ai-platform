@@ -9,6 +9,8 @@ export type ShellBrand = {
   name: string;
   logoUrl?: string | null;
   homeHref: string;
+  /** Small wordmark under the name; derived from homeHref when omitted. */
+  sub?: string;
 };
 
 export type ShellUser = {
@@ -19,7 +21,8 @@ export type ShellUser = {
 
 function Brand({ brand, onClick }: { brand: ShellBrand; onClick?: () => void }) {
   const sub =
-    brand.homeHref === "/m" ? "Partner Console" : brand.homeHref === "/admin" ? "Admin Console" : "Customer Portal";
+    brand.sub ??
+    (brand.homeHref === "/m" ? "Partner Console" : brand.homeHref === "/admin" ? "Admin Console" : "Customer Portal");
   return (
     <Link href={brand.homeHref} onClick={onClick} className="flex items-center gap-3 px-2 py-1">
       {brand.logoUrl ? (

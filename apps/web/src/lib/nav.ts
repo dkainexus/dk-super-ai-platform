@@ -155,6 +155,17 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   } else if (settingsItems.length) {
     sections.push({ heading: "System", items: settingsItems });
   }
+
+  // Partners live under /admin now (the middleware serves their console
+  // there) — the links must say so, or the active state never matches.
+  if (isMerchant) {
+    const remap = (i: NavItem): NavItem => ({
+      ...i,
+      href: i.href.replace(/^\/m(?=\/|$)/, "/admin"),
+      children: i.children?.map(remap),
+    });
+    return sections.map((sec) => ({ ...sec, items: sec.items.map(remap) }));
+  }
   return sections;
 }
 

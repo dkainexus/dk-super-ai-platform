@@ -16,9 +16,8 @@ export async function LoginPageView({
   subtitle: string;
 }) {
   const [tenant, platform] = await Promise.all([tenantFromHost(), platformSettings()]);
-  // The platform door always wears the platform brand; the other two wear
-  // the white label's when they are entered through its domain.
-  const brand = audience === "admin" ? null : tenant;
+  // On a white label's domain the door wears their brand.
+  const brand = tenant;
   const logoUrl = brand ? await signedUrl(ASSETS_BUCKET, brand.logo_path) : null;
 
   return (

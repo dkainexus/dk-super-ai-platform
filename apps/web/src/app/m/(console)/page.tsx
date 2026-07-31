@@ -47,10 +47,6 @@ export default async function MerchantDashboard() {
     companiesRegistered = (data ?? []).filter((c) => c.status === "registered").length;
   }
 
-  // Only an agent enters owners — the quick action follows the same rule
-  // as the Owners page itself.
-  const { agentForUser } = await import("@/modules/agents/lib");
-  const selfAgent = await agentForUser(cu.user.id);
 
   const STATUS_CARDS: { status: OwnerStatus; icon: string; palette: keyof typeof PALETTES }[] = [
     { status: "draft", icon: "📥", palette: "cyan" },
@@ -110,13 +106,8 @@ export default async function MerchantDashboard() {
           </div>
 
           <section>
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Recent Owners</h2>
-              {selfAgent && (
-                <Link href="/m/owners/new" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background hover:bg-accent-strong">
-                  + New Owner
-                </Link>
-              )}
             </div>
             <div className="card divide-y divide-border">
               {list.length === 0 && <p className="px-5 py-6 text-sm text-muted">No owners yet.</p>}

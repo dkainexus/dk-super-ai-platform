@@ -1,14 +1,21 @@
 import Link from "next/link";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
-import { Table, TableToolbar } from "@/components/data-table";
+import { Table, TableToolbar, FilterSelect } from "@/components/data-table";
+import { FilterForm, SearchInput } from "@/components/filter-form";
 import { RowSettings } from "@/components/row-actions";
+import { Pagination } from "@/components/pagination";
 import type { AgentRow } from "../lib";
 
 // Shared Agents index for /admin/agents and /m/agents.
 export function AgentsList({
   base,
   rows,
+  total,
+  page,
+  perPage,
+  status = "",
+  q = "",
   error,
   canAdd,
   where,
@@ -16,6 +23,11 @@ export function AgentsList({
 }: {
   base: string;
   rows: AgentRow[];
+  total: number;
+  page: number;
+  perPage: number;
+  status?: string;
+  q?: string;
   error?: string;
   canAdd: boolean;
   /** The country being worked in, for the subtitle. */
@@ -44,12 +56,26 @@ export function AgentsList({
       </div>
       <ErrorBanner message={error} />
 
-      <TableToolbar count={rows.length} noun="agent" />
+      <TableToolbar count={total} noun="agent">
+        <FilterForm action={base}>
+          <SearchInput placeholder="Name, ref, phone…" defaultValue={q} />
+          <FilterSelect
+            label="Status"
+            name="status"
+            value={status}
+            options={[
+              { value: "", label: "All statuses" },
+              { value: "active", label: "Active" },
+              { value: "suspended", label: "Suspended" },
+            ]}
+          />
+        </FilterForm>
+      </TableToolbar>
 
       <Table head={head}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={head.length} className="px-4 py-6 text-sm text-muted">No agents yet.</td>
+            <td colSpan={head.length} className="px-4 py-6 text-sm text-muted">No agents match.</td>
           </tr>
         )}
         {rows.map((a) => (
@@ -70,6 +96,8 @@ export function AgentsList({
           </tr>
         ))}
       </Table>
+
+      <Pagination basePath={base} params={{ status, q }} page={page} perPage={perPage} total={total} />
     </div>
   );
 }

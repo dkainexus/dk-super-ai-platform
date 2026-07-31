@@ -42,7 +42,8 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
       brand={{
         name: cu.merchant ? cu.merchant.name : platform.name,
         logoUrl: merchantLogo,
-        homeHref: cu.merchant ? "/m" : "/admin",
+        homeHref: "/admin",
+        sub: cu.merchant ? "Partner Console" : "Admin Console",
       }}
       sections={sections}
       user={{

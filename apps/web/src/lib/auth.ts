@@ -40,7 +40,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 }
 
 export function homePath(cu: CurrentUser): string {
-  return cu.merchant ? "/m" : "/admin";
+  // One address after sign-in — partners are served their console under
+  // /admin by the middleware rewrite.
+  void cu;
+  return "/admin";
 }
 
 /** Effective scope for a module action, or null when not allowed. */
