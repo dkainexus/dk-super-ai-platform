@@ -132,15 +132,17 @@ export async function toggleExpenseCategory(formData: FormData): Promise<void> {
 export async function saveExpenseItem(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("expenses", "edit");
   if (cu.merchant) redirect("/m");
-  const back = "/admin/expenses/categories";
+  const back = "/admin/expenses/items";
+  const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
+  const categoryId = String(formData.get("category_id") ?? "");
   if (!name) fail(back, "Name the item");
+  if (!categoryId) fail(back, "Pick the category");
 
-  const { error } = await db().from("expense_items").insert({
-    category_id: String(formData.get("category_id") ?? ""),
-    name,
-  });
-  if (error) fail(back, error.message.includes("duplicate") ? "That item already exists" : `Failed: ${error.message}`);
+  const { error } = id
+    ? await db().from("expense_items").update({ name, category_id: categoryId }).eq("id", id)
+    : await db().from("expense_items").insert({ category_id: categoryId, name });
+  if (error) fail(back, error.message.includes("duplicate") ? "That item already exists in that category" : `Failed: ${error.message}`);
   revalidatePath(back);
   redirect(`${back}?saved=1`);
 }
@@ -152,6 +154,6 @@ export async function toggleExpenseItem(formData: FormData): Promise<void> {
     .from("expense_items")
     .update({ active: String(formData.get("active") ?? "") === "true" })
     .eq("id", String(formData.get("id") ?? ""));
-  revalidatePath("/admin/expenses/categories");
-  redirect("/admin/expenses/categories");
+  revalidatePath("/admin/expenses/items");
+  redirect("/admin/expenses/items");
 }
