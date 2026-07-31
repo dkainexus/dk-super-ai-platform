@@ -26,6 +26,15 @@ const ICONS: Record<string, string> = {
   telegram: "m22 2-7 20-4-9-9-4 20-7Z",
   ai: "M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
   modules: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+  agents: "M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8.6 13.5l6.8 4M15.4 6.5l-6.8 4",
+  customers: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
+  contracts: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 2v6h6M16 13H8M16 17H8",
+  billing: "M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
+  shipping: "M1 4h14v12H1zM15 9h4l4 4v3h-8V9ZM6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm12 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+  tickets: "M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3v5ZM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3v5Z",
+  compensation: "M23 12a11.05 11.05 0 0 0-22 0h22ZM18 19a3 3 0 0 1-6 0v-7",
+  expenses: "M22 17l-8.5-8.5-5 5L2 7M17 17h5v-5",
+  hr: "M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2ZM16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16",
   settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4 0a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.18V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 7.26 19.4l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06A2 2 0 1 1 7.37 6.1l.06.06A1.65 1.65 0 0 0 9.25 6.5V6a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51.6.25 1.3.12 1.77-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 13H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z",
 };
 
@@ -40,12 +49,21 @@ function iconFor(href: string): string {
   if (href.includes("/exams")) return ICONS.exams;
   if (href.includes("/notifications")) return ICONS.notifications;
   if (href.includes("/merchants")) return ICONS.merchants;
-  if (href.includes("/countries")) return ICONS.countries;
+  if (href.includes("/countries") || href.endsWith("/country")) return ICONS.countries;
   if (href.includes("/users") || href.includes("/team")) return ICONS.users;
   if (href.includes("/roles")) return ICONS.roles;
   if (href.includes("/telegram")) return ICONS.telegram;
   if (href.includes("/ai")) return ICONS.ai;
   if (href.includes("/modules")) return ICONS.modules;
+  if (href.includes("/agents")) return ICONS.agents;
+  if (href.includes("/customers")) return ICONS.customers;
+  if (href.includes("/contracts")) return ICONS.contracts;
+  if (href.includes("/billing")) return ICONS.billing;
+  if (href.includes("/shipping")) return ICONS.shipping;
+  if (href.includes("/tickets") || href.includes("/support")) return ICONS.tickets;
+  if (href.includes("/compensation")) return ICONS.compensation;
+  if (href.includes("/expenses")) return ICONS.expenses;
+  if (href.includes("/hr")) return ICONS.hr;
   return ICONS.settings;
 }
 
