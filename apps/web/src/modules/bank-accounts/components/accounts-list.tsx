@@ -2,7 +2,7 @@ import Link from "next/link";
 import { STATUS_COLORS, type BankAccountRow } from "../lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { Table, TableToolbar, FilterSelect } from "@/components/data-table";
-import { FilterForm } from "@/components/filter-form";
+import { FilterForm, SearchInput } from "@/components/filter-form";
 import { RowSettings } from "@/components/row-actions";
 import { Pagination } from "@/components/pagination";
 import { fmtNum } from "@/lib/format";
@@ -17,6 +17,7 @@ export function BankAccountsList({
   status,
   bank,
   merchant,
+  q = "",
   banks,
   merchants,
   rows,
@@ -31,6 +32,7 @@ export function BankAccountsList({
   status: string;
   bank: string;
   merchant: string;
+  q?: string;
   banks: { id: string; name: string; code: string | null }[];
   /** Omitted on the white-label side, where there is only one brand. */
   merchants?: { value: string; label: string }[];
@@ -63,6 +65,7 @@ export function BankAccountsList({
 
       <TableToolbar count={total} noun="account">
         <FilterForm action={base}>
+          <SearchInput placeholder="Account no, ref, name…" defaultValue={q} />
           {merchants && (
             <FilterSelect
               label="White Label"
@@ -131,7 +134,7 @@ export function BankAccountsList({
         ))}
       </Table>
 
-      <Pagination basePath={base} params={{ status, bank, merchant }} page={page} perPage={perPage} total={total} />
+      <Pagination basePath={base} params={{ status, bank, merchant, q }} page={page} perPage={perPage} total={total} />
     </div>
   );
 }

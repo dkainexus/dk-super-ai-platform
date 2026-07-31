@@ -69,6 +69,7 @@ export async function bankAccountPage(opts: {
   countryId?: string;
   status?: string;
   bankId?: string;
+  q?: string;
   from: number;
   to: number;
 }): Promise<{ rows: BankAccountRow[]; total: number }> {
@@ -81,6 +82,8 @@ export async function bankAccountPage(opts: {
   if (opts.countryId) q = q.eq("country_id", opts.countryId);
   if (opts.status) q = q.eq("status", opts.status);
   if (opts.bankId) q = q.eq("bank_id", opts.bankId);
+  const needle = (opts.q ?? "").trim().replace(/[,()%]/g, "");
+  if (needle) q = q.or(`account_no.ilike.%${needle}%,ref.ilike.%${needle}%,account_name.ilike.%${needle}%`);
   const { data, count } = await q;
   const rows = (data ?? []) as unknown as BankAccountRow[];
   return { rows, total: count ?? rows.length };

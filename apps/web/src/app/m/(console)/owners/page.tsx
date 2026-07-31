@@ -4,11 +4,17 @@ import { db } from "@/lib/supabase";
 import { activeCountry } from "@/modules/merchants/lib";
 import { agentForUser } from "@/modules/agents/lib";
 import { OwnerStatusTag } from "@/components/status-tag";
-import { Table, TableToolbar } from "@/components/data-table";
+import { Table, TableToolbar, FilterSelect } from "@/components/data-table";
+import { FilterForm, SearchInput } from "@/components/filter-form";
 import { RowSettings } from "@/components/row-actions";
-import type { Owner, OwnerStatus } from "@/lib/types";
+import { Pagination, pageParams } from "@/components/pagination";
+import { OWNER_STATUS_LABEL, type Owner, type OwnerStatus } from "@/lib/types";
 
-export default async function MerchantOwnersPage() {
+export default async function MerchantOwnersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; q?: string; page?: string; per?: string }>;
+}) {
   const cu = await requireMerchantUser();
   const scope = (await requirePerm("owners", "view")).scope;
   const merchant = cu.merchant;
@@ -16,17 +22,27 @@ export default async function MerchantOwnersPage() {
   // Only an agent enters owners — the white label itself just watches.
   const selfAgent = await agentForUser(cu.user.id);
 
+  const sp = await searchParams;
+  const { status = "", q: search = "" } = sp;
+  const { page, perPage, from, to } = pageParams(sp);
+
   let q = db()
     .from("owners")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("merchant_id", merchant.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
   if (active) q = q.eq("country_id", active.id);
   if (scope === "own") q = q.eq("created_by", cu.user.id);
-  const { data: owners } = await q;
+  if (status) q = q.eq("status", status);
+  const needle = search.trim().replace(/[,()%]/g, "");
+  if (needle)
+    q = q.or(`full_name.ilike.%${needle}%,id_number.ilike.%${needle}%,phone.ilike.%${needle}%,ref.ilike.%${needle}%`);
+  const { data: owners, count } = await q;
+  const total = count ?? (owners ?? []).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Owners{active ? ` — ${active.flag || ""} ${active.name}` : ""}</h1>
         {selfAgent && (
@@ -39,11 +55,25 @@ export default async function MerchantOwnersPage() {
         )}
       </div>
 
-      <TableToolbar count={(owners ?? []).length} noun="owner" />
+      <TableToolbar count={total} noun="owner">
+        <FilterForm action="/m/owners">
+          <SearchInput placeholder="Name, ID, phone, ref…" defaultValue={search} />
+          <FilterSelect
+            label="Status"
+            name="status"
+            value={status}
+            options={[["", "All statuses"], ...Object.entries(OWNER_STATUS_LABEL)].map(([value, label]) => ({
+              value,
+              label,
+            }))}
+          />
+        </FilterForm>
+      </TableToolbar>
+
       <Table head={["ID", "Name", "ID Number", "Phone", "Added", "Status", ""]}>
         {(owners ?? []).length === 0 && (
           <tr>
-            <td colSpan={7} className="px-4 py-6 text-sm text-muted">No owners yet.</td>
+            <td colSpan={7} className="px-4 py-6 text-sm text-muted">No owners match.</td>
           </tr>
         )}
         {((owners ?? []) as Owner[]).map((o) => (
@@ -62,6 +92,8 @@ export default async function MerchantOwnersPage() {
           </tr>
         ))}
       </Table>
+
+      <Pagination basePath="/m/owners" params={{ status, q: search }} page={page} perPage={perPage} total={total} />
     </div>
   );
 }

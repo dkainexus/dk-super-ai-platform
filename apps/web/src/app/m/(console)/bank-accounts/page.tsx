@@ -10,7 +10,7 @@ import { pageParams } from "@/components/pagination";
 export default async function MerchantBankAccountsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; status?: string; bank?: string; page?: string; per?: string }>;
+  searchParams: Promise<{ error?: string; status?: string; bank?: string; q?: string; page?: string; per?: string }>;
 }) {
   const { cu } = await requirePerm("bank_accounts", "view");
   if (!cu.merchant) redirect("/admin/bank-accounts");
@@ -19,14 +19,14 @@ export default async function MerchantBankAccountsPage({
   if (!moduleEnabledFor("bank_accounts", toggles, cu.merchant, active)) redirect("/m");
 
   const sp = await searchParams;
-  const { error, status = "", bank = "" } = sp;
+  const { error, status = "", bank = "", q = "" } = sp;
   const { page, perPage, from, to } = pageParams(sp);
 
   let bq = db().from("banks").select("id, name, code").eq("active", true).order("sort");
   if (active) bq = bq.eq("country_id", active.id);
 
   const [{ rows, total }, counts, { data: banks }] = await Promise.all([
-    bankAccountPage({ merchantId: cu.merchant.id, countryId: active?.id, status, bankId: bank, from, to }),
+    bankAccountPage({ merchantId: cu.merchant.id, countryId: active?.id, status, bankId: bank, q, from, to }),
     bankAccountCounts({ merchantId: cu.merchant.id, countryId: active?.id }),
     bq,
   ]);
@@ -37,6 +37,7 @@ export default async function MerchantBankAccountsPage({
       error={error}
       status={status}
       bank={bank}
+      q={q}
       merchant=""
       banks={(banks ?? []) as { id: string; name: string; code: string | null }[]}
       rows={rows}

@@ -19,3 +19,31 @@ export function FilterForm({ action, children }: { action: string; children: Rea
     </form>
   );
 }
+
+/**
+ * Free-text search inside a FilterForm: typing must NOT auto-submit like the
+ * selects do, so change events stop here — Enter submits the form.
+ */
+export function SearchInput({
+  placeholder = "Search…",
+  defaultValue = "",
+  name = "q",
+}: {
+  placeholder?: string;
+  defaultValue?: string;
+  name?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Search</label>
+      <input
+        name={name}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        autoComplete="off"
+        onChange={(e) => e.stopPropagation()}
+        className="input w-52 py-1.5 text-sm"
+      />
+    </div>
+  );
+}

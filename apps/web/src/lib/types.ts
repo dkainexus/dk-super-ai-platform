@@ -208,6 +208,7 @@ export type CompanyStatus = "preparing" | "registered" | "closed" | "banned";
 
 export type Company = {
   id: string;
+  ref: string | null;
   merchant_id: string;
   country_id: string;
   name: string;

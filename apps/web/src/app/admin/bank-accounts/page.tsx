@@ -9,11 +9,11 @@ import { merchantFilterOptions } from "@/modules/merchants/lib";
 export default async function AdminBankAccountsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; status?: string; bank?: string; merchant?: string; page?: string; per?: string }>;
+  searchParams: Promise<{ error?: string; status?: string; bank?: string; merchant?: string; q?: string; page?: string; per?: string }>;
 }) {
   const { cu } = await requirePerm("bank_accounts", "view");
   const sp = await searchParams;
-  const { error, status = "", bank = "", merchant = "" } = sp;
+  const { error, status = "", bank = "", merchant = "", q = "" } = sp;
   const { page, perPage, from, to } = pageParams(sp);
   const { active } = await requireCountryScope();
 
@@ -21,7 +21,7 @@ export default async function AdminBankAccountsPage({
   if (active) bankQuery = bankQuery.eq("country_id", active.id);
 
   const [{ rows, total }, counts, { data: banks }, merchants] = await Promise.all([
-    bankAccountPage({ countryId: active?.id, status, bankId: bank, merchantId: merchant, from, to }),
+    bankAccountPage({ countryId: active?.id, status, bankId: bank, merchantId: merchant, q, from, to }),
     bankAccountCounts({ countryId: active?.id }),
     bankQuery,
     merchantFilterOptions(active?.id ?? null),
@@ -33,6 +33,7 @@ export default async function AdminBankAccountsPage({
       error={error}
       status={status}
       bank={bank}
+      q={q}
       merchant={merchant}
       merchants={merchants}
       banks={(banks ?? []) as { id: string; name: string; code: string | null }[]}
