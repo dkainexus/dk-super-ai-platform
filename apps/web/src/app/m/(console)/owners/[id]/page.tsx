@@ -5,6 +5,10 @@ import { db } from "@/lib/supabase";
 import { regionTree, addressLevels } from "@/modules/countries/regions";
 import { env } from "@/lib/env";
 import { submitOwnerForReview, deleteOwner, generateOwnerInvite } from "@/modules/owners/actions-merchant";
+import { uploadOwnerPhoto, removeOwnerPhoto } from "@/modules/owners/actions";
+import { ImagePicker } from "@/components/image-picker";
+import { can } from "@/lib/auth";
+import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 import { CopyField } from "@/components/copy-field";
 import { banksForCountry } from "@/modules/banks/lib";
 import { allowedCountries } from "@/modules/merchants/lib";
@@ -62,6 +66,8 @@ export default async function MerchantOwnerDetailPage({
     occupationsList(),
   ]);
 
+  const photoUrl = await signedUrl(DOCS_BUCKET, owner.photo_full_body_path, 60 * 30);
+
   return (
     <div className="space-y-6">
       <div>
@@ -69,6 +75,19 @@ export default async function MerchantOwnerDetailPage({
           ← Owners
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
+          <ImagePicker
+            url={photoUrl}
+            canEdit={Boolean(can(cu, "owners", "edit"))}
+            uploadAction={uploadOwnerPhoto}
+            removeAction={removeOwnerPhoto}
+            fieldName="photo"
+            hidden={{ id: owner.id, back: `/m/owners/${owner.id}` }}
+            fallback="👤"
+            tip="profile picture"
+            size="h-14 w-14"
+            rounded="rounded-full"
+            fit="object-cover"
+          />
           <h1 className="text-xl font-semibold">{owner.full_name || "(no name yet)"}</h1>
           <OwnerStatusTag status={owner.status} />
         </div>

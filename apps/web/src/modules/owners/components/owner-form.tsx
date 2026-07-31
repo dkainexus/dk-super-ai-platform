@@ -6,6 +6,7 @@
 import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
 import { PhotoInput } from "@/components/photo-input";
 import { IdPhotoInput } from "@/components/id-photo-input";
+import { IdOcrScan } from "@/modules/owners/components/id-ocr-scan";
 import { AddressPicker, type RegionNode } from "@/components/address-picker";
 import { saveOwner } from "@/modules/owners/actions-merchant";
 import { SaveButton } from "@/components/action-buttons";
@@ -124,6 +125,11 @@ export async function OwnerForm({
           <IdPhotoInput name="id_front" label="ID Front *" existingUrl={idFrontUrl} />
           <IdPhotoInput name="id_back" label="ID Back *" existingUrl={idBackUrl} />
         </div>
+        {!locked && (
+          <div className="mt-4">
+            <IdOcrScan />
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
