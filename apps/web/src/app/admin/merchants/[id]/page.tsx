@@ -116,7 +116,89 @@ export default async function MerchantDetailPage({
         </form>
       </section>
 
+      {/* Countries */}
+      <section className="card p-5">
+        <h2 className="mb-1 text-sm font-semibold">Countries</h2>
+        <p className="mb-4 text-xs text-muted">
+          Where this white label operates. A country with owners or companies in it cannot be removed.
+        </p>
+        <form action={saveMerchantCountries} className="space-y-3">
+          <input type="hidden" name="merchant_id" value={m.id} />
+          <div className="flex flex-wrap gap-3">
+            {((allCountries ?? []) as Country[]).map((c) => (
+              <label key={c.id} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+                <input type="checkbox" name={`mc_${c.id}`} defaultChecked={enabledIds.has(c.id)} className="h-4 w-4" disabled={!canEdit} />
+                {c.flag || "🌐"} {c.name}
+              </label>
+            ))}
+          </div>
+          {canEdit && <SaveButton tip="Save the countries this white label operates in" />}
+        </form>
+      </section>
 
+      {/* Accounts */}
+      <section className="card p-5">
+        <h2 className="mb-1 text-sm font-semibold">Accounts</h2>
+        <p className="mb-4 text-xs text-muted">
+          The white label&apos;s sign-ins. Resetting a password forces them to choose a new one at next login.
+        </p>
+        <div className="space-y-3">
+          {((users ?? []) as (User & { role: Role | null })[]).map((u) => (
+            <div key={u.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">
+                  {u.name || u.username} <span className="mono-num font-normal text-muted">{u.username}</span>
+                </p>
+                <p className="text-xs text-muted">{u.role?.name ?? "No role"}</p>
+              </div>
+              <ActiveTag active={u.active} on="Enabled" off="Disabled" />
+              {can(cu, "users", "edit") && (
+                <>
+                  <form action={resetMerchantUserPassword} className="flex items-end gap-2">
+                    <input type="hidden" name="id" value={u.id} />
+                    <input type="hidden" name="merchant_id" value={m.id} />
+                    <input
+                      name="password"
+                      type="text"
+                      placeholder="new password"
+                      className="input w-40 py-1.5 text-sm mono-num"
+                      autoComplete="off"
+                      required
+                    />
+                    <ActionButton icon="key" tip="Set this password — they must change it at next login" label="Reset" variant="outline" />
+                  </form>
+                  <form action={toggleMerchantUser}>
+                    <input type="hidden" name="id" value={u.id} />
+                    <input type="hidden" name="merchant_id" value={m.id} />
+                    <input type="hidden" name="active" value={u.active ? "false" : "true"} />
+                    <ActionButton icon="power" tip={u.active ? "Disable this sign-in" : "Enable this sign-in"} variant="outline" />
+                  </form>
+                </>
+              )}
+            </div>
+          ))}
+          {(users ?? []).length === 0 && <p className="text-sm text-muted">No sign-ins yet — create the first below.</p>}
+        </div>
+
+        {can(cu, "users", "add") && (
+          <form action={createMerchantUser} className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-4 sm:items-end">
+            <input type="hidden" name="merchant_id" value={m.id} />
+            <div>
+              <label className="mb-1 block text-xs text-muted">Username</label>
+              <input name="username" className="input" autoComplete="off" required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">First password</label>
+              <input name="password" type="text" className="input mono-num" autoComplete="off" required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Display name</label>
+              <input name="name" className="input" />
+            </div>
+            <ActionButton icon="plus" tip="Create a White Label Owner sign-in" label="Add Account" variant="primary" />
+          </form>
+        )}
+      </section>
     </div>
   );
 }
