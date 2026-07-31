@@ -105,7 +105,7 @@ export async function updateMerchantByAdmin(formData: FormData): Promise<void> {
 export async function createMerchantUser(formData: FormData): Promise<void> {
   await requirePerm("users", "add");
   const merchantId = String(formData.get("merchant_id") ?? "");
-  const back = `/admin/merchants/${merchantId}`;
+  const back = String(formData.get("back") ?? "") || `/admin/merchants/${merchantId}`;
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const name = String(formData.get("name") ?? "").trim() || null;
@@ -137,7 +137,7 @@ export async function resetMerchantUserPassword(formData: FormData): Promise<voi
   await requirePerm("users", "edit");
   const id = String(formData.get("id") ?? "");
   const merchantId = String(formData.get("merchant_id") ?? "");
-  const back = `/admin/merchants/${merchantId}`;
+  const back = String(formData.get("back") ?? "") || `/admin/merchants/${merchantId}`;
   const password = String(formData.get("password") ?? "");
   if (password.length < 6) fail(back, "New password must be at least 6 characters");
 
@@ -154,7 +154,7 @@ export async function toggleMerchantUser(formData: FormData): Promise<void> {
   const merchantId = String(formData.get("merchant_id") ?? "");
   const active = String(formData.get("active") ?? "") === "true";
   await db().from("users").update({ active }).eq("id", id);
-  revalidatePath(`/admin/merchants/${merchantId}`);
+  revalidatePath(String(formData.get("back") ?? "") || `/admin/merchants/${merchantId}`);
 }
 
 export async function uploadMerchantLogoByAdmin(formData: FormData): Promise<void> {
