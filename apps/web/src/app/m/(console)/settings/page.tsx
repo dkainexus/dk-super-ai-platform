@@ -2,10 +2,11 @@
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { domainStatus, vercelEnabled } from "@/lib/vercel";
-import { updateMerchantSettings, uploadMerchantLogo } from "@/modules/merchants/actions-merchant";
+import { updateMerchantSettings } from "@/modules/merchants/actions-merchant";
+import { LogoEditor } from "@/modules/merchants/components/logo-editor";
 import { SubdomainField } from "@/modules/merchants/components/subdomain-field";
 import { ErrorBanner } from "@/components/error-banner";
-import { SaveButton, SubmitButton } from "@/components/action-buttons";
+import { SaveButton } from "@/components/action-buttons";
 
 const APP_DOMAIN = "dkglobal.group";
 
@@ -132,19 +133,7 @@ export default async function MerchantSettingsPage({
       <section className="card p-6">
         <h2 className="mb-5 text-xs font-semibold uppercase tracking-wider text-muted">Branding</h2>
         <div className="flex flex-wrap items-start gap-6">
-          <div className="shrink-0">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt="logo"
-                className="h-24 w-24 rounded-2xl object-cover shadow-[0_8px_24px_rgba(0,0,0,0.45)] ring-1 ring-white/10"
-              />
-            ) : (
-              <span className="flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-[#8b5cf6] text-3xl font-bold text-white shadow-[0_8px_24px_rgba(77,122,255,0.35)]">
-                {merchant.name.slice(0, 1).toUpperCase()}
-              </span>
-            )}
-          </div>
+          <LogoEditor logoUrl={logoUrl} initial={merchant.name.slice(0, 1).toUpperCase()} />
           <form action={updateMerchantSettings} className="min-w-0 flex-1 space-y-4">
             <div>
               <label className="mb-1 block text-xs text-muted">Brand name</label>
@@ -170,14 +159,6 @@ export default async function MerchantSettingsPage({
             <SaveButton />
           </form>
         </div>
-
-        <form action={uploadMerchantLogo} className="mt-5 flex items-end gap-3 border-t border-border pt-4">
-          <div className="flex-1">
-            <label className="mb-1 block text-xs text-muted">Change logo (≤2MB, square recommended)</label>
-            <input name="logo" type="file" accept="image/*" className="input" required />
-          </div>
-          <SubmitButton label="Upload" variant="outline" />
-        </form>
 
         <div className="mt-5">
           <DomainGuide />

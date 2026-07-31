@@ -63,6 +63,13 @@ export async function uploadMerchantLogo(formData: FormData): Promise<void> {
   revalidatePath("/m", "layout");
 }
 
+export async function removeMerchantLogo(): Promise<void> {
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("settings", "edit");
+  await db().from("merchants").update({ logo_path: null }).eq("id", merchant.id);
+  revalidatePath("/m", "layout");
+}
+
 
 /** Switch the merchant portal's active country (cookie + full redirect). */
 export async function switchActiveCountry(formData: FormData): Promise<void> {
