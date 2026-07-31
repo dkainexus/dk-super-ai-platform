@@ -18,6 +18,7 @@ export function MoneyInput({
   required,
   disabled,
   className,
+  form,
 }: {
   name: string;
   defaultValue?: number | string | null;
@@ -25,6 +26,7 @@ export function MoneyInput({
   required?: boolean;
   disabled?: boolean;
   className?: string;
+  form?: string;
 }) {
   const initial =
     defaultValue != null && defaultValue !== "" ? group(String(defaultValue).replace(/,/g, "")) : "";
@@ -52,7 +54,7 @@ export function MoneyInput({
         }}
         className={className ?? "input mono-num"}
       />
-      <input type="hidden" name={name} value={raw} />
+      <input type="hidden" name={name} value={raw} form={form} />
     </>
   );
 }

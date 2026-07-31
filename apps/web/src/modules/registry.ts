@@ -36,6 +36,7 @@ import { shippingModule } from "@/modules/shipping";
 import { ticketsModule } from "@/modules/tickets";
 import { claimsModule } from "@/modules/claims";
 import { expensesModule } from "@/modules/expenses";
+import { hrModule } from "@/modules/hr";
 
 export type ModuleDef = {
   key: string;
@@ -78,25 +79,31 @@ const CORE_MODULES: ModuleDef[] = [
   },
 ];
 
+// Sidebar order follows the business, top to bottom: the supply side that
+// brings accounts in (agents → owners → companies → banks → accounts), the
+// customer side that rents them out (customers → contracts → shipping →
+// billing → compensation → support), the people machinery (wallet, training,
+// exams, notifications), then our own house (expenses, HR) and tools.
 export const MODULES: ModuleDef[] = [
-  banksModule,
-  telegramModule,
-  aiModule,
   agentsModule,
-  customersModule,
-  contractsModule,
-  billingModule,
-  shippingModule,
-  ticketsModule,
-  claimsModule,
-  expensesModule,
   ownersModule,
   companiesModule,
-  walletModule,
+  banksModule,
   bankAccountsModule,
+  customersModule,
+  contractsModule,
+  shippingModule,
+  billingModule,
+  claimsModule,
+  ticketsModule,
+  walletModule,
   trainingModule,
-  notificationsModule,
   examsModule,
+  notificationsModule,
+  expensesModule,
+  hrModule,
+  aiModule,
+  telegramModule,
   ...CORE_MODULES,
 ];
 
