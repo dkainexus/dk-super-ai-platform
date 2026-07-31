@@ -18,6 +18,12 @@ export default async function NewOwnerPage({
 }) {
   const cu = await requireMerchantUser();
   await requirePerm("owners", "add");
+  // Owners are entered by the agent who recruited them, nobody else.
+  const { agentForUser } = await import("@/modules/agents/lib");
+  if (!(await agentForUser(cu.user.id))) {
+    const { redirect } = await import("next/navigation");
+    redirect("/m/owners");
+  }
   const merchant = cu.merchant;
   const { error } = await searchParams;
 

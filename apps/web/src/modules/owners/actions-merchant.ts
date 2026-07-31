@@ -58,6 +58,8 @@ export async function saveOwner(formData: FormData): Promise<void> {
   // picks the introducing agent on the form.
   const { agentForUser } = await import("@/modules/agents/lib");
   const self = await agentForUser(cu.user.id);
+  // Creating an owner is the recruiting agent's act alone.
+  if (!existingId && !self) fail("/m/owners", "Owners are entered by the agent who recruited them");
   const agentId = self ? self.id : String(formData.get("agent_id") ?? "") || null;
   const gender = String(formData.get("gender") ?? "") || null;
   const maritalStatus = String(formData.get("marital_status") ?? "") || null;

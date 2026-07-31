@@ -33,14 +33,7 @@ export default async function MerchantCompaniesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Companies{active ? ` — ${active.flag || ""} ${active.name}` : ""}</h1>
-        {can(cu, "companies", "add") && (
-          <Link href="/m/companies/new" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background hover:bg-accent-strong">
-            + New Company
-          </Link>
-        )}
-      </div>
+      <h1 className="text-xl font-semibold">Companies{active ? ` — ${active.flag || ""} ${active.name}` : ""}</h1>
 
       <div className="flex flex-wrap items-center gap-2">
         {[["", "All"], ...Object.entries(COMPANY_STATUS_LABEL)].map(([value, label]) => (

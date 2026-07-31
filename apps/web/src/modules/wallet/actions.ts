@@ -20,6 +20,8 @@ function fail(path: string, message: string): never {
 /** Manual credit (or negative adjustment) into an owner's wallet. */
 export async function manualCredit(formData: FormData): Promise<void> {
   const { cu, scope } = await requirePerm("wallet", "add");
+  // Money moves by the platform's hand alone — the portal only watches.
+  if (cu.merchant) fail("/m/wallets", "Wallet operations are handled by the platform");
   const ownerId = String(formData.get("owner_id") ?? "");
   const back = String(formData.get("back") ?? (cu.merchant ? "/m/wallets" : "/admin/wallets"));
 
@@ -140,6 +142,8 @@ async function processOne(
 /** Mark a withdrawal paid (after the manual bank transfer) or reject it (refund). */
 export async function processWithdrawal(formData: FormData): Promise<void> {
   const { cu, scope } = await requirePerm("wallet", "edit");
+  // Money moves by the platform's hand alone — the portal only watches.
+  if (cu.merchant) fail("/m/wallets", "Wallet operations are handled by the platform");
   const back = String(formData.get("back") ?? (cu.merchant ? "/m/wallets" : "/admin/wallets/withdrawals"));
   const err = await processOne(
     String(formData.get("id") ?? ""),
@@ -156,6 +160,8 @@ export async function processWithdrawal(formData: FormData): Promise<void> {
 /** Same decision applied to every ticked row in the queue. */
 export async function bulkProcessWithdrawals(formData: FormData): Promise<void> {
   const { cu, scope } = await requirePerm("wallet", "edit");
+  // Money moves by the platform's hand alone — the portal only watches.
+  if (cu.merchant) fail("/m/wallets", "Wallet operations are handled by the platform");
   const back = String(formData.get("back") ?? (cu.merchant ? "/m/wallets" : "/admin/wallets/withdrawals"));
   const ids = formData.getAll("ids").map(String).filter(Boolean);
   const decision = String(formData.get("decision") ?? "");

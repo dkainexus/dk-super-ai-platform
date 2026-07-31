@@ -64,6 +64,8 @@ function conditionOf(formData: FormData): "New" | "Old" {
 
 export async function createBankAccount(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("bank_accounts", "add");
+  // Accounts are entered by the platform alone — the portal only watches.
+  if (cu.merchant) fail("/m/bank-accounts", "Bank accounts are entered by the platform");
   const list = cu.merchant ? "/m/bank-accounts" : "/admin/bank-accounts";
   // Errors go back to the form the user is standing on, not the list.
   const base = `${list}/new`;
@@ -91,7 +93,6 @@ export async function createBankAccount(formData: FormData): Promise<void> {
     .eq("id", companyId)
     .maybeSingle();
   if (!company) fail(base, "Company not found");
-  if (cu.merchant && company.merchant_id !== cu.merchant.id) fail(base, "Company not found");
 
   const { extra, channels } = await parseBankExtras(bankId, formData);
   const limitRaw = String(formData.get("account_limit") ?? "").trim();

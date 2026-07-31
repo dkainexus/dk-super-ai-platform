@@ -44,7 +44,7 @@ export default async function MerchantBankAccountsPage({
       counts={counts}
       page={page}
       perPage={perPage}
-      canAdd={Boolean(can(cu, "bank_accounts", "add"))}
+      canAdd={false}
     />
   );
 }

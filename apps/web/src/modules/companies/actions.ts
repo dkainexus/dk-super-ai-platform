@@ -37,6 +37,8 @@ export async function saveCompany(formData: FormData): Promise<void> {
     merchantId = company.merchant_id;
     countryId = company.country_id;
   } else {
+    // New companies come from the platform side only.
+    if (isMerchantSide) fail(base, "Companies are entered by the platform");
     merchantId = isMerchantSide ? cu.merchant!.id : String(formData.get("merchant_id") ?? "");
     const { data: m } = await db().from("merchants").select("id").eq("id", merchantId).maybeSingle();
     if (!m) fail(`${base}/new`, "Please choose a valid white label");
