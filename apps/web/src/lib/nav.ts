@@ -81,6 +81,9 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     if (!isMerchant && !isGlobal && m.key === "tickets") {
       item.children = [{ href: "/admin/tickets/types", label: "Ticket Types" }];
     }
+    if (!isMerchant && !isGlobal && m.key === "merchants" && can(cu, "agents", "view")) {
+      item.children = [{ href: "/admin/agents", label: "Agents" }, ...(item.children ?? [])];
+    }
     if (!isMerchant && !isGlobal && m.key === "hr") {
       item.children = [
         { href: "/admin/hr/departments", label: "Departments" },

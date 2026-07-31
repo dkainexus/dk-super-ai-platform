@@ -3,7 +3,6 @@ import { requirePerm, can } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 import { bankAccount } from "@/modules/bank-accounts/lib";
 import { BankAccountDetail } from "@/modules/bank-accounts/components/account-detail";
-import { AssignCard } from "@/modules/contracts/components/assign-card";
 
 export default async function AdminBankAccountPage({
   params,
@@ -32,11 +31,6 @@ export default async function AdminBankAccountPage({
       countryCodes={countryCodes}
       channels={channels}
       error={error}
-      extra={
-        can(cu, "contracts", "view") ? (
-          <AssignCard bankAccountId={a.id} countryId={a.country_id} status={a.status} />
-        ) : null
-      }
     />
   );
 }

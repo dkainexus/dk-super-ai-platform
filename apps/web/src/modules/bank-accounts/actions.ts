@@ -127,14 +127,18 @@ export async function createBankAccount(formData: FormData): Promise<void> {
         : `Failed to create: ${error.message}`
     );
 
-  // Going live means contracts: the owner's terms and the agent's frozen
-  // conditions wire in now. If they can't, the account waits as pending.
+  // With the contracts module on, going live wires the owner's terms and the
+  // agent's frozen conditions. With it off (billing lives elsewhere now), an
+  // active account is simply active.
   if (created?.id) {
-    const { wireAccountContracts } = await import("@/modules/contracts/policy");
-    const wireError = await wireAccountContracts(created.id, cu.user.id);
-    if (wireError) {
-      await db().from("bank_accounts").update({ status: "pending", activated_at: null }).eq("id", created.id);
-      fail(base, `Saved as pending — ${wireError}`);
+    const { globalModuleToggles, moduleEnabledFor } = await import("@/lib/settings");
+    if (moduleEnabledFor("contracts", await globalModuleToggles(), null, null)) {
+      const { wireAccountContracts } = await import("@/modules/contracts/policy");
+      const wireError = await wireAccountContracts(created.id, cu.user.id);
+      if (wireError) {
+        await db().from("bank_accounts").update({ status: "pending", activated_at: null }).eq("id", created.id);
+        fail(base, `Saved as pending — ${wireError}`);
+      }
     }
   }
   revalidate();
@@ -160,10 +164,14 @@ export async function reviewBankAccount(formData: FormData): Promise<void> {
   let rewardOnApproval = false;
 
   if (action === "approve") {
-    // Wire the contracts first — an approval that can't bill isn't an approval.
-    const { wireAccountContracts } = await import("@/modules/contracts/policy");
-    const wireError = await wireAccountContracts(id, cu.user.id);
-    if (wireError) fail(back, wireError);
+    // With contracts on, an approval that can't bill isn't an approval; with
+    // the module off, approval stands alone.
+    const { globalModuleToggles, moduleEnabledFor } = await import("@/lib/settings");
+    if (moduleEnabledFor("contracts", await globalModuleToggles(), null, null)) {
+      const { wireAccountContracts } = await import("@/modules/contracts/policy");
+      const wireError = await wireAccountContracts(id, cu.user.id);
+      if (wireError) fail(back, wireError);
+    }
     patch.status = "active";
     patch.activated_at = now;
     rewardOnApproval = true;
