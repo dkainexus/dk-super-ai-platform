@@ -34,15 +34,7 @@ export function AdminCountrySwitcher({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const badge = (flag: string | null, iconUrl?: string | null) =>
-    iconUrl ? (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={iconUrl} alt="" className="h-5 w-5 shrink-0 rounded object-contain" />
-    ) : (
-      <span className="text-base leading-none">{flag ?? "🌐"}</span>
-    );
-
-  const option = (id: string, label: string, flag: string | null, current: boolean, iconUrl?: string | null) => (
+  const option = (id: string, label: string, current: boolean) => (
     <form key={id || "all"} action={switchAdminCountry}>
       <input type="hidden" name="country_id" value={id} />
       <input type="hidden" name="path" value={pathname} />
@@ -52,7 +44,6 @@ export function AdminCountrySwitcher({
           current ? "text-accent-strong" : "text-foreground"
         }`}
       >
-        {badge(flag, iconUrl)}
         <span className="min-w-0 flex-1 truncate">{label}</span>
         {current && <span className="text-xs">✓</span>}
       </button>
@@ -67,7 +58,6 @@ export function AdminCountrySwitcher({
         title="Switch between the platform console and a country"
         className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface-raised/60 px-3 py-2 text-sm transition-colors hover:border-accent"
       >
-        {isGlobal ? <span className="text-base leading-none">⚙️</span> : badge(active?.flag ?? null, active?.iconUrl)}
         <span className="min-w-0 flex-1 truncate text-left font-medium">
           {isGlobal ? "Global" : active?.name ?? "Pick a country"}
         </span>
@@ -78,8 +68,8 @@ export function AdminCountrySwitcher({
 
       {open && (
         <div className="absolute left-0 right-0 z-40 mt-1 overflow-hidden rounded-lg border border-border bg-surface shadow-xl">
-          {canGoGlobal && option("", "Global — platform settings", "⚙️", isGlobal)}
-          {countries.map((c) => option(c.id, c.name, c.flag, c.id === activeId, c.iconUrl))}
+          {canGoGlobal && option("", "Global — platform settings", isGlobal)}
+          {countries.map((c) => option(c.id, c.name, c.id === activeId))}
         </div>
       )}
     </div>

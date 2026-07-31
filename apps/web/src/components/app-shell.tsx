@@ -114,7 +114,6 @@ export function AppShell({
         <div className="mb-4">
           <Brand brand={brand} />
         </div>
-        {sidebarExtra && <div className="mb-4">{sidebarExtra}</div>}
         <div className="flex-1 overflow-y-auto">
           <SidebarNav sections={sections} />
         </div>
@@ -122,9 +121,12 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Desktop top bar */}
-        <header className="sticky top-0 z-20 hidden items-center justify-end gap-3 border-b border-border bg-surface/70 px-6 py-2.5 backdrop-blur md:flex">
-          {headerExtra}
-          <UserMenu user={user} logoutAction={logoutAction} />
+        <header className="sticky top-0 z-20 hidden items-center justify-between gap-3 border-b border-border bg-surface/70 px-6 py-2.5 backdrop-blur md:flex">
+          <div className="min-w-52">{sidebarExtra}</div>
+          <div className="flex items-center gap-3">
+            {headerExtra}
+            <UserMenu user={user} logoutAction={logoutAction} />
+          </div>
         </header>
 
         {/* Mobile top bar */}
