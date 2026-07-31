@@ -53,9 +53,7 @@ export async function createExpense(formData: FormData): Promise<void> {
   const isClaim = formData.get("is_claim") === "on";
   const { error } = await db().from("expenses").insert({
     country_id: active?.id ?? null,
-    company_id: String(formData.get("company_id") ?? "") || null,
-    merchant_id: String(formData.get("merchant_id") ?? "") || null,
-    staff_user_id: isClaim ? cu.user.id : String(formData.get("staff_user_id") ?? "") || null,
+    staff_user_id: isClaim ? cu.user.id : null,
     item,
     category,
     amount,

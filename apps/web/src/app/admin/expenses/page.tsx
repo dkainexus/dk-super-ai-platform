@@ -21,12 +21,11 @@ type Row = {
   receipt_path: string | null;
   is_claim: boolean;
   claim_status: string | null;
-  company: { name: string } | null;
   staff: { name: string | null; username: string } | null;
 };
 
-// One ledger for what the platform really spends — company costs live here,
-// never on the company row, so the true margin is always a subtraction.
+// One ledger for what the platform really spends. It is all our own money —
+// nothing here belongs to a white label, so nothing is tagged to one.
 export default async function ExpensesPage({
   searchParams,
 }: {
@@ -36,14 +35,13 @@ export default async function ExpensesPage({
   const { error } = await searchParams;
   const { active } = await requireCountryScope();
 
-  const [{ data: rows }, { data: companies }, { data: categories }] = await Promise.all([
+  const [{ data: rows }, { data: categories }] = await Promise.all([
     db()
       .from("expenses")
-      .select("*, company:companies(name), staff:users!expenses_staff_user_id_fkey(name, username)")
+      .select("*, staff:users!expenses_staff_user_id_fkey(name, username)")
       .eq("country_id", active?.id ?? "")
       .order("spent_on", { ascending: false })
       .limit(200),
-    db().from("companies").select("id, name").eq("country_id", active?.id ?? "").order("name"),
     db()
       .from("expense_categories")
       .select("id, name, items:expense_items(category_id, name, active)")
@@ -92,15 +90,6 @@ export default async function ExpensesPage({
             <input name="spent_on" type="date" className="input mono-num" />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">Company (for its true cost)</label>
-            <select name="company_id" className="input">
-              <option value="">— none —</option>
-              {((companies ?? []) as { id: string; name: string }[]).map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label className="mb-1 block text-xs text-muted">Note</label>
             <input name="note" className="input" />
           </div>
@@ -123,7 +112,7 @@ export default async function ExpensesPage({
         </p>
       </TableToolbar>
 
-      <Table head={["Date", "Category", "Item", "Tagged To", "Note", "Amount", "Claim", ""]}>
+      <Table head={["Date", "Category", "Item", "Staff", "Note", "Amount", "Claim", ""]}>
         {list.length === 0 && (
           <tr>
             <td colSpan={8} className="px-4 py-6 text-sm text-muted">Nothing recorded yet.</td>
@@ -134,9 +123,7 @@ export default async function ExpensesPage({
             <td className="mono-num px-4 py-2.5 text-muted">{r.spent_on}</td>
             <td className="px-4 py-2.5">{r.category}</td>
             <td className="px-4 py-2.5">{r.item ?? "—"}</td>
-            <td className="px-4 py-2.5 text-muted">
-              {[r.company?.name, r.staff ? r.staff.name || r.staff.username : null].filter(Boolean).join(" · ") || "—"}
-            </td>
+            <td className="px-4 py-2.5 text-muted">{r.staff ? r.staff.name || r.staff.username : "—"}</td>
             <td className="px-4 py-2.5 text-muted">
               {r.note ?? "—"}
               {receipts.get(r.id) && (
