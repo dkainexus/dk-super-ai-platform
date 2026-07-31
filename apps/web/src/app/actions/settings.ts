@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
 import { requirePerm } from "@/lib/auth";
-import { setSetting, globalModuleToggles } from "@/lib/settings";
+import { platformSettings, setSetting, globalModuleToggles } from "@/lib/settings";
 import { TOGGLABLE_MODULES } from "@/modules/registry";
 
 function fail(path: string, message: string): never {
@@ -17,7 +17,29 @@ export async function savePlatformSettings(formData: FormData): Promise<void> {
   if (cu.merchant) redirect("/m");
   const name = String(formData.get("name") ?? "").trim();
   if (!name) fail("/admin/settings", "Platform name cannot be empty");
-  await setSetting("platform", { name });
+  const current = await platformSettings();
+  await setSetting("platform", { ...current, name });
+  revalidatePath("/", "layout");
+}
+
+export async function uploadPlatformLogo(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("settings", "edit");
+  if (cu.merchant) redirect("/m");
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) fail("/admin/settings", "Please choose a logo file");
+  if (file.size > 2 * 1024 * 1024) fail("/admin/settings", "Logo must be under 2MB");
+  const { uploadFile, fileExt, ASSETS_BUCKET } = await import("@/lib/storage");
+  const path = await uploadFile(ASSETS_BUCKET, `platform/logo.${fileExt(file)}`, file);
+  const current = await platformSettings();
+  await setSetting("platform", { ...current, logo_path: path });
+  revalidatePath("/", "layout");
+}
+
+export async function removePlatformLogo(): Promise<void> {
+  const { cu } = await requirePerm("settings", "edit");
+  if (cu.merchant) redirect("/m");
+  const current = await platformSettings();
+  await setSetting("platform", { ...current, logo_path: null });
   revalidatePath("/", "layout");
 }
 

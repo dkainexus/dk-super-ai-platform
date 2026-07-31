@@ -35,7 +35,7 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
 
   const merchantLogo = cu.merchant
     ? await signedUrl(ASSETS_BUCKET, cu.merchant.logo_path, 60 * 60 * 12)
-    : null;
+    : await signedUrl(ASSETS_BUCKET, platform.logo_path ?? null, 60 * 60 * 12);
 
   return (
     <AppShell

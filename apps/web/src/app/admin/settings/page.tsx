@@ -4,6 +4,8 @@ import { platformSettings, getSetting } from "@/lib/settings";
 import { savePlatformSettings, saveTrackingKey } from "@/app/actions/settings";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton } from "@/components/action-buttons";
+import { PlatformLogoEditor } from "@/components/platform-logo-editor";
+import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 
 export default async function AdminSettingsPage({
   searchParams,
@@ -13,6 +15,7 @@ export default async function AdminSettingsPage({
   await requirePerm("settings", "view");
   const { error } = await searchParams;
   const platform = await platformSettings();
+  const platformLogoUrl = await signedUrl(ASSETS_BUCKET, platform.logo_path ?? null);
   const shipping = await getSetting<{ trackingmore_key?: string }>("shipping", {});
 
   return (
@@ -26,14 +29,17 @@ export default async function AdminSettingsPage({
       {/* General */}
       <section className="card p-5">
         <h2 className="mb-1 text-sm font-semibold">General</h2>
-        <p className="mb-4 text-xs text-muted">Basic platform identity.</p>
-        <form action={savePlatformSettings} className="flex max-w-md items-end gap-3">
-          <div className="flex-1">
-            <label className="mb-1 block text-xs text-muted">Platform Name (shown in the sidebar & login page)</label>
-            <input name="name" defaultValue={platform.name} className="input" required />
-          </div>
-          <SaveButton tip="Save general settings" />
-        </form>
+        <p className="mb-4 text-xs text-muted">Basic platform identity — click the logo to change it.</p>
+        <div className="flex flex-wrap items-start gap-5">
+          <PlatformLogoEditor logoUrl={platformLogoUrl} initial={platform.name.slice(0, 1).toUpperCase()} />
+          <form action={savePlatformSettings} className="flex max-w-md flex-1 items-end gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs text-muted">Platform Name (shown in the sidebar & login page)</label>
+              <input name="name" defaultValue={platform.name} className="input" required />
+            </div>
+            <SaveButton tip="Save general settings" />
+          </form>
+        </div>
       </section>
 
       {/* Shipping tracking */}

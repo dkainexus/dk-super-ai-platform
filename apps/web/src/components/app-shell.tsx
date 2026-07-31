@@ -37,7 +37,7 @@ function Brand({ brand, onClick }: { brand: ShellBrand; onClick?: () => void }) 
         </span>
       )}
       <span className="min-w-0">
-        <span className="block truncate text-[15px] font-semibold leading-tight tracking-tight text-foreground">
+        <span className="block truncate text-[15px] font-semibold leading-tight tracking-[0.08em] text-foreground">
           {brand.name}
         </span>
         <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-muted">{sub}</span>
