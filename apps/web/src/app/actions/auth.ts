@@ -121,6 +121,27 @@ export async function updateProfileAction(_prev: ProfileState, formData: FormDat
   return { ok: true };
 }
 
+/** Click-the-picture upload: the avatar itself is the control. */
+export async function uploadAvatarAction(formData: FormData): Promise<void> {
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/login");
+  const avatar = formData.get("avatar");
+  if (!(avatar instanceof File) || avatar.size === 0) redirect("/profile");
+  if (avatar.size > 2 * 1024 * 1024) redirect(`/profile?error=${encodeURIComponent("Avatar must be under 2MB")}`);
+  const path = await uploadFile(ASSETS_BUCKET, `avatars/${cu.user.id}.${fileExt(avatar)}`, avatar);
+  await db().from("users").update({ avatar_path: path, updated_at: new Date().toISOString() }).eq("id", cu.user.id);
+  revalidatePath("/", "layout");
+  redirect("/profile");
+}
+
+export async function removeAvatarAction(): Promise<void> {
+  const cu = await getCurrentUser();
+  if (!cu) redirect("/login");
+  await db().from("users").update({ avatar_path: null, updated_at: new Date().toISOString() }).eq("id", cu.user.id);
+  revalidatePath("/", "layout");
+  redirect("/profile");
+}
+
 export async function logoutAction(): Promise<void> {
   // Land back on the door they came in through.
   const cu = await getCurrentUser();

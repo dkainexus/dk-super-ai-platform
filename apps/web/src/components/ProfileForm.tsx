@@ -25,10 +25,6 @@ export function ProfileForm({
         <label className="mb-1 block text-xs text-muted">Email</label>
         <input name="email" type="email" defaultValue={initial.email} className="input mono-num" />
       </div>
-      <div>
-        <label className="mb-1 block text-xs text-muted">Avatar (square, ≤2MB)</label>
-        <input name="avatar" type="file" accept="image/*" className="input" />
-      </div>
       {state.error && <p className="text-sm text-danger sm:col-span-2">{state.error}</p>}
       {state.ok && <p className="text-sm text-success sm:col-span-2">Profile updated ✓</p>}
       <div className="sm:col-span-2">

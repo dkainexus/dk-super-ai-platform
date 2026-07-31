@@ -43,7 +43,7 @@ export function SubdomainField({ defaultValue, suffix }: { defaultValue: string;
           onChange={(e) => setValue(e.target.value.toLowerCase())}
           placeholder="my-brand"
           autoComplete="off"
-          className="input mono-num flex-1"
+          className="input mono-num w-52"
         />
         <span className="mono-num shrink-0 text-xs text-muted">.{suffix}</span>
       </div>

@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { Shell } from "@/components/shell";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { ProfileForm } from "@/components/ProfileForm";
+import { AvatarEditor } from "@/components/AvatarEditor";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 
 export default async function ProfilePage() {
@@ -13,13 +14,7 @@ export default async function ProfilePage() {
     <Shell cu={cu}>
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="" className="h-14 w-14 rounded-full object-cover" />
-          ) : (
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-lg font-semibold text-accent-strong">
-              {(cu.user.name || cu.user.username).slice(0, 2).toUpperCase()}
-            </span>
-          )}
+          <AvatarEditor avatarUrl={avatarUrl} initials={(cu.user.name || cu.user.username).slice(0, 2).toUpperCase()} />
           <div>
             <h1 className="text-xl font-semibold">My Profile</h1>
             <p className="text-sm text-muted">
