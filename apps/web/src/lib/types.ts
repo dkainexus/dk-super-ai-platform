@@ -115,6 +115,7 @@ export type OwnerStatus = "draft" | "pending" | "approved" | "rejected" | "banne
 
 export type Owner = {
   id: string;
+  ref: string | null;
   merchant_id: string;
   country_id: string;
   full_name: string | null;

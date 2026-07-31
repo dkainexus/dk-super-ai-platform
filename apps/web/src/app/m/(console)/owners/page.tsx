@@ -4,6 +4,8 @@ import { db } from "@/lib/supabase";
 import { activeCountry } from "@/modules/merchants/lib";
 import { agentForUser } from "@/modules/agents/lib";
 import { OwnerStatusTag } from "@/components/status-tag";
+import { Table, TableToolbar } from "@/components/data-table";
+import { RowSettings } from "@/components/row-actions";
 import type { Owner, OwnerStatus } from "@/lib/types";
 
 export default async function MerchantOwnersPage() {
@@ -37,24 +39,29 @@ export default async function MerchantOwnersPage() {
         )}
       </div>
 
-      <div className="card divide-y divide-border">
+      <TableToolbar count={(owners ?? []).length} noun="owner" />
+      <Table head={["ID", "Name", "ID Number", "Phone", "Added", "Status", ""]}>
         {(owners ?? []).length === 0 && (
-          <p className="px-5 py-6 text-sm text-muted">No owners yet — use the button above to add one.</p>
+          <tr>
+            <td colSpan={7} className="px-4 py-6 text-sm text-muted">No owners yet.</td>
+          </tr>
         )}
         {((owners ?? []) as Owner[]).map((o) => (
-          <Link
-            key={o.id}
-            href={`/m/owners/${o.id}`}
-            className="flex items-center justify-between px-5 py-3.5 transition-colors hover:bg-surface-raised"
-          >
-            <div>
-              <p className="text-sm font-medium">{o.full_name || "(no name yet)"}</p>
-              <p className="mono-num text-xs text-muted">{o.id_number || "—"}</p>
-            </div>
-            <OwnerStatusTag status={o.status as OwnerStatus} />
-          </Link>
+          <tr key={o.id} className="transition-colors hover:bg-surface-raised">
+            <td className="mono-num px-4 py-2.5 text-xs text-muted">{o.ref ?? "—"}</td>
+            <td className="px-4 py-2.5 font-medium">{o.full_name || "(no name yet)"}</td>
+            <td className="mono-num px-4 py-2.5 text-muted">{o.id_number || "—"}</td>
+            <td className="mono-num px-4 py-2.5 text-muted">{o.phone || "—"}</td>
+            <td className="mono-num px-4 py-2.5 text-muted">{o.created_at?.slice(0, 10)}</td>
+            <td className="px-4 py-2.5">
+              <OwnerStatusTag status={o.status as OwnerStatus} />
+            </td>
+            <td className="px-4 py-2.5 text-right">
+              <RowSettings href={`/m/owners/${o.id}`} tip="Open this owner" />
+            </td>
+          </tr>
         ))}
-      </div>
+      </Table>
     </div>
   );
 }
