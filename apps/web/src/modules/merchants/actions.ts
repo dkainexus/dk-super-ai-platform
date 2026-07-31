@@ -59,7 +59,7 @@ export async function createMerchant(formData: FormData): Promise<void> {
     .from("roles")
     .select("id")
     .eq("level", "merchant")
-    .eq("name", "White Label Owner")
+    .eq("name", "Partner Administrator")
     .eq("is_system", true)
     .maybeSingle();
 
@@ -119,7 +119,7 @@ export async function createMerchantUser(formData: FormData): Promise<void> {
   const { data: ownerRole } = await db()
     .from("roles")
     .select("id")
-    .eq("name", "White Label Owner")
+    .eq("name", "Partner Administrator")
     .eq("is_system", true)
     .single();
   const { error } = await db().from("users").insert({

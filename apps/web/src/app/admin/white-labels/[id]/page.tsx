@@ -260,7 +260,7 @@ export default async function ConsoleWhiteLabelPage({
               <label className="mb-1 block text-xs text-muted">Display name</label>
               <input name="name" className="input" />
             </div>
-            <ActionButton icon="plus" tip="Create a White Label Owner sign-in" label="Add Account" variant="primary" />
+            <ActionButton icon="plus" tip="Create a Partner Administrator sign-in" label="Add Account" variant="primary" />
           </form>
         )}
       </section>

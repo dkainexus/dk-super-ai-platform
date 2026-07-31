@@ -51,6 +51,7 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
         avatarUrl,
       }}
       logoutAction={logoutAction}
+      settingsHref={can(cu, "settings", "view") ? (cu.merchant ? "/m/settings" : "/admin/settings") : undefined}
       sidebarExtra={
         cu.merchant ? (
           countryCtx && countryCtx.active ? (

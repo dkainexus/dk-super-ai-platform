@@ -116,8 +116,11 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
   }
 
   const home = isMerchant ? "/m" : "/admin";
+  // Settings lives in the top-right user menu now; the merchant sidebar drops
+  // it entirely, the platform keeps its System section.
   const settingsIdx = items.findIndex((i) => i.href.endsWith("/settings"));
   const settingsItems = settingsIdx >= 0 ? items.splice(settingsIdx, 1) : [];
+  if (isMerchant) settingsItems.length = 0;
 
   const sections: NavSection[] = [
     { items: [{ href: home, label: "Dashboard" }, ...items.filter((i) => !isAdminManage(i.href))] },

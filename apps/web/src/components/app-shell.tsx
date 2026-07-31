@@ -18,14 +18,27 @@ export type ShellUser = {
 };
 
 function Brand({ brand, onClick }: { brand: ShellBrand; onClick?: () => void }) {
+  const sub =
+    brand.homeHref === "/m" ? "Partner Console" : brand.homeHref === "/admin" ? "Admin Console" : "Customer Portal";
   return (
-    <Link href={brand.homeHref} onClick={onClick} className="flex items-center gap-2 px-3 font-semibold tracking-tight">
+    <Link href={brand.homeHref} onClick={onClick} className="flex items-center gap-3 px-2 py-1">
       {brand.logoUrl ? (
-        <img src={brand.logoUrl} alt="" className="h-6 w-6 rounded-md object-cover" />
+        <img
+          src={brand.logoUrl}
+          alt=""
+          className="h-9 w-9 shrink-0 rounded-xl object-cover ring-1 ring-white/10 shadow-[0_4px_14px_rgba(0,0,0,0.4)]"
+        />
       ) : (
-        <span className="inline-block h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_var(--accent)]" />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-[#8b5cf6] text-sm font-bold text-white shadow-[0_4px_14px_rgba(77,122,255,0.35)]">
+          {brand.name.slice(0, 1).toUpperCase()}
+        </span>
       )}
-      <span className="truncate text-foreground">{brand.name}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-[15px] font-semibold leading-tight tracking-tight text-foreground">
+          {brand.name}
+        </span>
+        <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-muted">{sub}</span>
+      </span>
     </Link>
   );
 }
@@ -44,7 +57,15 @@ function Avatar({ user, size = 28 }: { user: ShellUser; size?: number }) {
   );
 }
 
-function UserMenu({ user, logoutAction }: { user: ShellUser; logoutAction: () => Promise<void> }) {
+function UserMenu({
+  user,
+  logoutAction,
+  settingsHref,
+}: {
+  user: ShellUser;
+  logoutAction: () => Promise<void>;
+  settingsHref?: string;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -77,6 +98,15 @@ function UserMenu({ user, logoutAction }: { user: ShellUser; logoutAction: () =>
           <Link href="/profile" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-surface-raised">
             My Profile
           </Link>
+          {settingsHref && (
+            <Link
+              href={settingsHref}
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-surface-raised"
+            >
+              Settings
+            </Link>
+          )}
           <form action={logoutAction}>
             <button type="submit" className="w-full px-4 py-2.5 text-left text-sm text-danger transition-colors hover:bg-danger/10">
               Sign Out
@@ -95,6 +125,7 @@ export function AppShell({
   logoutAction,
   headerExtra,
   sidebarExtra,
+  settingsHref,
   children,
 }: {
   brand: ShellBrand;
@@ -103,6 +134,7 @@ export function AppShell({
   logoutAction: () => Promise<void>;
   headerExtra?: React.ReactNode;
   sidebarExtra?: React.ReactNode;
+  settingsHref?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -125,7 +157,7 @@ export function AppShell({
           <div className="min-w-52">{sidebarExtra}</div>
           <div className="flex items-center gap-3">
             {headerExtra}
-            <UserMenu user={user} logoutAction={logoutAction} />
+            <UserMenu user={user} logoutAction={logoutAction} settingsHref={settingsHref} />
           </div>
         </header>
 
@@ -134,7 +166,7 @@ export function AppShell({
           <Brand brand={brand} />
           <div className="flex items-center gap-2">
             {headerExtra}
-            <UserMenu user={user} logoutAction={logoutAction} />
+            <UserMenu user={user} logoutAction={logoutAction} settingsHref={settingsHref} />
             <button aria-label="Menu" onClick={() => setOpen(true)} className="rounded-md border border-border p-2 text-foreground">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="3" y1="6" x2="21" y2="6" />
