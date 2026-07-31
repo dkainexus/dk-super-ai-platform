@@ -100,9 +100,9 @@ export function SidebarNav({ sections }: { sections: NavSection[] }) {
                 <div key={l.href}>
                   <Link
                     href={l.href}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                    className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-all ${
                       active
-                        ? "bg-accent-soft font-medium text-accent-strong"
+                        ? "bg-accent font-medium text-white shadow-[0_6px_18px_rgba(77,122,255,0.35)]"
                         : "text-muted hover:bg-surface-raised hover:text-foreground"
                     }`}
                   >

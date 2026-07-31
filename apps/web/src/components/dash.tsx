@@ -184,9 +184,16 @@ export function HeroCard({
 }) {
   return (
     <Link href={href} className="card group relative block overflow-hidden p-5 transition-all hover:-translate-y-0.5 sm:p-6">
+      {/* The reference's promo banner: a blue→violet wash across the hero. */}
       <div
         className="pointer-events-none absolute inset-0"
-        style={{ background: `radial-gradient(140% 100% at 85% 0%, ${palette.from}12, transparent 55%)` }}
+        style={{
+          background: `linear-gradient(115deg, rgba(77,122,255,0.22) 0%, rgba(99,102,241,0.12) 45%, rgba(139,92,246,0.20) 100%)`,
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: `radial-gradient(140% 100% at 85% 0%, ${palette.from}18, transparent 55%)` }}
       />
       <div className="relative">
         <p className="text-xs font-medium uppercase tracking-wider text-muted">{label}</p>
