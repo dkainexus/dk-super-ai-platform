@@ -109,12 +109,6 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     items.push(item);
   }
 
-  // Agents signing in to /m get their own page: earnings, debt, their network.
-  if (isMerchant) {
-    const { agentForUser } = await import("@/modules/agents/lib");
-    if (await agentForUser(cu.user.id)) items.push({ href: "/m/earnings", label: "My Business" });
-  }
-
   const home = isMerchant ? "/m" : "/admin";
   // Settings lives in the top-right user menu now; the merchant sidebar drops
   // it entirely, the platform keeps its System section.
