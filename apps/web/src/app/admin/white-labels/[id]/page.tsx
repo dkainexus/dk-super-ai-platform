@@ -10,6 +10,8 @@ import {
   toggleMerchantUser,
 } from "@/modules/merchants/actions";
 import { recordMerchantTopUp } from "@/modules/billing/actions";
+import { adjustCredits } from "@/modules/merchants/credit-actions";
+import { creditBalance, creditLedger } from "@/modules/merchants/credits";
 import { ledgerFor } from "@/modules/billing/ledger";
 import { fmtNum } from "@/lib/format";
 import { MoneyInput } from "@/components/money-input";
@@ -51,6 +53,7 @@ export default async function ConsoleWhiteLabelPage({
     ])
   );
   const wallet = await ledgerFor("merchant", m.id);
+  const [credits, creditRows] = await Promise.all([creditBalance(m.id), creditLedger(m.id, 8)]);
   const quote = Number((m as Merchant & { company_quote?: number }).company_quote ?? 0);
   const minCompanies = Number((m as Merchant & { min_prepaid_companies?: number }).min_prepaid_companies ?? 0);
   const minRequired = (minCompanies * quote) / 2;
@@ -192,6 +195,48 @@ export default async function ConsoleWhiteLabelPage({
               <span className={`mono-num ${Number(e.amount) >= 0 ? "text-success" : "text-danger"}`}>
                 {Number(e.amount) >= 0 ? "+" : ""}
                 {fmtNum(e.amount)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Credits: what lets them approve agent submissions */}
+      <section className="card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Credits</h2>
+            <p className="mt-1 text-xs text-muted">
+              Approving an agent submission spends credits; they buy more with USDT on their Credits page.
+            </p>
+          </div>
+          <p className="mono-num text-lg font-semibold">{credits} credits</p>
+        </div>
+        {canEdit && (
+          <form action={adjustCredits} className="mb-4 grid gap-3 sm:grid-cols-[8rem_1fr_auto] sm:items-end">
+            <input type="hidden" name="merchant_id" value={m.id} />
+            <input type="hidden" name="back" value={`/admin/white-labels/${m.id}`} />
+            <div>
+              <label className="mb-1 block text-xs text-muted">Credits (± to deduct)</label>
+              <input name="delta" type="number" className="input mono-num" placeholder="10" required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Note</label>
+              <input name="note" className="input" />
+            </div>
+            <ActionButton icon="plus" tip="Apply the adjustment to their credit ledger" label="Adjust" variant="outline" />
+          </form>
+        )}
+        <div className="divide-y divide-border">
+          {creditRows.length === 0 && <p className="py-2 text-sm text-muted">No credit activity yet.</p>}
+          {creditRows.map((e) => (
+            <div key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <span className="text-muted">
+                {e.reason === "topup" ? `Top-up${e.usdt_amount != null ? ` (${e.usdt_amount} USDT)` : ""}` : e.reason === "approval" ? "Approval" : e.note ?? "Adjustment"}
+              </span>
+              <span className={`mono-num ${e.delta >= 0 ? "text-success" : "text-danger"}`}>
+                {e.delta >= 0 ? "+" : ""}
+                {e.delta}
               </span>
             </div>
           ))}

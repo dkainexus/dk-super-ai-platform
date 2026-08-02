@@ -48,6 +48,24 @@ export async function uploadPlatformFavicon(formData: FormData): Promise<void> {
   revalidatePath("/", "layout");
 }
 
+export async function saveCreditSettings(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("settings", "edit");
+  if (cu.merchant) redirect("/m");
+  const usdtPerCredit = parseFloat(String(formData.get("usdt_per_credit") ?? "").replace(/,/g, ""));
+  const perApproval = parseInt(String(formData.get("credits_per_approval") ?? ""), 10);
+  const address = String(formData.get("usdt_address_trc20") ?? "").trim();
+  if (!Number.isFinite(usdtPerCredit) || usdtPerCredit <= 0) fail("/admin/settings", "Enter the USDT price per credit");
+  if (!Number.isFinite(perApproval) || perApproval < 0) fail("/admin/settings", "Enter the credits per approval");
+  if (address && !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address)) fail("/admin/settings", "That doesn't look like a TRC20 address");
+  await setSetting("credits", {
+    usdt_per_credit: usdtPerCredit,
+    credits_per_approval: perApproval,
+    usdt_address_trc20: address,
+  });
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings");
+}
+
 export async function removePlatformFavicon(): Promise<void> {
   const { cu } = await requirePerm("settings", "edit");
   if (cu.merchant) redirect("/m");

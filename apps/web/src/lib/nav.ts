@@ -109,6 +109,11 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     items.push(item);
   }
 
+  // The credit account rides along for every white label sign-in.
+  if (isMerchant && can(cu, "settings", "view")) {
+    items.push({ href: "/m/credits", label: "Credits" });
+  }
+
   const home = isMerchant ? "/m" : "/admin";
   // Settings lives in the top-right user menu now; the merchant sidebar drops
   // it entirely, the platform keeps its System section.

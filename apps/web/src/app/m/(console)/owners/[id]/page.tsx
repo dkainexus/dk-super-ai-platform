@@ -6,6 +6,9 @@ import { regionTree, addressLevels } from "@/modules/countries/regions";
 import { env } from "@/lib/env";
 import { submitOwnerForReview, deleteOwner, generateOwnerInvite } from "@/modules/owners/actions-merchant";
 import { uploadOwnerPhoto, removeOwnerPhoto } from "@/modules/owners/actions";
+import { merchantReviewOwner } from "@/modules/merchants/credit-actions";
+import { creditBalance, creditConfig } from "@/modules/merchants/credits";
+import { ActionButton } from "@/components/action-buttons";
 import { ImagePicker } from "@/components/image-picker";
 import { can } from "@/lib/auth";
 import { signedUrl, DOCS_BUCKET } from "@/lib/storage";
@@ -20,6 +23,62 @@ import { OwnerForm } from "@/modules/owners/components/owner-form";
 import { OwnerTermsCard } from "@/modules/owners/components/owner-terms-card";
 import { AppAccessCard } from "@/modules/owners/components/app-access";
 import type { CountryField, Owner, OwnerFieldValue } from "@/lib/types";
+
+async function ReviewCard({ ownerId, merchantId }: { ownerId: string; merchantId: string }) {
+  const [balance, cfg] = await Promise.all([creditBalance(merchantId), creditConfig()]);
+  const cost = Math.max(0, cfg.credits_per_approval);
+  const enough = balance >= cost;
+  return (
+    <section className="card p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold">Review this submission</h2>
+        <p className="text-xs text-muted">
+          Balance: <span className={`mono-num font-semibold ${enough ? "text-success" : "text-danger"}`}>{balance}</span>{" "}
+          credit{balance === 1 ? "" : "s"} · approval costs {cost}
+        </p>
+      </div>
+      {enough ? (
+        <div className="flex flex-wrap items-end gap-4">
+          <form action={merchantReviewOwner}>
+            <input type="hidden" name="id" value={ownerId} />
+            <input type="hidden" name="decision" value="approved" />
+            <ActionButton
+              icon="check"
+              tip={`Approve — ${cost} credit${cost === 1 ? "" : "s"} will be deducted`}
+              label={`Approve (${cost} credit${cost === 1 ? "" : "s"})`}
+              variant="success"
+            />
+          </form>
+          <form action={merchantReviewOwner} className="flex items-end gap-2">
+            <input type="hidden" name="id" value={ownerId} />
+            <input type="hidden" name="decision" value="rejected" />
+            <div>
+              <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Rejection reason</label>
+              <input name="reason" className="input w-64 py-1.5 text-sm" placeholder="What must be fixed" />
+            </div>
+            <ActionButton icon="x" tip="Reject with this reason — no credits spent" label="Reject" variant="danger" />
+          </form>
+        </div>
+      ) : (
+        <p className="text-sm text-warning">
+          Not enough credits to approve — top up on the{" "}
+          <a href="/admin/credits" className="text-accent-strong underline">Credits page</a> first. Rejecting stays free:
+        </p>
+      )}
+      {!enough && (
+        <form action={merchantReviewOwner} className="mt-3 flex items-end gap-2">
+          <input type="hidden" name="id" value={ownerId} />
+          <input type="hidden" name="decision" value="rejected" />
+          <div>
+            <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Rejection reason</label>
+            <input name="reason" className="input w-64 py-1.5 text-sm" placeholder="What must be fixed" />
+          </div>
+          <ActionButton icon="x" tip="Reject with this reason" label="Reject" variant="danger" />
+        </form>
+      )}
+    </section>
+  );
+}
 
 export default async function MerchantOwnerDetailPage({
   params,
@@ -103,6 +162,11 @@ export default async function MerchantOwnerDetailPage({
         <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
           Submitted for review. You can still edit the details while it is pending.
         </div>
+      )}
+
+      {/* The white label's own verdict — approval spends credits. */}
+      {owner.status === "pending" && can(cu, "owners", "edit") && (
+        <ReviewCard ownerId={owner.id} merchantId={merchant.id} />
       )}
 
       {/* Telegram intake */}

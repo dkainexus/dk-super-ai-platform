@@ -4,6 +4,7 @@ import { platformSettings, getSetting } from "@/lib/settings";
 import {
   savePlatformSettings,
   saveTrackingKey,
+  saveCreditSettings,
   uploadPlatformLogo,
   removePlatformLogo,
   uploadPlatformFavicon,
@@ -22,6 +23,8 @@ export default async function AdminSettingsPage({
   await requirePerm("settings", "view");
   const { error } = await searchParams;
   const platform = await platformSettings();
+  const { creditConfig } = await import("@/modules/merchants/credits");
+  const creditCfg = await creditConfig();
   const [platformLogoUrl, platformFaviconUrl] = await Promise.all([
     signedUrl(ASSETS_BUCKET, platform.logo_path ?? null),
     signedUrl(ASSETS_BUCKET, platform.favicon_path ?? null),
@@ -75,6 +78,44 @@ export default async function AdminSettingsPage({
             <SaveButton tip="Save general settings" />
           </form>
         </div>
+      </section>
+
+      {/* Credits */}
+      <section className="card p-5">
+        <h2 className="mb-1 text-sm font-semibold">Credits</h2>
+        <p className="mb-4 text-xs text-muted">
+          White labels spend credits to approve agent submissions and buy them with USDT (TRC20) sent to the
+          address below — verified on chain, credited automatically.
+        </p>
+        <form action={saveCreditSettings} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:items-end">
+          <div>
+            <label className="mb-1 block text-xs text-muted">USDT per credit</label>
+            <input name="usdt_per_credit" defaultValue={creditCfg.usdt_per_credit} className="input mono-num" required />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted">Credits per approval</label>
+            <input
+              name="credits_per_approval"
+              type="number"
+              min={0}
+              defaultValue={creditCfg.credits_per_approval}
+              className="input mono-num"
+              required
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <label className="mb-1 block text-xs text-muted">USDT deposit address (TRC20)</label>
+            <input
+              name="usdt_address_trc20"
+              defaultValue={creditCfg.usdt_address_trc20}
+              placeholder="T…"
+              className="input mono-num"
+            />
+          </div>
+          <div className="sm:col-span-full">
+            <SaveButton tip="Save the credit economics" />
+          </div>
+        </form>
       </section>
 
       {/* Shipping tracking */}

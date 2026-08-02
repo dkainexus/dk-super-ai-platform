@@ -35,6 +35,7 @@ const ICONS: Record<string, string> = {
   compensation: "M23 12a11.05 11.05 0 0 0-22 0h22ZM18 19a3 3 0 0 1-6 0v-7",
   expenses: "M22 17l-8.5-8.5-5 5L2 7M17 17h5v-5",
   hr: "M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2ZM16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16",
+  credits: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM12 6v12M15.5 9.5h-5a1.75 1.75 0 0 0 0 3.5h3a1.75 1.75 0 0 1 0 3.5h-5",
   settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4 0a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.18V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 7.26 19.4l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06A2 2 0 1 1 7.37 6.1l.06.06A1.65 1.65 0 0 0 9.25 6.5V6a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51.6.25 1.3.12 1.77-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 13H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z",
 };
 
@@ -64,6 +65,7 @@ function iconFor(href: string): string {
   if (href.includes("/compensation")) return ICONS.compensation;
   if (href.includes("/expenses")) return ICONS.expenses;
   if (href.includes("/hr")) return ICONS.hr;
+  if (href.includes("/credits")) return ICONS.credits;
   return ICONS.settings;
 }
 
