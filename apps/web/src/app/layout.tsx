@@ -12,10 +12,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "DK AP System",
-  description: "DK AP System — merchant & owner management",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // The tab icon follows the brand: a white label's favicon on its domain,
+  // the platform's otherwise, the static tile as the last resort.
+  const [{ tenantFromHost }, { platformSettings }, { signedUrl, ASSETS_BUCKET }] = await Promise.all([
+    import("@/lib/tenant"),
+    import("@/lib/settings"),
+    import("@/lib/storage"),
+  ]);
+  const [tenant, platform] = await Promise.all([tenantFromHost(), platformSettings()]);
+  const iconPath = tenant?.favicon_path ?? platform.favicon_path ?? null;
+  const iconUrl = iconPath ? await signedUrl(ASSETS_BUCKET, iconPath, 60 * 60) : null;
+  return {
+    title: tenant?.name ?? platform.name,
+    description: `${platform.name} — merchant & owner management`,
+    icons: iconUrl ? { icon: iconUrl } : undefined,
+  };
+}
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

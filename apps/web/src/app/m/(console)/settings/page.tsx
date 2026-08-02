@@ -2,8 +2,14 @@
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 import { domainStatus, vercelEnabled } from "@/lib/vercel";
-import { updateMerchantSettings } from "@/modules/merchants/actions-merchant";
-import { LogoEditor } from "@/modules/merchants/components/logo-editor";
+import {
+  updateMerchantSettings,
+  uploadMerchantLogo,
+  removeMerchantLogo,
+  uploadMerchantFavicon,
+  removeMerchantFavicon,
+} from "@/modules/merchants/actions-merchant";
+import { BrandImageEditor } from "@/components/brand-image-editor";
 import { SubdomainField } from "@/modules/merchants/components/subdomain-field";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton } from "@/components/action-buttons";
@@ -119,7 +125,10 @@ export default async function MerchantSettingsPage({
   await requirePerm("settings", "view");
   const merchant = cu.merchant;
   const { error } = await searchParams;
-  const logoUrl = await signedUrl(ASSETS_BUCKET, merchant.logo_path);
+  const [logoUrl, faviconUrl] = await Promise.all([
+    signedUrl(ASSETS_BUCKET, merchant.logo_path),
+    signedUrl(ASSETS_BUCKET, merchant.favicon_path ?? null),
+  ]);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -132,8 +141,33 @@ export default async function MerchantSettingsPage({
       {/* ---------- Branding ---------- */}
       <section className="card p-6">
         <h2 className="mb-5 text-xs font-semibold uppercase tracking-wider text-muted">Branding</h2>
+        <div className="mb-5 flex flex-wrap items-end gap-6">
+          <div>
+            <p className="mb-1.5 text-xs text-muted">Logo (horizontal — sits above your name in the sidebar)</p>
+            <BrandImageEditor
+              imageUrl={logoUrl}
+              initial={merchant.name.slice(0, 1).toUpperCase()}
+              shape="wide"
+              fieldName="logo"
+              title="logo"
+              uploadAction={uploadMerchantLogo}
+              removeAction={removeMerchantLogo}
+            />
+          </div>
+          <div>
+            <p className="mb-1.5 text-xs text-muted">Favicon (square — the browser tab icon)</p>
+            <BrandImageEditor
+              imageUrl={faviconUrl}
+              initial={merchant.name.slice(0, 1).toUpperCase()}
+              shape="square"
+              fieldName="favicon"
+              title="favicon"
+              uploadAction={uploadMerchantFavicon}
+              removeAction={removeMerchantFavicon}
+            />
+          </div>
+        </div>
         <div className="flex flex-wrap items-start gap-6">
-          <LogoEditor logoUrl={logoUrl} initial={merchant.name.slice(0, 1).toUpperCase()} />
           <form action={updateMerchantSettings} className="min-w-0 flex-1 space-y-4">
             <div>
               <label className="mb-1 block text-xs text-muted">Brand name</label>

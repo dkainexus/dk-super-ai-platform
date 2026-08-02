@@ -23,25 +23,20 @@ function Brand({ brand, onClick }: { brand: ShellBrand; onClick?: () => void }) 
   const sub =
     brand.sub ??
     (brand.homeHref === "/m" ? "Partner Console" : brand.homeHref === "/admin" ? "Admin Console" : "Customer Portal");
+  // The logo is a horizontal wordmark and sits above the name + console line.
   return (
-    <Link href={brand.homeHref} onClick={onClick} className="flex items-center gap-3 px-2 py-1">
-      {brand.logoUrl ? (
+    <Link href={brand.homeHref} onClick={onClick} className="block min-w-0 px-2 py-1">
+      {brand.logoUrl && (
         <img
           src={brand.logoUrl}
           alt=""
-          className="h-9 w-9 shrink-0 rounded-xl object-cover ring-1 ring-white/10 shadow-[0_4px_14px_rgba(0,0,0,0.4)]"
+          className="mb-1.5 h-9 w-auto max-w-full object-contain object-left"
         />
-      ) : (
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-[#8b5cf6] text-sm font-bold text-white shadow-[0_4px_14px_rgba(77,122,255,0.35)]">
-          {brand.name.slice(0, 1).toUpperCase()}
-        </span>
       )}
-      <span className="min-w-0">
-        <span className="block truncate text-[15px] font-semibold leading-tight tracking-[0.08em] text-foreground">
-          {brand.name}
-        </span>
-        <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-muted">{sub}</span>
+      <span className="block truncate text-[15px] font-semibold leading-tight tracking-[0.08em] text-foreground">
+        {brand.name}
       </span>
+      <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-muted">{sub}</span>
     </Link>
   );
 }

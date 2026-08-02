@@ -74,6 +74,7 @@ export type Merchant = {
   id: string;
   name: string;
   logo_path: string | null;
+  favicon_path?: string | null;
   subdomain: string | null;
   custom_domain: string | null;
   status: MerchantStatus;

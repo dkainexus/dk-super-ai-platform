@@ -35,6 +35,27 @@ export async function uploadPlatformLogo(formData: FormData): Promise<void> {
   revalidatePath("/", "layout");
 }
 
+export async function uploadPlatformFavicon(formData: FormData): Promise<void> {
+  const { cu } = await requirePerm("settings", "edit");
+  if (cu.merchant) redirect("/m");
+  const file = formData.get("favicon");
+  if (!(file instanceof File) || file.size === 0) fail("/admin/settings", "Please choose an icon file");
+  if (file.size > 1 * 1024 * 1024) fail("/admin/settings", "Favicon must be under 1MB");
+  const { uploadFile, fileExt, ASSETS_BUCKET } = await import("@/lib/storage");
+  const path = await uploadFile(ASSETS_BUCKET, `platform/favicon.${fileExt(file)}`, file);
+  const current = await platformSettings();
+  await setSetting("platform", { ...current, favicon_path: path });
+  revalidatePath("/", "layout");
+}
+
+export async function removePlatformFavicon(): Promise<void> {
+  const { cu } = await requirePerm("settings", "edit");
+  if (cu.merchant) redirect("/m");
+  const current = await platformSettings();
+  await setSetting("platform", { ...current, favicon_path: null });
+  revalidatePath("/", "layout");
+}
+
 export async function removePlatformLogo(): Promise<void> {
   const { cu } = await requirePerm("settings", "edit");
   if (cu.merchant) redirect("/m");

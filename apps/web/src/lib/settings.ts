@@ -13,7 +13,7 @@ export async function setSetting(key: string, value: unknown): Promise<void> {
   await db().from("app_config").upsert({ key, value });
 }
 
-export type PlatformSettings = { name: string; logo_path?: string | null };
+export type PlatformSettings = { name: string; logo_path?: string | null; favicon_path?: string | null };
 
 export async function platformSettings(): Promise<PlatformSettings> {
   return getSetting<PlatformSettings>("platform", { name: "DK AP System" });

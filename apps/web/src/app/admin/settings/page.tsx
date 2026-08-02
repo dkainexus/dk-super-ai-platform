@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { requirePerm } from "@/lib/auth";
 import { platformSettings, getSetting } from "@/lib/settings";
-import { savePlatformSettings, saveTrackingKey } from "@/app/actions/settings";
+import {
+  savePlatformSettings,
+  saveTrackingKey,
+  uploadPlatformLogo,
+  removePlatformLogo,
+  uploadPlatformFavicon,
+  removePlatformFavicon,
+} from "@/app/actions/settings";
 import { ErrorBanner } from "@/components/error-banner";
 import { SaveButton } from "@/components/action-buttons";
-import { PlatformLogoEditor } from "@/components/platform-logo-editor";
+import { BrandImageEditor } from "@/components/brand-image-editor";
 import { signedUrl, ASSETS_BUCKET } from "@/lib/storage";
 
 export default async function AdminSettingsPage({
@@ -15,7 +22,10 @@ export default async function AdminSettingsPage({
   await requirePerm("settings", "view");
   const { error } = await searchParams;
   const platform = await platformSettings();
-  const platformLogoUrl = await signedUrl(ASSETS_BUCKET, platform.logo_path ?? null);
+  const [platformLogoUrl, platformFaviconUrl] = await Promise.all([
+    signedUrl(ASSETS_BUCKET, platform.logo_path ?? null),
+    signedUrl(ASSETS_BUCKET, platform.favicon_path ?? null),
+  ]);
   const shipping = await getSetting<{ trackingmore_key?: string }>("shipping", {});
 
   return (
@@ -30,8 +40,33 @@ export default async function AdminSettingsPage({
       <section className="card p-5">
         <h2 className="mb-1 text-sm font-semibold">General</h2>
         <p className="mb-4 text-xs text-muted">Basic platform identity — click the logo to change it.</p>
+        <div className="mb-5 flex flex-wrap items-end gap-6">
+          <div>
+            <p className="mb-1.5 text-xs text-muted">Logo (horizontal — sits above the name in the sidebar)</p>
+            <BrandImageEditor
+              imageUrl={platformLogoUrl}
+              initial={platform.name.slice(0, 1).toUpperCase()}
+              shape="wide"
+              fieldName="logo"
+              title="logo"
+              uploadAction={uploadPlatformLogo}
+              removeAction={removePlatformLogo}
+            />
+          </div>
+          <div>
+            <p className="mb-1.5 text-xs text-muted">Favicon (square — the browser tab icon)</p>
+            <BrandImageEditor
+              imageUrl={platformFaviconUrl}
+              initial={platform.name.slice(0, 1).toUpperCase()}
+              shape="square"
+              fieldName="favicon"
+              title="favicon"
+              uploadAction={uploadPlatformFavicon}
+              removeAction={removePlatformFavicon}
+            />
+          </div>
+        </div>
         <div className="flex flex-wrap items-start gap-5">
-          <PlatformLogoEditor logoUrl={platformLogoUrl} initial={platform.name.slice(0, 1).toUpperCase()} />
           <form action={savePlatformSettings} className="flex max-w-md flex-1 items-end gap-3">
             <div className="flex-1">
               <label className="mb-1 block text-xs text-muted">Platform Name (shown in the sidebar & login page)</label>

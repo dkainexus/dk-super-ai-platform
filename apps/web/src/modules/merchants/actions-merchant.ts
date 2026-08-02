@@ -63,6 +63,24 @@ export async function uploadMerchantLogo(formData: FormData): Promise<void> {
   revalidatePath("/m", "layout");
 }
 
+export async function uploadMerchantFavicon(formData: FormData): Promise<void> {
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("settings", "edit");
+  const file = formData.get("favicon");
+  if (!(file instanceof File) || file.size === 0) fail("/m/settings", "Please choose an icon file");
+  if (file.size > 1 * 1024 * 1024) fail("/m/settings", "Favicon must be under 1MB");
+  const path = await uploadFile(ASSETS_BUCKET, `favicons/${merchant.id}.${fileExt(file)}`, file);
+  await db().from("merchants").update({ favicon_path: path }).eq("id", merchant.id);
+  revalidatePath("/m", "layout");
+}
+
+export async function removeMerchantFavicon(): Promise<void> {
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("settings", "edit");
+  await db().from("merchants").update({ favicon_path: null }).eq("id", merchant.id);
+  revalidatePath("/m", "layout");
+}
+
 export async function removeMerchantLogo(): Promise<void> {
   const { merchant } = await requireMerchantUser();
   await requirePerm("settings", "edit");
