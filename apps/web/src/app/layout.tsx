@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { PwaRegister } from "@/components/pwa-register";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-full antialiased">
         {children}
         <PwaRegister />
+        <AutoRefresh />
       </body>
     </html>
   );
