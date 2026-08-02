@@ -5,8 +5,10 @@ import { createMerchant } from "@/modules/merchants/actions";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { SubmitButton } from "@/components/action-buttons";
-import { Table, TableToolbar } from "@/components/data-table";
+import { Table, TableToolbar, FilterSelect } from "@/components/data-table";
+import { FilterForm, SearchInput } from "@/components/filter-form";
 import { RowSettings } from "@/components/row-actions";
+import { Pagination, pageParams } from "@/components/pagination";
 import type { Merchant } from "@/lib/types";
 
 type Row = Merchant & { merchant_countries: { country: { name: string } | null }[] };
@@ -16,16 +18,29 @@ type Row = Merchant & { merchant_countries: { country: { name: string } | null }
 export default async function WhiteLabelRegistryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; q?: string; status?: string; page?: string; per?: string }>;
 }) {
   const { cu } = await requirePerm("merchants", "view");
-  const { error } = await searchParams;
+  const sp = await searchParams;
+  const { error, q = "", status = "" } = sp;
+  const { page, perPage, from } = pageParams(sp);
 
   const [{ data: merchants }, { data: countries }] = await Promise.all([
     db().from("merchants").select("*, merchant_countries(country:countries(name))").order("name"),
     db().from("countries").select("id, name").eq("active", true).order("name"),
   ]);
-  const rows = (merchants ?? []) as unknown as Row[];
+  const all = (merchants ?? []) as unknown as Row[];
+  const needle = q.trim().toLowerCase();
+  const filtered = all.filter(
+    (m) =>
+      (!needle ||
+        m.name.toLowerCase().includes(needle) ||
+        (m.code ?? "").toLowerCase().includes(needle) ||
+        (m.subdomain ?? "").toLowerCase().includes(needle)) &&
+      (!status || m.status === status)
+  );
+  const total = filtered.length;
+  const rows = filtered.slice(from, from + perPage);
 
   return (
     <div className="space-y-5">
@@ -37,12 +52,26 @@ export default async function WhiteLabelRegistryPage({
       </div>
       <ErrorBanner message={error} />
 
-      <TableToolbar count={rows.length} noun="white label" />
+      <TableToolbar count={total} noun="white label">
+        <FilterForm action="/admin/white-labels">
+          <SearchInput placeholder="Name, code, subdomain…" defaultValue={q} />
+          <FilterSelect
+            label="Status"
+            name="status"
+            value={status}
+            options={[
+              { value: "", label: "All statuses" },
+              { value: "active", label: "Active" },
+              { value: "suspended", label: "Suspended" },
+            ]}
+          />
+        </FilterForm>
+      </TableToolbar>
 
       <Table head={["White Label", "Code", "Domain", "Countries", "Status", ""]}>
         {rows.length === 0 && (
           <tr>
-            <td colSpan={6} className="px-4 py-6 text-sm text-muted">No white labels yet.</td>
+            <td colSpan={6} className="px-4 py-6 text-sm text-muted">No white labels match.</td>
           </tr>
         )}
         {rows.map((m) => (
@@ -62,6 +91,8 @@ export default async function WhiteLabelRegistryPage({
           </tr>
         ))}
       </Table>
+
+      <Pagination basePath="/admin/white-labels" params={{ q, status }} page={page} perPage={perPage} total={total} />
 
       {can(cu, "merchants", "add") && (
         <section className="card p-5">

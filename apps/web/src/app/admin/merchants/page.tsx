@@ -6,8 +6,10 @@ import { requireCountryScope } from "@/modules/countries/lib";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActiveTag } from "@/components/status-tag";
 import { ActionButton } from "@/components/action-buttons";
-import { Table, TableToolbar } from "@/components/data-table";
+import { Table, TableToolbar, FilterSelect } from "@/components/data-table";
+import { FilterForm, SearchInput } from "@/components/filter-form";
 import { RowSettings } from "@/components/row-actions";
+import { Pagination, pageParams } from "@/components/pagination";
 import type { Merchant } from "@/lib/types";
 
 // White labels operating in the country you are working in, with how much each
@@ -15,10 +17,12 @@ import type { Merchant } from "@/lib/types";
 export default async function MerchantsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; q?: string; status?: string; page?: string; per?: string }>;
 }) {
   const { cu } = await requirePerm("merchants", "view");
-  const { error } = await searchParams;
+  const sp = await searchParams;
+  const { error, q = "", status = "" } = sp;
+  const { page, perPage, from } = pageParams(sp);
   const { active } = await requireCountryScope();
   if (!active) return null;
 
@@ -30,7 +34,15 @@ export default async function MerchantsPage({
     .map((l) => l.merchant)
     .filter(Boolean) as Merchant[];
   merchants.sort((a, b) => a.name.localeCompare(b.name));
-  const ids = merchants.map((m) => m.id);
+  const needle = q.trim().toLowerCase();
+  const filtered = merchants.filter(
+    (m) =>
+      (!needle || m.name.toLowerCase().includes(needle) || (m.code ?? "").toLowerCase().includes(needle)) &&
+      (!status || m.status === status)
+  );
+  const total = filtered.length;
+  const pageRows = filtered.slice(from, from + perPage);
+  const ids = pageRows.map((m) => m.id);
 
   const [{ data: owners }, { data: companies }, { data: accounts }, { data: allMerchants }] = await Promise.all([
     ids.length
@@ -65,17 +77,31 @@ export default async function MerchantsPage({
       </div>
       <ErrorBanner message={error} />
 
-      <TableToolbar count={merchants.length} noun="white label" />
+      <TableToolbar count={total} noun="white label">
+        <FilterForm action="/admin/merchants">
+          <SearchInput placeholder="Name or code…" defaultValue={q} />
+          <FilterSelect
+            label="Status"
+            name="status"
+            value={status}
+            options={[
+              { value: "", label: "All statuses" },
+              { value: "active", label: "Active" },
+              { value: "suspended", label: "Suspended" },
+            ]}
+          />
+        </FilterForm>
+      </TableToolbar>
 
       <Table head={["White Label", "Owners", "Companies", "Bank Accounts", "Status", ""]}>
-        {merchants.length === 0 && (
+        {pageRows.length === 0 && (
           <tr>
             <td colSpan={6} className="px-4 py-6 text-sm text-muted">
-              No white labels in {active.name} yet — add one below.
+              No white labels match.
             </td>
           </tr>
         )}
-        {merchants.map((m) => (
+        {pageRows.map((m) => (
           <tr key={m.id} className="transition-colors hover:bg-surface-raised">
             <td className="px-4 py-2.5 font-medium">{m.name}</td>
             <td className="mono-num px-4 py-2.5">{ownerCount.get(m.id) ?? 0}</td>
@@ -90,6 +116,8 @@ export default async function MerchantsPage({
           </tr>
         ))}
       </Table>
+
+      <Pagination basePath="/admin/merchants" params={{ q, status }} page={page} perPage={perPage} total={total} />
 
       {canEdit && (
         <section className="card p-5">
