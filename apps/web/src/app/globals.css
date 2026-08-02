@@ -44,6 +44,15 @@
 
 html {
   color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Installed-app manners: no rubber-band flash past the edges, and content
+ * respects the notch / home-indicator safe areas. */
+body {
+  overscroll-behavior-y: none;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /*

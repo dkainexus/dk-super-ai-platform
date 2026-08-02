@@ -160,7 +160,7 @@ export function AppShell({
         </header>
 
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-surface/90 px-4 py-3 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-surface/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
           <Brand brand={brand} />
           <div className="flex items-center gap-2">
             {headerExtra}
@@ -179,7 +179,7 @@ export function AppShell({
         {open && (
           <div className="fixed inset-0 z-40 md:hidden">
             <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-            <div className="absolute left-0 top-0 flex h-dvh w-72 max-w-[85%] flex-col border-r border-border bg-surface px-3 py-5">
+            <div className="absolute left-0 top-0 flex h-dvh w-72 max-w-[85%] flex-col border-r border-border bg-surface px-3 py-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
               <div className="mb-4 flex items-center justify-between">
                 <Brand brand={brand} onClick={() => setOpen(false)} />
                 <button aria-label="Close" onClick={() => setOpen(false)} className="rounded-md border border-border p-1.5 text-muted">
