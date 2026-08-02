@@ -16,12 +16,8 @@ function fail(path: string, message: string): never {
   redirect(`${path}${sep}error=${encodeURIComponent(message)}`);
 }
 
-/** WL pays USDT on-chain and reports the hash; the chain decides. */
-export async function buyCreditsWithTx(formData: FormData): Promise<void> {
-  const { merchant } = await requireMerchantUser();
-  await requirePerm("settings", "view");
-  const back = "/m/credits";
-  const hash = String(formData.get("tx_hash") ?? "").trim();
+/** One verification path for every top-up form: the chain is the judge. */
+async function creditFromHash(merchantId: string, hash: string, back: string): Promise<never> {
   if (!/^[0-9a-fA-F]{64}$/.test(hash)) fail(back, "That doesn't look like a transaction hash");
 
   const cfg = await creditConfig();
@@ -41,7 +37,7 @@ export async function buyCreditsWithTx(formData: FormData): Promise<void> {
   if (credits < 1) fail(back, `That transfer (${check.usdt} USDT) is below the price of one credit (${cfg.usdt_per_credit} USDT)`);
 
   const { error } = await db().from("credit_ledger").insert({
-    merchant_id: merchant.id,
+    merchant_id: merchantId,
     delta: credits,
     reason: "topup",
     tx_hash: hash,
@@ -52,6 +48,66 @@ export async function buyCreditsWithTx(formData: FormData): Promise<void> {
   }
   revalidatePath(back);
   redirect(`${back}?saved=${credits}`);
+}
+
+/** Fallback path: WL pastes the transaction hash by hand. */
+export async function buyCreditsWithTx(formData: FormData): Promise<void> {
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("settings", "view");
+  const hash = String(formData.get("tx_hash") ?? "").trim();
+  return creditFromHash(merchant.id, hash, "/m/credits");
+}
+
+/** Primary path: WL uploads the transfer screenshot, we read the hash off it. */
+export async function buyCreditsWithScreenshot(formData: FormData): Promise<void> {
+  const { merchant } = await requireMerchantUser();
+  await requirePerm("settings", "view");
+  const back = "/m/credits";
+  const file = formData.get("screenshot");
+  if (!(file instanceof File) || file.size === 0) fail(back, "Pick the transfer screenshot");
+  if (file.size > 8 * 1024 * 1024) fail(back, "Screenshots must be under 8MB");
+
+  const { aiSettings, AI_DEFAULTS } = await import("@/modules/ai/lib");
+  const s = await aiSettings();
+  if (!s.claude_api_key) fail(back, "Screenshot reading is not configured — paste the transaction hash instead");
+
+  const mediaType = (["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)
+    ? file.type
+    : "image/jpeg") as "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+
+  let hash = "";
+  try {
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    const client = new Anthropic({ apiKey: s.claude_api_key });
+    const response = await client.messages.create({
+      model: s.claude_model || AI_DEFAULTS.claude_model,
+      max_tokens: 300,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+            {
+              type: "text",
+              text: "This is a screenshot of a TRON (TRC20) transfer. Find the transaction hash / TxID — a 64-character hexadecimal string, possibly shown truncated with … (if truncated, it is unusable). Reply with ONLY the full 64-character hash, or NONE if no complete hash is visible.",
+            },
+          ],
+        },
+      ],
+    });
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => (b as { text: string }).text)
+      .join(" ");
+    hash = (text.match(/[0-9a-fA-F]{64}/) ?? [""])[0];
+  } catch {
+    fail(back, "Could not read the screenshot — paste the transaction hash instead");
+  }
+  if (!hash) {
+    fail(back, "No full transaction hash visible on the screenshot — copy the TxID from your wallet and paste it below");
+  }
+  return creditFromHash(merchant.id, hash, back);
 }
 
 /** The white label's own review of an agent submission — approval spends credits. */

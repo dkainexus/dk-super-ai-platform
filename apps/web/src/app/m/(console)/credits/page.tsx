@@ -1,6 +1,8 @@
 import { requireMerchantUser, requirePerm } from "@/lib/auth";
 import { creditBalance, creditConfig, creditLedger } from "@/modules/merchants/credits";
 import { buyCreditsWithTx } from "@/modules/merchants/credit-actions";
+import { TopupScreenshot } from "@/modules/merchants/components/topup-screenshot";
+import QRCode from "qrcode";
 import { CopyField } from "@/components/copy-field";
 import { ErrorBanner } from "@/components/error-banner";
 import { ActionButton } from "@/components/action-buttons";
@@ -28,6 +30,9 @@ export default async function MerchantCreditsPage({
     creditConfig(),
     creditLedger(cu.merchant.id),
   ]);
+  const qr = cfg.usdt_address_trc20
+    ? await QRCode.toDataURL(cfg.usdt_address_trc20, { margin: 1, width: 220, color: { dark: "#0e0f13", light: "#ffffff" } })
+    : null;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -69,21 +74,45 @@ export default async function MerchantCreditsPage({
         </div>
         {cfg.usdt_address_trc20 ? (
           <>
-            <CopyField value={cfg.usdt_address_trc20} />
-            <form action={buyCreditsWithTx} className="flex flex-wrap items-end gap-3">
-              <div className="min-w-0 flex-1">
-                <label className="mb-1 block text-xs text-muted">Transaction hash</label>
-                <input
-                  name="tx_hash"
-                  className="input mono-num"
-                  placeholder="64-character transaction hash"
-                  autoComplete="off"
-                  required
+            <div className="flex flex-wrap items-start gap-5">
+              {qr && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={qr}
+                  alt="USDT deposit address QR"
+                  className="h-40 w-40 shrink-0 rounded-xl bg-white p-2"
                 />
+              )}
+              <div className="min-w-0 flex-1 space-y-4">
+                <CopyField value={cfg.usdt_address_trc20} />
+                <div className="space-y-2">
+                  <TopupScreenshot />
+                  <p className="text-xs text-muted">
+                    After paying, upload your wallet&apos;s transfer screenshot — the TxID is read off it and
+                    verified on chain automatically.
+                  </p>
+                </div>
+                <details>
+                  <summary className="cursor-pointer text-xs text-muted hover:text-foreground">
+                    Or paste the transaction hash by hand
+                  </summary>
+                  <form action={buyCreditsWithTx} className="mt-3 flex flex-wrap items-end gap-3">
+                    <div className="min-w-0 flex-1">
+                      <label className="mb-1 block text-xs text-muted">Transaction hash</label>
+                      <input
+                        name="tx_hash"
+                        className="input mono-num"
+                        placeholder="64-character transaction hash"
+                        autoComplete="off"
+                        required
+                      />
+                    </div>
+                    <ActionButton icon="check" tip="Verify on chain and add the credits" label="Verify & Add" variant="primary" />
+                  </form>
+                </details>
               </div>
-              <ActionButton icon="check" tip="Verify on chain and add the credits" label="Verify & Add" variant="primary" />
-            </form>
-            <p className="text-xs text-muted">Only transfers from the last 7 days are accepted; a hash can be used once.</p>
+            </div>
+            <p className="text-xs text-muted">Only transfers from the last 7 days are accepted; a transaction counts once.</p>
           </>
         ) : (
           <p className="text-sm text-warning">Top-ups are not open yet — contact the platform.</p>
