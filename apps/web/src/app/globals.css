@@ -47,6 +47,8 @@ html {
   -webkit-tap-highlight-color: transparent;
   /* No pinch, no double-tap zoom — panning only, like a native screen. */
   touch-action: pan-x pan-y;
+  /* And no pull-to-refresh: Chrome reads this off the root element. */
+  overscroll-behavior-y: none;
 }
 
 /* Installed-app manners: no rubber-band flash past the edges, and content
