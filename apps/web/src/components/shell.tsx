@@ -36,12 +36,17 @@ export async function Shell({ cu, children }: { cu: CurrentUser; children: React
   const merchantLogo = cu.merchant
     ? await signedUrl(ASSETS_BUCKET, cu.merchant.logo_path, 60 * 60 * 12)
     : await signedUrl(ASSETS_BUCKET, platform.logo_path ?? null, 60 * 60 * 12);
+  // The compact square mark for the mobile bar — the favicon slot.
+  const brandIcon = cu.merchant
+    ? await signedUrl(ASSETS_BUCKET, cu.merchant.favicon_path ?? null, 60 * 60 * 12)
+    : await signedUrl(ASSETS_BUCKET, platform.favicon_path ?? null, 60 * 60 * 12);
 
   return (
     <AppShell
       brand={{
         name: cu.merchant ? cu.merchant.name : platform.name,
         logoUrl: merchantLogo,
+        iconUrl: brandIcon,
         homeHref: "/admin",
         sub: cu.merchant ? "Partner Console" : "Admin Console",
       }}

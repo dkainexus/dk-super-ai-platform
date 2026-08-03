@@ -8,6 +8,8 @@ import { SidebarNav, type NavSection } from "@/components/sidebar-nav";
 export type ShellBrand = {
   name: string;
   logoUrl?: string | null;
+  /** Square mark for the compact mobile bar (usually the favicon). */
+  iconUrl?: string | null;
   homeHref: string;
   /** Small wordmark under the name; derived from homeHref when omitted. */
   sub?: string;
@@ -59,10 +61,12 @@ function UserMenu({
   user,
   logoutAction,
   settingsHref,
+  compact = false,
 }: {
   user: ShellUser;
   logoutAction: () => Promise<void>;
   settingsHref?: string;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -79,13 +83,21 @@ function UserMenu({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full border border-border py-1 pl-1 pr-3 transition-colors hover:border-accent"
+        className={
+          compact
+            ? "flex items-center rounded-full transition-opacity active:opacity-70"
+            : "flex items-center gap-2 rounded-full border border-border py-1 pl-1 pr-3 transition-colors hover:border-accent"
+        }
       >
-        <Avatar user={user} />
-        <span className="max-w-32 truncate text-sm">{user.label}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        <Avatar user={user} size={compact ? 32 : 28} />
+        {!compact && (
+          <>
+            <span className="max-w-32 truncate text-sm">{user.label}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </>
+        )}
       </button>
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-border bg-surface shadow-xl">
@@ -160,19 +172,25 @@ export function AppShell({
         </header>
 
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-surface/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
-          <Brand brand={brand} />
-          <div className="flex items-center gap-2">
-            {headerExtra}
-            <UserMenu user={user} logoutAction={logoutAction} settingsHref={settingsHref} />
-            <button aria-label="Menu" onClick={() => setOpen(true)} className="rounded-md border border-border p-2 text-foreground">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            </button>
-          </div>
+        <header className="sticky top-0 z-30 flex items-center gap-2.5 border-b border-border bg-surface/90 px-4 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
+          <Link href={brand.homeHref} className="flex min-w-0 flex-1 items-center gap-2.5">
+            {brand.iconUrl ? (
+              <img src={brand.iconUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
+            ) : (
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-[#8b5cf6] text-xs font-bold text-white">
+                {brand.name.slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            <span className="truncate text-[15px] font-semibold tracking-[0.04em]">{brand.name}</span>
+          </Link>
+          <UserMenu user={user} logoutAction={logoutAction} settingsHref={settingsHref} compact />
+          <button aria-label="Menu" onClick={() => setOpen(true)} className="rounded-lg p-1.5 text-foreground active:opacity-70">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
         </header>
 
         {/* Mobile drawer */}
