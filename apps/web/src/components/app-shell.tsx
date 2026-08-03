@@ -141,7 +141,26 @@ function MobileTabBar({
   onMenu: () => void;
 }) {
   const pathname = usePathname();
-  const tabs = sections.flatMap((s) => s.items).slice(0, 4);
+
+  // Fixed tab set — Dashboard, Owner, Company, Account (bank account) — with
+  // short native-style labels; anything the audience lacks is topped up from
+  // the start of their menu.
+  const flat = sections.flatMap((s) => s.items);
+  const wanted: { match: (h: string) => boolean; label: string }[] = [
+    { match: (h) => h === "/admin" || h === "/m" || h === "/portal", label: "Dashboard" },
+    { match: (h) => h.includes("/owners"), label: "Owner" },
+    { match: (h) => h.includes("/companies"), label: "Company" },
+    { match: (h) => h.includes("/bank-accounts"), label: "Account" },
+  ];
+  const tabs: { href: string; label: string }[] = [];
+  for (const w of wanted) {
+    const item = flat.find((i) => w.match(i.href));
+    if (item) tabs.push({ href: item.href, label: w.label });
+  }
+  for (const i of flat) {
+    if (tabs.length >= 4) break;
+    if (!tabs.some((t) => t.href === i.href)) tabs.push(i);
+  }
 
   function isActive(href: string) {
     if (href === "/admin" || href === "/m" || href === "/portal") return pathname === href;
