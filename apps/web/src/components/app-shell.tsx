@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 /* eslint-disable @next/next/no-img-element -- logos/avatars come from signed Supabase URLs */
-import { SidebarNav, type NavSection } from "@/components/sidebar-nav";
+import { NavIcon, SidebarNav, type NavSection } from "@/components/sidebar-nav";
 
 export type ShellBrand = {
   name: string;
@@ -128,6 +129,51 @@ function UserMenu({
   );
 }
 
+// The app's bottom tab bar: the first few destinations as tabs, everything
+// else behind the Menu tab that opens the drawer.
+function MobileTabBar({ sections, onMenu }: { sections: NavSection[]; onMenu: () => void }) {
+  const pathname = usePathname();
+  const tabs = sections.flatMap((s) => s.items).slice(0, 4);
+
+  function isActive(href: string) {
+    if (href === "/admin" || href === "/m" || href === "/portal") return pathname === href;
+    return pathname === href || pathname.startsWith(href + "/");
+  }
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 backdrop-blur md:hidden">
+      <div className="flex items-stretch pb-[env(safe-area-inset-bottom)]">
+        {tabs.map((t) => {
+          const active = isActive(t.href);
+          return (
+            <Link
+              key={t.href}
+              href={t.href}
+              className={`flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors active:opacity-70 ${
+                active ? "text-accent-strong" : "text-muted"
+              }`}
+            >
+              <NavIcon href={t.href} size={20} />
+              <span className="max-w-full truncate px-1">{t.label}</span>
+            </Link>
+          );
+        })}
+        <button
+          onClick={onMenu}
+          className="flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium text-muted transition-colors active:opacity-70"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <line x1="4" y1="7" x2="20" y2="7" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="17" x2="20" y2="17" />
+          </svg>
+          <span>Menu</span>
+        </button>
+      </div>
+    </nav>
+  );
+}
+
 export function AppShell({
   brand,
   sections,
@@ -184,13 +230,6 @@ export function AppShell({
             <span className="truncate text-[15px] font-semibold tracking-[0.04em]">{brand.name}</span>
           </Link>
           <UserMenu user={user} logoutAction={logoutAction} settingsHref={settingsHref} compact />
-          <button aria-label="Menu" onClick={() => setOpen(true)} className="rounded-lg p-1.5 text-foreground active:opacity-70">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
         </header>
 
         {/* Mobile drawer */}
@@ -215,7 +254,11 @@ export function AppShell({
           </div>
         )}
 
-        <main className="mx-auto w-full max-w-[96rem] flex-1 overflow-x-clip px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+        <main className="mx-auto w-full max-w-[96rem] flex-1 overflow-x-clip px-4 py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-8 md:pb-8">
+          {children}
+        </main>
+
+        <MobileTabBar sections={sections} onMenu={() => setOpen(true)} />
       </div>
     </div>
   );

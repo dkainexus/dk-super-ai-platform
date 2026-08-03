@@ -246,7 +246,7 @@ export function AiWidget({
   return (
     <>
       {open && (
-        <div className="fixed bottom-20 right-4 z-50 flex h-[min(34rem,calc(100vh-7rem))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl shadow-black/40">
+        <div className="fixed bottom-[calc(8.5rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-[min(34rem,calc(100vh-13rem))] md:bottom-20 md:h-[min(34rem,calc(100vh-7rem))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl shadow-black/40">
           <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <p className="text-sm font-semibold">
               <span className="mr-1.5">✦</span>AI Assistant
@@ -277,7 +277,7 @@ export function AiWidget({
         type="button"
         onClick={() => toggle(!open)}
         title={open ? "Minimize the AI Assistant" : "Ask the AI Assistant about your data"}
-        className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-xl text-background shadow-lg shadow-black/40 transition-transform hover:scale-105"
+        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-12 w-12 md:bottom-4 items-center justify-center rounded-full bg-accent text-xl text-background shadow-lg shadow-black/40 transition-transform hover:scale-105"
       >
         {open ? "▾" : "✦"}
       </button>
