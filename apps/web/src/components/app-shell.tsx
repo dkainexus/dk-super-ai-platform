@@ -130,8 +130,16 @@ function UserMenu({
 }
 
 // The app's bottom tab bar: the first few destinations as tabs, everything
-// else behind the Menu tab that opens the drawer.
-function MobileTabBar({ sections, onMenu }: { sections: NavSection[]; onMenu: () => void }) {
+// else behind the Menu tab that opens the full-screen menu page.
+function MobileTabBar({
+  sections,
+  menuOpen,
+  onMenu,
+}: {
+  sections: NavSection[];
+  menuOpen: boolean;
+  onMenu: () => void;
+}) {
   const pathname = usePathname();
   const tabs = sections.flatMap((s) => s.items).slice(0, 4);
 
@@ -141,10 +149,10 @@ function MobileTabBar({ sections, onMenu }: { sections: NavSection[]; onMenu: ()
   }
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 backdrop-blur md:hidden">
       <div className="flex items-stretch pb-[env(safe-area-inset-bottom)]">
         {tabs.map((t) => {
-          const active = isActive(t.href);
+          const active = !menuOpen && isActive(t.href);
           return (
             <Link
               key={t.href}
@@ -160,7 +168,9 @@ function MobileTabBar({ sections, onMenu }: { sections: NavSection[]; onMenu: ()
         })}
         <button
           onClick={onMenu}
-          className="flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium text-muted transition-colors active:opacity-70"
+          className={`flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors active:opacity-70 ${
+            menuOpen ? "text-accent-strong" : "text-muted"
+          }`}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
             <line x1="4" y1="7" x2="20" y2="7" />
@@ -171,6 +181,72 @@ function MobileTabBar({ sections, onMenu }: { sections: NavSection[]; onMenu: ()
         </button>
       </div>
     </nav>
+  );
+}
+
+// The Menu tab's destination: a native-style full-screen page of grouped,
+// icon-tiled rows — not a desktop drawer. The tab bar stays visible below.
+function MobileMenuPage({
+  sections,
+  sidebarExtra,
+  onClose,
+}: {
+  sections: NavSection[];
+  sidebarExtra?: React.ReactNode;
+  onClose: () => void;
+}) {
+  const pathname = usePathname();
+
+  function isActive(href: string) {
+    if (href === "/admin" || href === "/m" || href === "/portal") return pathname === href;
+    return pathname === href || pathname.startsWith(href + "/");
+  }
+
+  function Row({ item, child = false }: { item: { href: string; label: string }; child?: boolean }) {
+    const active = isActive(item.href);
+    return (
+      <Link
+        href={item.href}
+        onClick={onClose}
+        className={`flex items-center gap-3 px-4 py-3 transition-colors active:bg-surface-raised ${child ? "pl-14" : ""}`}
+      >
+        {!child && (
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+              active ? "bg-accent text-white" : "bg-surface-raised text-accent-strong"
+            }`}
+          >
+            <NavIcon href={item.href} size={16} />
+          </span>
+        )}
+        <span className={`min-w-0 flex-1 truncate text-sm ${child ? "text-muted" : "font-medium"} ${active ? "text-accent-strong" : ""}`}>
+          {item.label}
+        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-muted">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 overflow-y-auto bg-background px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] md:hidden">
+      <h2 className="px-1 pb-4 pt-2 text-2xl font-bold tracking-tight">Menu</h2>
+      {sidebarExtra && <div className="mb-4 px-1">{sidebarExtra}</div>}
+      {sections.map((section, i) => (
+        <div key={i} className="mb-4">
+          {section.heading && (
+            <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted">{section.heading}</p>
+          )}
+          <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+            {section.items.flatMap((item) => [
+              <Row key={item.href} item={item} />,
+              ...(item.children ?? []).map((c) => <Row key={c.href} item={c} child />),
+            ])}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -194,6 +270,10 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Navigating anywhere puts the menu page away, like a native More tab.
+  useEffect(() => setOpen(false), [pathname]);
 
   return (
     <div className="flex min-h-dvh">
@@ -232,33 +312,14 @@ export function AppShell({
           <UserMenu user={user} logoutAction={logoutAction} settingsHref={settingsHref} compact />
         </header>
 
-        {/* Mobile drawer */}
-        {open && (
-          <div className="fixed inset-0 z-40 md:hidden">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-            <div className="absolute left-0 top-0 flex h-dvh w-72 max-w-[85%] flex-col border-r border-border bg-surface px-3 py-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
-              <div className="mb-4 flex items-center justify-between">
-                <Brand brand={brand} onClick={() => setOpen(false)} />
-                <button aria-label="Close" onClick={() => setOpen(false)} className="rounded-md border border-border p-1.5 text-muted">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-              {sidebarExtra && <div className="mb-4">{sidebarExtra}</div>}
-              <div className="flex-1 overflow-y-auto" onClick={() => setOpen(false)}>
-                <SidebarNav sections={sections} />
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Mobile menu page (the Menu tab's destination) */}
+        {open && <MobileMenuPage sections={sections} sidebarExtra={sidebarExtra} onClose={() => setOpen(false)} />}
 
         <main className="mx-auto w-full max-w-[96rem] flex-1 overflow-x-clip px-4 py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-8 md:pb-8">
           {children}
         </main>
 
-        <MobileTabBar sections={sections} onMenu={() => setOpen(true)} />
+        <MobileTabBar sections={sections} menuOpen={open} onMenu={() => setOpen((v) => !v)} />
       </div>
     </div>
   );
