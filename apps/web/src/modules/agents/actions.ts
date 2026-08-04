@@ -178,3 +178,72 @@ export async function deleteAgent(formData: FormData): Promise<void> {
   revalidate();
   redirect(list);
 }
+
+// ---------------------------------------------------------------------------
+// Worker sub-accounts: the agent's own sign-in can open accounts for their
+// workers. A worker signs in like anyone else, but users.agent_id points at
+// the agent, so everything the worker enters lands under that agent.
+
+const WORKERS_BACK = "/m/my-team";
+
+/** The agent behind the current sign-in — primary only, workers manage nothing. */
+async function requirePrimaryAgent() {
+  const { requireMerchantUser } = await import("@/lib/auth");
+  const cu = await requireMerchantUser();
+  const { isPrimaryAgentUser } = await import("./lib");
+  const agent = await isPrimaryAgentUser(cu.user.id);
+  if (!agent) fail("/admin", "Only an agent's own sign-in can manage workers");
+  return { cu, agent };
+}
+
+export async function createAgentWorker(formData: FormData): Promise<void> {
+  const { cu, agent } = await requirePrimaryAgent();
+  const name = String(formData.get("name") ?? "").trim();
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "").trim();
+
+  if (!name) fail(WORKERS_BACK, "Please enter the worker's name");
+  if (!/^[a-z0-9_.@-]{3,40}$/.test(username))
+    fail(WORKERS_BACK, "Username: 3-40 chars, letters/numbers/._@- only");
+  if (password.length < 6) fail(WORKERS_BACK, "Password must be at least 6 characters");
+
+  const { error } = await db().from("users").insert({
+    username,
+    name,
+    password_hash: await hashPassword(password),
+    merchant_id: cu.merchant?.id ?? null,
+    role_id: await agentRoleId(),
+    agent_id: agent.id,
+    must_change_password: true,
+  });
+  if (error)
+    fail(WORKERS_BACK, error.message.includes("duplicate") ? "That username is taken" : `Failed to create: ${error.message}`);
+  revalidatePath(WORKERS_BACK);
+  redirect(`${WORKERS_BACK}?saved=1`);
+}
+
+/** Reset a worker's password (they must change it on first sign-in). */
+export async function resetAgentWorkerPassword(formData: FormData): Promise<void> {
+  const { agent } = await requirePrimaryAgent();
+  const id = String(formData.get("id") ?? "");
+  const password = String(formData.get("password") ?? "").trim();
+  if (password.length < 6) fail(WORKERS_BACK, "Password must be at least 6 characters");
+
+  const { error } = await db()
+    .from("users")
+    .update({ password_hash: await hashPassword(password), must_change_password: true })
+    .eq("id", id)
+    .eq("agent_id", agent.id);
+  if (error) fail(WORKERS_BACK, `Failed to save: ${error.message}`);
+  revalidatePath(WORKERS_BACK);
+  redirect(`${WORKERS_BACK}?saved=1`);
+}
+
+export async function setAgentWorkerActive(formData: FormData): Promise<void> {
+  const { agent } = await requirePrimaryAgent();
+  const id = String(formData.get("id") ?? "");
+  const active = String(formData.get("active") ?? "") === "true";
+  await db().from("users").update({ active }).eq("id", id).eq("agent_id", agent.id);
+  revalidatePath(WORKERS_BACK);
+  redirect(WORKERS_BACK);
+}

@@ -65,8 +65,22 @@ export async function agent(id: string): Promise<AgentRow | null> {
   return (data ?? null) as unknown as AgentRow | null;
 }
 
-/** The agent record tied to a signed-in user, if any. */
+/**
+ * The agent record a signed-in user acts as, if any — the agent's own
+ * sign-in (agents.user_id) or one of their worker sub-accounts
+ * (users.agent_id). Either way, work lands under the agent.
+ */
 export async function agentForUser(userId: string): Promise<Agent | null> {
+  const { data } = await db().from("agents").select("*").eq("user_id", userId).maybeSingle();
+  if (data) return data as Agent;
+  const { data: u } = await db().from("users").select("agent_id").eq("id", userId).maybeSingle();
+  if (!u?.agent_id) return null;
+  const { data: viaWorker } = await db().from("agents").select("*").eq("id", u.agent_id).maybeSingle();
+  return (viaWorker ?? null) as Agent | null;
+}
+
+/** True only for the agent's own sign-in — workers manage nothing. */
+export async function isPrimaryAgentUser(userId: string): Promise<Agent | null> {
   const { data } = await db().from("agents").select("*").eq("user_id", userId).maybeSingle();
   return (data ?? null) as Agent | null;
 }

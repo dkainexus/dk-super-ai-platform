@@ -114,6 +114,14 @@ export async function navSectionsFor(cu: CurrentUser): Promise<NavSection[]> {
     items.push({ href: "/m/credits", label: "Credits" });
   }
 
+  // An agent's own sign-in manages worker sub-accounts; workers don't.
+  if (isMerchant) {
+    const { isPrimaryAgentUser } = await import("@/modules/agents/lib");
+    if (await isPrimaryAgentUser(cu.user.id)) {
+      items.push({ href: "/m/my-team", label: "My Team" });
+    }
+  }
+
   const home = isMerchant ? "/m" : "/admin";
   // Settings lives in the top-right user menu now; the merchant sidebar drops
   // it entirely, the platform keeps its System section.
