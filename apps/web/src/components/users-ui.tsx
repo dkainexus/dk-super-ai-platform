@@ -10,26 +10,32 @@ export type UserRow = User & { role: Role | null; merchant: Merchant | null };
 
 export function UsersManager({
   users,
+  total,
   roles,
   merchants,
   isMerchant,
   selfId,
   filters,
+  pagination,
 }: {
   users: UserRow[];
+  /** Total matching rows (defaults to the page's length). */
+  total?: number;
   roles: Role[]; // assignable roles
   merchants: Merchant[]; // platform side only: for the create form
   isMerchant: boolean;
   selfId: string;
   /** Filter controls for the toolbar, rendered by the page. */
   filters?: React.ReactNode;
+  /** Pagination footer, rendered by the page under the table. */
+  pagination?: React.ReactNode;
 }) {
   const merchantRoles = roles.filter((r) => r.level === "merchant");
   const platformRoles = roles.filter((r) => r.level === "platform");
 
   return (
     <div className="space-y-5">
-      <TableToolbar count={users.length} noun="user">
+      <TableToolbar count={total ?? users.length} noun="user">
         {filters}
       </TableToolbar>
 
@@ -113,6 +119,8 @@ export function UsersManager({
           </tr>
         ))}
       </Table>
+
+      {pagination}
 
       <section className="card p-5">
         <h2 className="mb-4 text-sm font-semibold">Create User</h2>
