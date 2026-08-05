@@ -120,7 +120,8 @@ async function assignableRoles(cuMerchantId: string | null): Promise<Role[]> {
 export async function createUser(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("users", "add");
   const isMerchant = Boolean(cu.merchant);
-  const back = basePath(isMerchant, "users");
+  const list = basePath(isMerchant, "users");
+  const back = String(formData.get("back") ?? "") || list;
 
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
@@ -129,17 +130,17 @@ export async function createUser(formData: FormData): Promise<void> {
   // Merchant users can only create users inside their merchant.
   const merchantId = isMerchant ? cu.merchant!.id : String(formData.get("merchant_id") ?? "") || null;
 
-  if (!/^[a-z0-9_.-]{3,30}$/.test(username)) fail(back, "Username must be 3-30 characters (letters, numbers, . _ -)");
-  if (password.length < 6) fail(back, "Initial password must be at least 6 characters");
+  if (!/^[a-z0-9_.-]{3,30}$/.test(username)) fail(`${back}/new`, "Username must be 3-30 characters (letters, numbers, . _ -)");
+  if (password.length < 6) fail(`${back}/new`, "Initial password must be at least 6 characters");
 
   const roles = await assignableRoles(cu.merchant?.id ?? null);
   const role = roles.find((r) => r.id === roleId);
-  if (!role) fail(back, "Please choose a valid role");
-  if (merchantId && role.level !== "merchant") fail(back, "Merchant users need a merchant-level role");
-  if (!merchantId && role.level !== "platform") fail(back, "Platform users need a platform-level role");
+  if (!role) fail(`${back}/new`, "Please choose a valid role");
+  if (merchantId && role.level !== "merchant") fail(`${back}/new`, "Merchant users need a merchant-level role");
+  if (!merchantId && role.level !== "platform") fail(`${back}/new`, "Platform users need a platform-level role");
 
   const { data: clash } = await db().from("users").select("id").ilike("username", username).maybeSingle();
-  if (clash) fail(back, "This username is already taken");
+  if (clash) fail(`${back}/new`, "This username is already taken");
 
   const { error } = await db().from("users").insert({
     username,
@@ -148,8 +149,9 @@ export async function createUser(formData: FormData): Promise<void> {
     merchant_id: merchantId,
     role_id: role.id,
   });
-  if (error) fail(back, `Failed to create: ${error.message}`);
+  if (error) fail(`${back}/new`, `Failed to create: ${error.message}`);
   revalidatePath(back);
+  redirect(back);
 }
 
 async function getManagedUser(userId: string, back: string) {
@@ -165,7 +167,7 @@ async function getManagedUser(userId: string, back: string) {
 
 export async function toggleUser(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("users", "edit");
-  const back = basePath(Boolean(cu.merchant), "users");
+  const back = String(formData.get("back") ?? "") || basePath(Boolean(cu.merchant), "users");
   const target = await getManagedUser(String(formData.get("id") ?? ""), back);
   const active = String(formData.get("active") ?? "") === "true";
   await db().from("users").update({ active }).eq("id", target.id);
@@ -174,7 +176,7 @@ export async function toggleUser(formData: FormData): Promise<void> {
 
 export async function resetUserPassword(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("users", "edit");
-  const back = basePath(Boolean(cu.merchant), "users");
+  const back = String(formData.get("back") ?? "") || basePath(Boolean(cu.merchant), "users");
   const target = await getManagedUser(String(formData.get("id") ?? ""), back);
   const password = String(formData.get("password") ?? "");
   if (password.length < 6) fail(back, "New password must be at least 6 characters");
@@ -187,7 +189,7 @@ export async function resetUserPassword(formData: FormData): Promise<void> {
 
 export async function setUserRole(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("users", "edit");
-  const back = basePath(Boolean(cu.merchant), "users");
+  const back = String(formData.get("back") ?? "") || basePath(Boolean(cu.merchant), "users");
   const target = await getManagedUser(String(formData.get("id") ?? ""), back);
   const roleId = String(formData.get("role_id") ?? "");
   const roles = await assignableRoles(cu.merchant?.id ?? null);
@@ -201,8 +203,9 @@ export async function setUserRole(formData: FormData): Promise<void> {
 
 export async function deleteUser(formData: FormData): Promise<void> {
   const { cu } = await requirePerm("users", "delete");
-  const back = basePath(Boolean(cu.merchant), "users");
+  const back = String(formData.get("back") ?? "") || basePath(Boolean(cu.merchant), "users");
   const target = await getManagedUser(String(formData.get("id") ?? ""), back);
   await db().from("users").delete().eq("id", target.id);
   revalidatePath(back);
+  redirect(back);
 }
